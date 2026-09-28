@@ -1,0 +1,452 @@
+// Variables used by Scriptable.
+// These must be at the very top of the file. Do not edit.
+// icon-color: orange; icon-glyph: smog;
+
+/*
+ * HazeNow for Scriptable: an iOS home/lock-screen widget with no App Store wait. MIT licensed.
+ * Singapore haze right now: NEA's 1-hr PM2.5 with plain-words advice, next to NEA's 24-hr PSI.
+ * Data: NEA via data.gov.sg. Your location stays on your device (only used to weight NEA's 5 stations).
+ * Copy follows docs/COPY.md verbatim.
+ *
+ * Setup: Scriptable app → + → paste this file → name it "HazeNow". Long-press the home screen → + →
+ * Scriptable → pick a size → tap the widget → Script: HazeNow. Optional "Parameter" (comma-separated):
+ *   (empty)                  your location if allowed, else Central
+ *   central|north|south|east|west|island    a fixed area
+ *   general|kids|elderly|pregnant|heart_lung|exercising|outdoor_worker   who you're checking for
+ *   e.g. "west,kids"
+ * Also works on the lock screen (circular / rectangular / inline) and from Siri Shortcuts.
+ */
+
+const API_V1 = "https://api.data.gov.sg/v1/environment"; // primary: fresh (~hh:01), no observed rate limit
+const API_V2 = "https://api-open.data.gov.sg/v2/real-time/api"; // fallback only: rate-limited
+const WEB = "https://hazenow.app";
+const REGIONS = ["central", "north", "south", "east", "west"];
+const PROFILES = ["general", "kids", "elderly", "pregnant", "heart_lung", "exercising", "outdoor_worker"];
+const SENSITIVE = ["kids", "elderly", "pregnant", "heart_lung"];
+const FALLBACK = {
+  north: [1.41803, 103.82], south: [1.29587, 103.82], east: [1.35735, 103.94],
+  west: [1.35735, 103.7], central: [1.35735, 103.82],
+};
+// COPY §3: text label always; shape carries meaning (SF Symbols); never ▲/▼ in the chip.
+const BANDS = {
+  normal: { label: "Normal", color: "#2E9E5B", sf: "circle.fill", glyph: "●" },
+  elevated: { label: "Elevated", color: "#E8A317", sf: "circle.lefthalf.filled", glyph: "◐" },
+  high: { label: "High", color: "#E4572E", sf: "triangle.fill", glyph: "△" },
+  very_high: { label: "Very High", color: "#7B2D8E", sf: "octagon.fill", glyph: "⬣" },
+};
+const FOR_LABEL = { general: "For you", kids: "For kids", elderly: "For older adults", pregnant: "For pregnancy", heart_lung: "For asthma, COPD & heart", exercising: "For your workout", outdoor_worker: "For outdoor work" };
+const V = { // COPY §2 [long, short]
+  normal: { general: ["Fine to be out.", "Fine to be out"], kids: ["Fine for outdoor play.", "Fine for outdoor play"], elderly: ["Fine to be out.", "Fine to be out"], pregnant: ["Fine to be out.", "Fine to be out"], heart_lung: ["Fine to be out.", "Fine to be out"], exercising: ["Fine to exercise outside.", "Fine to exercise outside"], outdoor_worker: ["Fine to be out.", "Fine to be out"] },
+  elevated: { general: ["OK to be out. Go easy on hard exercise.", "Go easy outdoors"], kids: ["Calm play outside is OK. Skip running games for now.", "Calm play only"], elderly: ["A gentle walk is OK. Skip hard exercise for now.", "Gentle activity only"], pregnant: ["Gentle activity is OK. Skip hard exercise for now.", "Gentle activity only"], heart_lung: ["Gentle activity is OK. Skip hard exercise for now.", "Gentle activity only"], exercising: ["Keep your workout light, or move it indoors.", "Light workout or go indoors"], outdoor_worker: ["OK to work outside. Take breaks indoors if you can.", "Take breaks indoors"] },
+  high: { general: ["Short trips out are OK. Exercise indoors.", "No outdoor exercise"], kids: ["Indoor play for now. Keep trips out short.", "Indoor play for now"], elderly: ["Stay indoors for now if you can.", "Stay indoors for now"], pregnant: ["Stay indoors for now if you can.", "Stay indoors for now"], heart_lung: ["Stay indoors for now if you can.", "Stay indoors for now"], exercising: ["Move your workout indoors.", "Work out indoors"], outdoor_worker: ["Take regular breaks indoors. Ask about lighter outdoor tasks.", "Take regular indoor breaks"] },
+  very_high: { general: ["Stay indoors for now. Go out only if you need to.", "Stay indoors for now"], kids: ["Keep kids indoors for now.", "Kids indoors for now"], elderly: ["Stay indoors for now.", "Stay indoors for now"], pregnant: ["Stay indoors for now.", "Stay indoors for now"], heart_lung: ["Stay indoors for now.", "Stay indoors for now"], exercising: ["Skip outdoor exercise for now.", "No outdoor exercise"], outdoor_worker: ["Limit time outside for now. Ask about indoor work.", "Limit time outside"] },
+};
+const ANCHOR = { normal: "Normal is up to 55.", elevated: "Elevated band (56–150). High starts at 151.", high: "High band (151–250). Very High starts at 251.", very_high: "Very High band (251 and above)." };
+const FOOTER = "Data: NEA via data.gov.sg · Free & open source · No ads, no tracking, no account";
+const WHY_SHORT = "Both are from NEA: the PSI averages 24 hours, PM2.5 shows the last hour.";
+
+// ------------------------------------------------------------------ SPEC maths
+const rhu = (x) => Math.floor(x + 0.5);
+const valid = (v) => typeof v === "number" && isFinite(v) && v >= 0;
+const bandOf = (c) => (c <= 55 ? "normal" : c <= 150 ? "elevated" : c <= 250 ? "high" : "very_high");
+const psiDescriptor = (p) => (p <= 50 ? "Good" : p <= 100 ? "Moderate" : p <= 200 ? "Unhealthy" : p <= 300 ? "Very Unhealthy" : "Hazardous");
+function km(a, b) {
+  const r = (d) => (d * Math.PI) / 180;
+  const h = Math.sin(r(b[0] - a[0]) / 2) ** 2 + Math.cos(r(a[0])) * Math.cos(r(b[0])) * Math.sin(r(b[1] - a[1]) / 2) ** 2;
+  return 6371.0088 * 2 * Math.asin(Math.sqrt(h));
+}
+function atSpot(readings, coords, region, loc) {
+  const ok = Object.keys(readings || {}).filter((k) => valid(readings[k]) && coords[k]);
+  if (!ok.length) return null;
+  if (loc) {
+    const d = ok.map((k) => ({ k, v: readings[k], d: km(loc, coords[k]) })).sort((a, b) => a.d - b.d);
+    const nearby = d.length > 1 ? [Math.min(d[0].v, d[1].v), Math.max(d[0].v, d[1].v)] : null;
+    if (d[0].d < 0.5) return { v: rhu(d[0].v), mode: "gps", nearest: d[0].k, km: d[0].d, blended: false, nearby };
+    let n = 0, w = 0;
+    for (const x of d) { n += x.v / x.d ** 2; w += 1 / x.d ** 2; }
+    return { v: rhu(n / w), mode: "gps", nearest: d[0].k, km: d[0].d, blended: true, nearby };
+  }
+  if (ok.includes(region)) return { v: rhu(readings[region]), mode: "region", nearest: region };
+  return { v: rhu(ok.reduce((s, k) => s + readings[k], 0) / ok.length), mode: "island", nearest: region, fellBack: region !== "island" };
+}
+const arrowOf = (d) => (d >= 5 ? "▲" : d <= -5 ? "▼" : "▶");
+const title = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+function timeLabel(iso) {
+  const d = new Date(Date.parse(iso) + 8 * 3600e3);
+  const h = d.getUTCHours(), m = d.getUTCMinutes();
+  return `${h % 12 || 12}${m ? ":" + String(m).padStart(2, "0") : ""}${h < 12 ? "am" : "pm"}`;
+}
+function ageText(iso) {
+  const m = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60000));
+  return m < 5 ? "just now" : m < 60 ? `${m} min ago` : `${Math.floor(m / 60)} h ${m % 60} min ago`;
+}
+function trendPhrase(h) { // COPY §4
+  const n = h.length;
+  if (n < 2) return { words: "Trend not available yet", word: "" };
+  const d1 = h[n - 1] - h[n - 2], d2 = n >= 3 ? h[n - 1] - h[n - 3] : d1;
+  const word = d1 >= 20 ? "rising fast" : d1 >= 5 ? "rising" : d1 <= -20 ? "clearing fast" : d1 <= -5 ? "easing" : "steady";
+  if (Math.sign(d2) === Math.sign(d1) && Math.abs(d2) > Math.abs(d1) && Math.abs(d2) >= 20)
+    return { words: d2 > 0 ? `Rising fast: up ${d2} in 2 hours` : `Clearing fast: down ${-d2} in 2 hours`, word };
+  if (d1 >= 20) return { words: `Rising fast: up ${d1} in the last hour`, word };
+  if (d1 >= 5) return { words: `Rising: up ${d1} in the last hour`, word };
+  if (d1 <= -20) return { words: `Clearing fast: down ${-d1} in the last hour`, word };
+  if (d1 <= -5) return { words: `Easing: down ${-d1} in the last hour`, word };
+  return { words: "Steady over the last hour", word };
+}
+function actionsFor(band, hist, p) { // COPY §5, filtered by profile; masks never lead
+  const sens = SENSITIVE.includes(p);
+  if (band === "normal") return hist.slice(-4, -1).some((v) => v > 55) ? ["Air's cleared. Good time to open the windows."] : ["Enjoy the fresh air."];
+  if (p === "outdoor_worker") { // COPY §17
+    const w = ["Take breaks in the shade or indoors, and drink water.", "Ask your supervisor about indoor breaks and lighter tasks."];
+    return band === "elevated" ? w : band === "high" ? [...w, "Out for hours? An N95 mask helps. Not needed for short trips."] : [...w, "Feeling unwell? See a doctor. Chest pain or can't breathe: call 995."];
+  }
+  if (band === "elevated") {
+    const o = [];
+    if (p === "heart_lung") o.push("Asthma or COPD? Keep your inhaler with you.");
+    if (p === "exercising") o.push("Shorten or slow your run, or move it indoors.");
+    if (p === "kids") o.push("Swap running games for calm play for now.");
+    if (sens) o.push("At home? Close the windows. Use a fan or aircon to keep cool.");
+    if (p === "general") o.push("Haze isn't always easy to see. Check here before a long run.");
+    return o.slice(0, 3);
+  }
+  const hi = ["Close windows. Use aircon or a fan to keep cool.", "Run a purifier in the room you're in, if you have one."];
+  if (p === "exercising" || p === "general") hi.push("Move exercise indoors, or try later.");
+  if (p === "heart_lung") hi.push("Keep your inhaler or medicine close. Follow your doctor's plan.");
+  if (p === "kids") hi.push("Plan indoor play. Keep trips out short.", "N95 masks aren't made for children. Keeping kids indoors works better.");
+  else if (p === "pregnant") hi.push("Pregnant? Wear an N95 only for short periods, and take it off if it feels hard to breathe.");
+  else if (p === "heart_lung") hi.push("Heart or lung condition? Ask your doctor before using an N95.");
+  else hi.push("Out for hours? An N95 mask helps. Not needed for short trips.");
+  if (band === "high") return hi.slice(0, 3);
+  return [hi[0], "Feeling unwell? See a doctor. Chest pain or can't breathe: call 995.", "Check on older family and neighbours."];
+}
+const sgtDate = (offDays) => new Date(Date.now() + 8 * 3600e3 - offDays * 86400e3).toISOString().slice(0, 10);
+
+// ------------------------------------------------------------------ data
+const fm = FileManager.local();
+const dir = fm.joinPath(fm.documentsDirectory(), "hazenow");
+if (!fm.fileExists(dir)) fm.createDirectory(dir, true);
+const cachePath = (name) => fm.joinPath(dir, name + ".json");
+const readCache = (name) => { try { return JSON.parse(fm.readString(cachePath(name))); } catch (e) { return null; } };
+const writeCache = (name, v) => { try { fm.writeString(cachePath(name), JSON.stringify(v)); } catch (e) {} };
+
+async function getJSON(url) {
+  const req = new Request(url);
+  req.headers = { "User-Agent": "HazeNow-Scriptable/0.3", Accept: "application/json" };
+  req.timeoutInterval = 12;
+  const body = await req.loadJSON();
+  return { body, status: req.response ? req.response.statusCode : 0 };
+}
+const fromV1 = (d) => ({
+  regionMetadata: (d.region_metadata || []).map((m) => ({ name: m.name, labelLocation: m.label_location })),
+  items: (d.items || []).map((it) => ({ timestamp: it.timestamp, updatedTimestamp: it.update_timestamp, readings: it.readings })),
+});
+/** SPEC v1.3: v1 first, v2 only as a fallback (one try; the widget refreshes again soon anyway). */
+async function fetchKind(kind, date) {
+  const q = date ? `?date=${date}` : "";
+  try {
+    const { body, status } = await getJSON(`${API_V1}/${kind}${q}`);
+    if (status === 200 && body && body.items) return fromV1(body);
+  } catch (e) {}
+  const { body } = await getJSON(`${API_V2}/${kind}${q}`);
+  if (body && body.code === 0 && body.data) return body.data;
+  throw new Error((body && body.errorMsg) || "bad response");
+}
+async function pastDay(kind, date) {
+  const key = `v1-${kind}-${date}`;
+  const c = readCache(key);
+  if (c) return c;
+  const d = await fetchKind(kind, date);
+  writeCache(key, d);
+  return d;
+}
+async function loadRaw() {
+  const [t, y] = [sgtDate(0), sgtDate(1)];
+  let pm = await fetchKind("pm25", t);
+  if (!pm.items.length) pm = await fetchKind("pm25", null);
+  const raw = {
+    pm: [pm, await pastDay("pm25", y).catch(() => null)].filter(Boolean),
+    psi: [await fetchKind("psi", t).catch(() => null), await pastDay("psi", y).catch(() => null)].filter(Boolean),
+  };
+  writeCache("last", raw);
+  return raw;
+}
+function merge(lists) { // same hour: earlier lists win per region when valid; later ones fill gaps
+  const by = {};
+  for (const d of lists) for (const it of d.items || []) {
+    const have = by[it.timestamp];
+    if (!have) { by[it.timestamp] = JSON.parse(JSON.stringify(it)); continue; }
+    for (const f of Object.keys(it.readings || {})) {
+      have.readings[f] = have.readings[f] || {};
+      for (const k of Object.keys(it.readings[f] || {})) if (!valid(have.readings[f][k]) && valid(it.readings[f][k])) have.readings[f][k] = it.readings[f][k];
+    }
+  }
+  return by;
+}
+
+function snapshot(raw, region, loc) {
+  const withMeta = raw.pm.find((d) => d.regionMetadata && d.regionMetadata.length);
+  const coords = Object.assign({}, FALLBACK);
+  for (const m of (withMeta && withMeta.regionMetadata) || []) coords[m.name] = [m.labelLocation.latitude, m.labelLocation.longitude];
+  const items = Object.values(merge(raw.pm)).sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp));
+  const psiBy = merge(raw.psi);
+  const idx = items.findIndex((it) => atSpot(it.readings.pm25_one_hourly, coords, region, loc));
+  if (idx < 0) throw new Error("No valid readings");
+  const cur = items[idx];
+  const spot = atSpot(cur.readings.pm25_one_hourly, coords, region, loc);
+  const officialAt = (ts, field) => {
+    const r = psiBy[ts] && psiBy[ts].readings[field];
+    if (!r) return null;
+    if (spot.mode !== "island" && valid(r[spot.nearest])) return r[spot.nearest];
+    const vs = Object.values(r).filter(valid);
+    return vs.length ? rhu(vs.reduce((a, b) => a + b, 0) / vs.length) : null;
+  };
+  const hist = [];
+  for (const it of items.slice(idx, idx + 24).reverse()) {
+    const s = atSpot(it.readings.pm25_one_hourly, coords, region, loc);
+    if (s) hist.push({ t: it.timestamp, v: s.v, avg: officialAt(it.timestamp, "pm25_twenty_four_hourly") });
+  }
+  const values = hist.map((h) => h.v);
+  const delta = values.length > 1 ? values[values.length - 1] - values[values.length - 2] : 0;
+  const regions = {};
+  for (const k of REGIONS) { const v = cur.readings.pm25_one_hourly[k]; regions[k] = valid(v) ? v : null; }
+  return {
+    pm25: spot.v, band: bandOf(spot.v), delta, arrow: arrowOf(delta), spot, regions, hist, values,
+    officialPsi24h: officialAt(cur.timestamp, "psi_twenty_four_hourly"),
+    observedAt: cur.timestamp, publishedAt: cur.updatedTimestamp || cur.timestamp,
+    stale: Date.now() - Date.parse(cur.timestamp) > 135 * 60e3,
+  };
+}
+
+function provenance(s) { // COPY §6
+  const obs = timeLabel(s.observedAt), age = ` · ${ageText(s.observedAt)}`, R = title(s.spot.nearest || "island");
+  if (s.spot.mode === "gps") return s.spot.blended
+    ? `Estimated for your spot from NEA stations · nearest: ${R}, ${s.spot.km.toFixed(1)} km · measured ${obs}${age}`
+    : `NEA ${R} station · ${s.spot.km.toFixed(1)} km away · measured ${obs}${age}`;
+  if (s.spot.mode === "island") return s.spot.fellBack ? `${R} station is offline. Showing the average of NEA's other stations.${age}` : `Average of NEA stations islandwide · measured ${obs}${age}`;
+  return `NEA ${R} station · measured ${obs}${age}`;
+}
+function uncertainty(s) {
+  if (s.spot.mode !== "gps" || !s.spot.nearby) return null;
+  const [lo, hi] = s.spot.nearby;
+  return s.spot.km > 5 || hi - lo > 30 ? `Nearby stations read ${lo}–${hi}.` : null;
+}
+function secondLine(s) {
+  if (s.stale) return `Reading is from ${timeLabel(s.observedAt)}. It may not match the air now.`;
+  const el = s.band !== "normal";
+  if (s.delta >= 20) return el ? "Getting worse. Check again in an hour." : "Rising quickly. Check again in an hour.";
+  if (s.delta <= -20 && el) return "Getting better. Check again in an hour.";
+  const h = s.hist, n = h.length;
+  if (el && n >= 3 && h[n - 1].v < h[n - 2].v && h[n - 2].v < h[n - 3].v) {
+    let i = n - 3;
+    while (i > 0 && h[i - 1].v > h[i].v) i--;
+    return `Easing since ${timeLabel(h[i].t)}.`;
+  }
+  return null;
+}
+const officialLine = (s) => (s.officialPsi24h == null ? "NEA 24-hr PSI: not available right now" : `NEA 24-hr PSI: ${s.officialPsi24h} (${psiDescriptor(s.officialPsi24h)})`);
+const num = (s) => `${s.spot.blended ? "~" : ""}${s.pm25}`;
+
+// ------------------------------------------------------------------ chart (COPY §8): hourly PM2.5 bars + NEA 24-hr PM2.5 line, both µg/m³
+function chartImage(s, w, h) {
+  const dc = new DrawContext();
+  dc.size = new Size(w, h);
+  dc.opaque = false;
+  dc.respectScreenScale = true;
+  const pts = s.hist.slice(-24);
+  const max = Math.max(160, ...pts.map((p) => p.v), ...pts.map((p) => p.avg || 0)) * 1.08;
+  const bw = w / Math.max(pts.length, 12);
+  const y = (v) => h - (v / max) * h;
+  for (const [v, label] of [[56, "Elevated 56"], [151, "High 151"]]) { // dashed, labelled band guides
+    for (let x = 0; x < w; x += 6) { dc.setFillColor(new Color("#8A8F98", 0.5)); dc.fillRect(new Rect(x, y(v), 3, 0.7)); }
+    dc.setFont(Font.systemFont(7)); dc.setTextColor(new Color("#8A8F98")); dc.drawText(label, new Point(w - 44, y(v) - 9));
+  }
+  pts.forEach((p, i) => {
+    dc.setFillColor(new Color(BANDS[bandOf(p.v)].color, 0.85));
+    const top = y(p.v);
+    dc.fillRect(new Rect(i * bw + bw * 0.15, top, bw * 0.7, h - top));
+  });
+  const path = new Path();
+  let started = false;
+  pts.forEach((p, i) => {
+    if (p.avg == null) return;
+    const pt = new Point(i * bw + bw / 2, y(p.avg));
+    if (!started) { path.move(pt); started = true; } else path.addLine(pt);
+  });
+  if (started) { dc.addPath(path); dc.setStrokeColor(new Color("#8A8F98")); dc.setLineWidth(2); dc.strokePath(); }
+  return dc.getImage();
+}
+
+// ------------------------------------------------------------------ brand mark (brand/svg/mark-small-template.svg)
+// Small variant: dot + 2 haze lines on a 100×100 grid. The dot takes the band colour; the lines stay Mist.
+function markImage(band) {
+  const dc = new DrawContext();
+  dc.size = new Size(100, 100);
+  dc.opaque = false;
+  dc.respectScreenScale = true;
+  const mist = new Color("#9FB3BB");
+  dc.setFillColor(band ? new Color(BANDS[band].color) : mist);
+  dc.fillEllipse(new Rect(28, 12, 44, 44)); // circle cx50 cy34 r22
+  const line = (x, y, w, alpha) => {
+    const p = new Path();
+    p.addRoundedRect(new Rect(x, y, w, 12), 6, 6);
+    dc.addPath(p);
+    dc.setFillColor(new Color("#9FB3BB", alpha));
+    dc.fillPath();
+  };
+  line(12, 66, 76, 1);
+  line(30, 86, 40, 0.6);
+  return dc.getImage();
+}
+function header(w, band, muted) {
+  const h = w.addStack(); h.centerAlignContent();
+  const m = h.addImage(markImage(band)); m.imageSize = new Size(12, 12);
+  h.addSpacer(4);
+  txt(h, "HazeNow", 9, { ...muted, bold: true });
+  w.addSpacer(3);
+}
+
+// ------------------------------------------------------------------ widget
+const FG = Color.dynamic(new Color("#1d232b"), Color.white());
+function txt(stack, s, size, o = {}) {
+  const t = stack.addText(s);
+  t.font = o.bold ? Font.boldSystemFont(size) : Font.systemFont(size);
+  t.textColor = o.color || FG;
+  if (o.opacity) t.textOpacity = o.opacity;
+  t.lineLimit = o.lines || 1;
+  t.minimumScaleFactor = 0.6;
+  return t;
+}
+function chip(stack, band, size, trailing) { // icon + label, never colour alone
+  const row = stack.addStack(); row.centerAlignContent();
+  const img = row.addImage(SFSymbol.named(BANDS[band].sf).image);
+  img.imageSize = new Size(size, size); img.tintColor = new Color(BANDS[band].color);
+  row.addSpacer(3);
+  txt(row, `${BANDS[band].label}${trailing || ""}`, size, { bold: true });
+  return row;
+}
+
+function nextRefresh(s) { // SPEC v1.3: next hour's data lands ~hh:01 → ask for hh:02; if this hour is late, retry in 10 min
+  const now = new Date();
+  const next = new Date(now); next.setMinutes(2, 0, 0); if (next <= now) next.setHours(next.getHours() + 1);
+  const thisHour = new Date(now); thisHour.setMinutes(0, 0, 0);
+  const haveThisHour = s && Date.parse(s.observedAt) >= thisHour.getTime();
+  return haveThisHour ? next : new Date(now.getTime() + 10 * 60e3);
+}
+
+function build(s, family, p, offline) {
+  const b = BANDS[s.band];
+  const w = new ListWidget();
+  w.url = WEB;
+  w.refreshAfterDate = nextRefresh(s);
+  const [vLong, vShort] = V[s.band][p];
+
+  if (family === "accessoryInline") { txt(w, `${b.glyph} ${s.pm25} ${s.arrow} ${b.label}`, 12); return w; }
+  if (family === "accessoryCircular") {
+    w.addAccessoryWidgetBackground = true;
+    txt(w, `${s.pm25}`, 20, { bold: true }).centerAlignText();
+    txt(w, `${b.glyph} ${s.arrow}`, 11).centerAlignText();
+    return w;
+  }
+  if (family === "accessoryRectangular") {
+    txt(w, `● ${s.pm25} ${s.arrow} ${b.label}`, 14, { bold: true });
+    txt(w, vShort, 12);
+    txt(w, `${timeLabel(s.observedAt)} · NEA${offline ? " · offline" : ""}`, 10, { opacity: 0.7 });
+    return w;
+  }
+
+  const bg = Color.dynamic(new Color("#FFFFFF"), new Color("#15191E"));
+  const g = new LinearGradient(); g.colors = [new Color(b.color, 0.10), bg]; g.locations = [0, 1];
+  w.backgroundColor = bg; w.backgroundGradient = g;
+  w.setPadding(12, 14, 12, 14);
+  const muted = { opacity: 0.65 };
+
+  header(w, s.band, muted);
+  const main = w.addStack();
+  const left = main.addStack(); left.layoutVertically();
+  // 1. verdict first (short form on widgets, COPY §16)
+  txt(left, vShort, family === "small" ? 14 : 15, { bold: true, lines: 2 });
+  if (family !== "small") txt(left, FOR_LABEL[p], 10, muted);
+  left.addSpacer(2);
+  // 2. big number + chip
+  const n = left.addStack(); n.bottomAlignContent();
+  txt(n, num(s), family === "small" ? 36 : 40, { bold: true });
+  n.addSpacer(4);
+  txt(n, "PM2.5", 10, muted);
+  chip(left, s.band, 12, ` ${s.arrow}`);
+  left.addSpacer();
+  if (family !== "small") txt(left, trendPhrase(s.values).words, 10, { ...muted, lines: 2 });
+  txt(left, `${timeLabel(s.observedAt)} · NEA${offline ? " · offline" : s.stale ? " (old)" : ""}`, 10, muted);
+
+  if (family !== "small") {
+    main.addSpacer(10);
+    const right = main.addStack(); right.layoutVertically();
+    txt(right, "Last 24 hours", 10, { bold: true, ...muted });
+    const W = family === "large" ? 150 : 140, H = family === "large" ? 84 : 76;
+    const img = right.addImage(chartImage(s, W, H)); img.imageSize = new Size(W, H);
+    txt(right, s.spot.mode === "gps" ? "Bars: hourly PM2.5 at your spot" : "Bars: hourly PM2.5", 8, muted);
+    txt(right, "Line: NEA 24-hr average PM2.5", 8, muted);
+    txt(right, officialLine(s), 9, { ...muted, bold: true });
+  }
+
+  if (family === "large" || family === "extraLarge") {
+    w.addSpacer(8);
+    txt(w, vLong, 13, { bold: true, lines: 2 });
+    const sl = secondLine(s); if (sl) txt(w, sl, 11, { lines: 2 });
+    txt(w, ANCHOR[s.band], 10, muted);
+    const u = uncertainty(s); if (u) txt(w, u, 10, muted);
+    txt(w, provenance(s), 9, { ...muted, lines: 2 });
+    w.addSpacer(6);
+    for (const a of actionsFor(s.band, s.values, p)) txt(w, `• ${a}`, 11, { lines: 2 });
+    w.addSpacer(6);
+    const row = w.addStack();
+    for (const k of REGIONS) {
+      const v = s.regions[k];
+      const cell = row.addStack(); cell.layoutVertically();
+      txt(cell, title(k), 9, muted);
+      txt(cell, v == null ? "offline" : `${BANDS[bandOf(v)].glyph} ${v}`, 11, { bold: true });
+      row.addSpacer();
+    }
+    w.addSpacer(4);
+    txt(w, `${WHY_SHORT} ${FOOTER}`, 8, { ...muted, lines: 3 });
+  }
+  return w;
+}
+
+function shareText(s) { // COPY §15 (no verdict)
+  const tw = trendPhrase(s.values).word || "steady";
+  return `Air near me right now: ${BANDS[s.band].label} (PM2.5 ${s.pm25}), ${tw}. NEA 24-hr PSI: ${s.officialPsi24h ?? "not available"}. Data: NEA via data.gov.sg. ${WEB}`;
+}
+
+// ------------------------------------------------------------------ main
+const parts = String(args.widgetParameter || args.shortcutParameter || "").toLowerCase().split(/[ ,]+/).filter(Boolean);
+const profile = parts.find((x) => PROFILES.includes(x)) || "general";
+const region = parts.find((x) => REGIONS.includes(x) || x === "island") || "central";
+let loc = null;
+if (!parts.some((x) => REGIONS.includes(x) || x === "island")) {
+  try {
+    Location.setAccuracyToThreeKilometers();
+    const l = await Location.current();
+    loc = [l.latitude, l.longitude];
+  } catch (e) { loc = null; } // not allowed → the chosen area (Central)
+}
+
+let raw, offline = false;
+try { raw = await loadRaw(); } catch (e) { raw = readCache("last"); offline = true; }
+
+let widget, s = null;
+if (!raw) {
+  widget = new ListWidget();
+  header(widget, null, { opacity: 0.65 }); // no data → neutral mark, no band colour
+  txt(widget, "Can't reach NEA's data right now", 13, { bold: true, lines: 2 });
+  txt(widget, "We'll try again in a few minutes.", 11, { lines: 2 });
+  widget.refreshAfterDate = new Date(Date.now() + 10 * 60e3);
+} else {
+  s = snapshot(raw, region, loc);
+  widget = build(s, config.widgetFamily || "medium", profile, offline);
+  if (!config.runsInWidget) Script.setShortcutOutput(`${V[s.band][profile][0]} ${shareText(s)}`);
+}
+
+if (config.runsInWidget || config.runsInAccessoryWidget) Script.setWidget(widget);
+else if (config.runsWithSiri) Speech.speak(s ? `${V[s.band][profile][0]} PM2.5 ${s.pm25}, ${BANDS[s.band].label}.` : "Can't reach NEA's data right now.");
+else await widget.presentMedium();
+Script.complete();

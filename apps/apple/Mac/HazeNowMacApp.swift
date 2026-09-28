@@ -25,6 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     lazy var notch = NotchController(store: store)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        HazeFonts.register()
         store.onSnapshot = { [weak self] snap in
             WidgetCenter.shared.reloadAllTimelines()
             if let self, let dir = ProcessInfo.processInfo.environment["HAZENOW_DEBUG_DIR"] {
@@ -35,6 +36,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         notch.setEnabled(store.settings.showNotch)
         if ProcessInfo.processInfo.environment["HAZENOW_DEBUG_NOTCH_CYCLE"] != nil {
             DebugRender.cycleNotch(notch)
+        }
+        if let dir = ProcessInfo.processInfo.environment["HAZENOW_DEBUG_NOTIFY_YES"] {
+            DebugRender.tapNotifyYes(store: store, notch: notch, dir: URL(fileURLWithPath: dir))
         }
         if ProcessInfo.processInfo.environment["HAZENOW_DEBUG_POPOVER_CYCLE"] != nil {
             DebugRender.cyclePopover()

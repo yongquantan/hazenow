@@ -1,0 +1,5 @@
+# Dockerfile-specific ignore (BuildKit): send only what the image needs.
+*
+!packages/core/src/**
+!services/proxy/src/**
+!services/proxy/package.json

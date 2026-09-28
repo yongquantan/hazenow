@@ -1,6 +1,6 @@
 # Indonesia: air quality data for HazeNow
 
-Research notes captured live on **2026-09-28, 17:11–18:15 SGT (16:11–17:15 WIB)**, during an active
+Research notes captured live on **2026-09-28, 17:11–18:18 SGT (16:11–17:18 WIB)**, during an active
 fire and haze episode in South Sumatra and Central, South and East Kalimantan. SGT = WIB + 1 = WITA = WIT − 1.
 Every `curl` below was actually run. Outputs are trimmed. "Unverified" means I could not confirm it with a live call today.
 
@@ -10,14 +10,14 @@ Related: [../DATA_SOURCES.md](../DATA_SOURCES.md) (Singapore baseline and eviden
 
 ## TL;DR
 
-- **Best authoritative "now" source: BMKG's hourly PM2.5 (23–25 stations), and 16 of them are in the fire belt**
+- **Best authoritative "now" source: BMKG's hourly PM2.5 (23–25 stations), and 17 of them are on Sumatra or Kalimantan**
   (Palembang ×2, Jambi ×2, Pekanbaru, Palangkaraya, Sintang, Kubu Raya, Mempawah, Banjarbaru, Samarinda, Batam and others).
   These are true 1-hr concentrations: Musi 2 Palembang read 52.6 → 223.6 → 201.1 µg/m³ between 08:00 and 14:00 WIB.
   The catch is that **no public API exists**. The data sits only in the server-rendered HTML of `bmkg.go.id/kualitas-udara/pm25`,
   the JSON route behind it returns **401**, and BMKG's open-data portal does not cover air quality.
   Reading it means scraping HTML through a proxy.
 - **KLH's ISPU feed (`ispu.kemenlh.go.id/apimobile/v1/getStations`) is the cleanest API in the region**: 117 stations, no key,
-  CORS `*`, no rate limit seen, fresh within about 11 minutes of the hour. But **it is a rolling 24-hr index**, the same lag
+  CORS `*`, no rate limit seen, and each new hour goes live 30–90 s after the hour. But **it is a rolling 24-hr index**, the same lag
   problem as Singapore's PSI. Palembang's ISPU concentration was 94 µg/m³ while BMKG's 1-hr reading was 201.
   It is useful as the "official number" line, not as the "now" number. The old host `ispu.menlhk.go.id` now returns **NXDOMAIN**.
 - **Best crowd source: AirGradient.** It has 12 EPA-corrected sensors in Palembang (150–270 µg/m³ at 17:18 SGT) and
@@ -36,8 +36,8 @@ Related: [../DATA_SOURCES.md](../DATA_SOURCES.md) (Singapore baseline and eviden
 
 | source | agency | what (PM2.5 1-hr? index?) | stations (count verified today) | cadence & latency (verified) | API/endpoint | key? | CORS | licence / ToS for redistribution in a free MIT app | reliability notes |
 |---|---|---|---|---|---|---|---|---|---|
-| **BMKG PM2.5** (`www.bmkg.go.id/kualitas-udara/pm25`) | BMKG (Meteorology, Climatology & Geophysics Agency) | **1-hr PM2.5 µg/m³** (BAM/nephelometer, GAW network) + ISPU category word (`KONDISI`) | **23** at 17:13 SGT, **25** at 17:22 SGT (national). Sumatra: Musi 2 Palembang, Talang Betutu Palembang, Muaro Jambi, Kota Jambi, Pekanbaru, Batam, Bengkulu, Pesawaran, Medan. Kalimantan: Palangkaraya, Sintang, Kubu Raya, Mempawah, Banjarbaru, Samarinda, Kotabaru, Tanjung Harapan. Jakarta: Kemayoran | hourly. `JAM` 14 was latest at 16:13 WIB and `JAM` 15 appeared by 16:22 WIB (see §Evidence 2 for the poll). Hour-label convention (start or end of hour) is **unverified** | **HTML only**: `__NUXT_DATA__` JSON inside `https://www.bmkg.go.id/kualitas-udara/pm25` (list) and `/kualitas-udara/pm25/<file>` (today's hourly series). The internal `/api/kualitas-udara/pm25` returns **401** | n/a (the internal API needs a server-set header) | HTML page: no ACAO, behind Cloudflare | No licence published for PM2.5. BMKG's open-data terms (weather/quake only) say "Wajib mencantumkan BMKG … sebagai sumber data". **Ask BMKG for permission** before scraping | Scraping the Nuxt payload is brittle (index-based array). The site was rebuilt and the old `/kualitas-udara/informasi-partikulat-pm25` now returns **404**. WAQI mirrors these stations (see crowd table) |
-| **KLH ISPU** (`ispu.kemenlh.go.id`) | Kementerian Lingkungan Hidup / BPLH (was KLHK, split in 2024) | ISPU per pollutant. `a_pm25` = PM2.5 concentration µg/m³, **24-hr rolling average** (see §Evidence 1). `t_pm25` = ISPU sub-index. `val` = overall ISPU | **117** listed (93 KLH/BPLH + 24 "INTEGRASI" regional/partner). 109 had a non-zero `a_pm25`. Fire belt: Riau 8, Jambi 4, Sumsel 7, Kalbar 6, Kalteng 6, Kalsel 5, Kaltim 11, Kaltara 1. DKI Jakarta 7 | hourly. Hour "16:00 WIB" was already served at 16:11 WIB for 99/117 stations. DKI "INTEGRASI" stations lag 1 h (15:00). New hour: see §Evidence 1 poll | `GET https://ispu.kemenlh.go.id/apimobile/v1/getStations` (all, latest). `GET …/apimobile/v1/getDetail/stasiun/<id_stasiun>` (last 24 h of ISPU per pollutant) | **no** | **`*`** (GET and preflight) | **None published** (no terms page found on the site). Government public information. **Unverified**: ask KLH before redistributing | Undocumented mobile API (used by the ISPUnet app and the website). 10 back-to-back calls all returned 200 in about 0.3 s. Not gzipped (138 KB). The old `ispu.menlhk.go.id` gives NXDOMAIN, so pin the host in config |
+| **BMKG PM2.5** (`www.bmkg.go.id/kualitas-udara/pm25`) | BMKG (Meteorology, Climatology & Geophysics Agency) | **1-hr PM2.5 µg/m³** + ISPU category word (`KONDISI`). Instrument type is unverified | **23** at 17:13 SGT, **25** at 17:22 SGT (national). Sumatra: Musi 2 Palembang, Talang Betutu Palembang, Muaro Jambi, Kota Jambi, Pekanbaru, Batam, Bengkulu, Pesawaran, Medan. Kalimantan: Palangkaraya, Sintang, Kubu Raya, Mempawah, Banjarbaru, Samarinda, Kotabaru, Tanjung Harapan. Jakarta: Kemayoran | hourly. **`JAM N` appears at about (N+1):17 WIB** (JAM 16 went live between 17:17:08 and 17:18:08 WIB, polled every minute). Hour-label convention (start or end of hour) is **unverified** | **HTML only**: `__NUXT_DATA__` JSON inside `https://www.bmkg.go.id/kualitas-udara/pm25` (list) and `/kualitas-udara/pm25/<file>` (today's hourly series). The internal `/api/kualitas-udara/pm25` returns **401** | n/a (the internal API needs a server-set header) | HTML page: no ACAO, behind Cloudflare | No licence published for PM2.5. BMKG's open-data terms (weather/quake only) say "Wajib mencantumkan BMKG … sebagai sumber data". **Ask BMKG for permission** before scraping | Scraping the Nuxt payload is brittle (index-based array). The site was rebuilt and the old `/kualitas-udara/informasi-partikulat-pm25` now returns **404**. WAQI mirrors these stations (see crowd table) |
+| **KLH ISPU** (`ispu.kemenlh.go.id`) | Kementerian Lingkungan Hidup / BPLH (was KLHK, split in 2024) | ISPU per pollutant. `a_pm25` = PM2.5 concentration µg/m³, **24-hr rolling average** (see §Evidence 1). `t_pm25` = ISPU sub-index. `val` = overall ISPU | **117** listed (93 KLH/BPLH + 24 "INTEGRASI" regional/partner). 109 had a non-zero `a_pm25`. Fire belt: Riau 8, Jambi 4, Sumsel 7, Kalbar 6, Kalteng 6, Kalsel 5, Kaltim 11, Kaltara 1. DKI Jakarta 7 | hourly. **New hour served 30–90 s after the hour**: "17:00 WIB" rows went from 2 → 21 at 17:00:34 WIB and → 86 at 17:01:34 WIB (polled every minute from 16:13 to 17:13 WIB). DKI "INTEGRASI" rows lag by 1 h | `GET https://ispu.kemenlh.go.id/apimobile/v1/getStations` (all, latest). `GET …/apimobile/v1/getDetail/stasiun/<id_stasiun>` (last 24 h of ISPU per pollutant) | **no** | **`*`** (GET and preflight) | **None published** (no terms page found on the site). Government public information. **Unverified**: ask KLH before redistributing | Undocumented mobile API (used by the ISPUnet app and the website). 10 back-to-back calls all returned 200 in about 0.3 s. Not gzipped (138 KB). The old `ispu.menlhk.go.id` gives NXDOMAIN, so pin the host in config |
 | **DKI Jakarta DLH** (`udara.jakarta.go.id`) | Dinas Lingkungan Hidup DKI Jakarta | ISPU + "PM 2.5 µg/m³" per SPKU (reference stations and LCS). The label/value pairing looked inconsistent today (see Evidence 3) | about **90** station IDs (`DKI01`…`DKI105`) in the homepage HTML. The 5 reference DKI1–DKI5 also appear in KLH ISPU | "Terakhir Diperbarui: 15.30 WIB" at 16:16 WIB | `/api/spku/nearest?lat=&lng=` needs an `X-Defense-Token` cookie **and** passes an F5 WAF check. From curl, the WAF returned "URL YANG DIMINTA DI TOLAK" even with the token | cookie token | not applicable (blocked) | **ToS §6: personal non-commercial use only. Reproduction or distribution needs written permission.** Data requests go through PPID | Not usable without an agreement. DKI1–DKI5 ISPU are available through KLH anyway |
 | **SiPongi hotspots** (`sipongi.gakkum.kehutanan.go.id`) | Kementerian Kehutanan (Gakkum) | satellite hotspots (NASA MODIS, SNPP, NOAA-20, or LAPAN/BRIN copies), confidence level | 9,029 hotspots in 24 h (296 high). Kaltim 859, Kalsel 545, Kalteng 484, Sumsel 244, Jambi 78, Kaltara 52, Riau 10, Kalbar 3 | newest detection 07:22 UTC (15:22 SGT) at 17:18 SGT, so about 2 h | `GET https://opsroom-sipongi.gakkum.kehutanan.go.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=false&late=24&satelit[]=…&confidence[]=…` (GeoJSON). Mirror: `opsroom.sipongidata.my.id` | no | **`*`** | none published. **Unverified**. Raw NASA FIRMS data is public domain, and SiPongi adds admin-area tags | Old hosts `sipongi.menlhk.go.id` and `sipongi.kemenlh.go.id` give **NXDOMAIN**. Its `/api/aqms` layer re-serves the KLH ISPU list (117 features) |
 | US Embassy Jakarta (AirNow) | US Dept of State | 1-hr PM2.5 | 2 listed as "Active" (Jakarta Central, Jakarta South) in `Monitoring_Site_Locations_V2.dat` | **no rows** for either site in `HourlyData_2026092805…08.dat` | `files.airnowtech.org/airnow/YYYY/YYYYMMDD/HourlyData_YYYYMMDDHH.dat` | no | not checked | US public domain | **Unverified / not reporting today** |
@@ -93,6 +93,17 @@ Other gotchas seen today:
 - Absurd `t_pm10` values (Pontianak 809, Tabalong 1915) show the sub-index is **not capped at 500**.
 - Numbers are strings. `lat`/`lon` are strings.
 
+New-hour poll (every 60 s, 17:13–18:13 SGT, summarised):
+
+```
+17:59:34 SGT  {'16:00WIB': 87, '17:00WIB': 2, ...}  PALEMBANG ('16:00','94.01','142')  PEKANBARU ('16:00','42.14','84')
+18:00:34 SGT  {'16:00WIB': 69, '17:00WIB': 21, ...}
+18:01:34 SGT  {'16:00WIB': 6, '17:00WIB': 86, ...}  PALEMBANG ('17:00','94.27','142')  PEKANBARU ('17:00','46.37','89')  DKI1 ('16:00','0','113')
+```
+
+Palembang's `a_pm25` moved only 94.01 → 94.27 in that hour, while BMKG's 1-hr Palembang value moved 170.3 → 109.6. That is more evidence that `a_pm25` is a 24-hr mean.
+The value stamped "17:00" is live at 17:00:34, so the stamp marks the end of the averaging window (the average up to that time).
+
 Rate limit: `for i in 1..10: curl getStations` returned `200` ten times at 0.25–0.34 s each. The response is not compressed (138 KB).
 
 **2. BMKG hourly PM2.5 (HTML-embedded)**
@@ -122,7 +133,11 @@ HTTP/2 401   {"status":401,"text":"Unauthorized"}
   `KONDISI` follows the ISPU concentration breakpoints applied to the 1-hr value: 56.7 → Tidak Sehat, 52.4 → Sedang, 163.2 → Sangat Tidak Sehat, 13.4 → Baik.
 - Poll of `/kualitas-udara/pm25/pm25_plb4` every 3 minutes (the full log is in the "cadence" line below):
   `17:22:35 SGT n=25 JAM=[15] {Musi 2 Palembang 170.3, Palangkaraya 168.8, Pekanbaru 97.9, Kemayoran 40.3}`
-  CADENCE_PLACEHOLDER
+  `17:25 … 18:17:08 SGT  JAM=[15]` (unchanged over 19 polls)
+  `18:18:08 SGT n=25 JAM=[16] {Musi 2 Palembang 109.6, Pekanbaru 85.3}`, `cf-cache-status: MISS` on every poll.
+  **Hour `JAM N` goes live at about (N+1):17 WIB**: JAM 15 between 16:13 and 16:22 WIB, JAM 16 between 17:17:08 and 17:18:08 WIB.
+  If `JAM 16` is the 16:00–17:00 average, the latency is about 17 min after the hour closes. If it is hour-ending, the latency is about 1 h 17 min. **Which convention applies is unverified.**
+  In either case, BMKG is the freshest authoritative 1-hr value in Indonesia.
 - `data.bmkg.go.id` (the open-data portal) offers only weather forecasts, earthquakes and nowcast warnings. Its terms: attribution required, 60 req/min/IP. **No air quality.**
 
 **3. DKI Jakarta (udara.jakarta.go.id)**
@@ -297,7 +312,7 @@ Note that "Sedang" is **blue**, not yellow. Reusing Singapore's amber for the se
 | `publishedAt` | first time the Worker saw the new `JAM` (no publish stamp exists in either feed) |
 | `source` | "BMKG" / "KLH ISPU" / "AirGradient contributors (CC BY-SA)" |
 
-**Polling:** BMKG from :10 to :30 past the hour (WIB), every 3 minutes until a new `JAM` appears, then idle. KLH at :05–:15, and again at :45 for late "INTEGRASI" rows.
+**Polling:** BMKG every 1 min from :12 to :30 past the hour until a new `JAM` appears, then idle. KLH every 1 min from :00:30 until the new hour appears (stop at :10), and once more at :45 for late "INTEGRASI" rows.
 AirGradient every 5 min. SiPongi every 30 min. Don't exceed 1 req/min per upstream from the Worker. Clients hit only the Worker.
 
 **Gotchas**
@@ -328,9 +343,9 @@ Pekanbaru, Palangkaraya, Pontianak, Banjarbaru, Samarinda, Batam and Jakarta wit
 
 **Summary**
 
-- **Best authoritative:** BMKG hourly PM2.5, 23–25 stations with about 16 in the Sumatra/Kalimantan fire belt. It is true 1-hr data in WIB, published about 15–20 min after the hour,
+- **Best authoritative:** BMKG hourly PM2.5, 23–25 stations, 17 of them on Sumatra or Kalimantan. It is true 1-hr data in WIB, and hour N goes live at about (N+1):17 WIB,
   but only inside `bmkg.go.id` HTML (the internal JSON returns 401) with no licence. KLH ISPU (`ispu.kemenlh.go.id/apimobile/v1/getStations`) has 117 stations, no key, CORS `*`
-  and good freshness, but its PM2.5 is a 24-hr rolling average (Palembang 94 vs BMKG 1-hr 201).
+  and it goes live about 1 min after the hour, but its PM2.5 is a 24-hr rolling average (Palembang 94 vs BMKG 1-hr 201).
 - **Best crowd:** AirGradient, with 12 EPA-corrected sensors in Palembang (152–270, matching BMKG) and about 62 Nafas monitors in Jabodetabek, Malang and Balikpapan. It has no CORS and
   nothing in Riau, Jambi or most of Kalimantan. Nafas has no public API.
 - **Fire context:** SiPongi hotspot GeoJSON, open with CORS `*`, about 2 h behind overpass.

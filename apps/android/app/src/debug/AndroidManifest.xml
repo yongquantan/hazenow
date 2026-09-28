@@ -8,6 +8,7 @@
             <intent-filter>
                 <action android:name="sg.hazenow.DEBUG_REFRESH" />
                 <action android:name="sg.hazenow.DEBUG_MOCK" />
+                <action android:name="sg.hazenow.DEBUG_EXPORT_CARDS" />
             </intent-filter>
         </receiver>
     </application>

@@ -56,3 +56,11 @@ Source of truth for expected behaviour: `SPEC.md` (the v1.2 amendments win) and 
 - `packages/core` tests; CLI `--json`, `--oneline`, `--watch` (30 s).
 - `apps/web`: build, serve, test at 390×844 and 1440×900; all scenarios via `?mock=`; install as PWA; go offline → last snapshot marked stale; `?embed=1` card; run axe (or Lighthouse a11y + PWA) and report scores.
 - `integrations/home-assistant` pytest; `integrations/telegram-bot` type-check; `integrations/scriptable` script runs in Node with a Scriptable shim if feasible (else static review).
+
+## Round 2 additions
+
+- **iOS widget Place (round-1 P2, unconfirmed):** configure a widget to "East" while the app is set to another area; run `log stream --predicate 'subsystem == "sg.hazenow.widgets"'` and confirm `place=east` is logged and the widget shows East. If it logs `place=automatic`, report it as a WidgetKit delivery issue with the log.
+- **Largest text sizes (round-1 P1/P2):** iOS at the largest Dynamic Type (use `-HazeOpenSheet profiles` to reach the profile screen), Android at `font_scale 2.0`: number on one line, band chip readable, NEA 24-hr PSI visible without scrolling at High/Very High, profile rows not overlapping. Scroll to check the band chip.
+- **Permission prompts:** for every permission prompt (notifications, location), tap "allow" AND "deny" and confirm something visibly happens each time. Round 1 missed a Mac "Yes, notify me" button that did nothing.
+- **Share:** tap Share in each band and persona; confirm the auto-picked card matches SPEC v1.6, the image is 1080×1350 (1200×630 for the preview), and image + text + link all arrive. Check a stale reading: no trend, "that hour" wording.
+- **Mac region picker:** choose each NEA station from the menu and by clicking region cards.

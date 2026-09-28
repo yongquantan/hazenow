@@ -39,8 +39,13 @@ import sg.hazenow.work.RefreshWorker
  *   --ez island true             show the island average
  *   --ez resetFirstRun true      show the first-run flow again
  *   --ez refresh true            force a refresh of every surface now
+ *   --ez share true              open the share sheet (also used by the band-change notification)
  */
 class MainActivity : ComponentActivity() {
+    companion object {
+        const val EXTRA_SHARE = "share"
+    }
+
     private val vm: HazeViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,6 +75,7 @@ class MainActivity : ComponentActivity() {
             }
             RefreshWorker.runOnce(this)
         }
+        if (intent.getBooleanExtra(EXTRA_SHARE, false)) vm.requestShare()
         if (intent.getBooleanExtra("resetFirstRun", false)) vm.resetFirstRun()
         intent.getStringExtra("region")?.let { vm.selectRegion(it) }
         intent.getStringExtra("area")?.let { q ->
@@ -86,7 +92,7 @@ class MainActivity : ComponentActivity() {
             RefreshWorker.runOnce(this)
         }
         // Consume one-shot extras so rotation doesn't replay them.
-        listOf("mock", "region", "location", "pinWidget", "addTile", "refresh", "area", "place", "island", "resetFirstRun").forEach { intent.removeExtra(it) }
+        listOf("mock", "region", "location", "pinWidget", "addTile", "refresh", "area", "place", "island", "resetFirstRun", EXTRA_SHARE).forEach { intent.removeExtra(it) }
     }
 
     fun pinWidget(which: String) {

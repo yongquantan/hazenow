@@ -243,6 +243,7 @@ class HazeRepository private constructor(private val context: Context) {
             now = now,
             selectedRegion = (sel as? Selection.Region)?.name,
             placeName = if (outside) null else settings.placeName,
+            latestHourAt = HazeCore.latestHour(listOf(p.pm25)),
         ).let {
             if (outside) it.copy(note = "You seem to be outside Singapore. Showing NEA's ${Format.regionName(snap.nearestRegion)} station, the closest.") else it
         }

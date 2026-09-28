@@ -10,12 +10,12 @@ import SwiftUI
 public struct VerdictHeader: View {
     var snapshot: Snapshot
     var insight: HazeInsight
-    var size: Font
+    var headlineStyle: Font.TextStyle
 
-    public init(snapshot: Snapshot, insight: HazeInsight, size: Font = .title2) {
+    public init(snapshot: Snapshot, insight: HazeInsight, size: Font.TextStyle = .title2) {
         self.snapshot = snapshot
         self.insight = insight
-        self.size = size
+        self.headlineStyle = size
     }
 
     public var body: some View {
@@ -23,12 +23,13 @@ public struct VerdictHeader: View {
             Capsule().fill(snapshot.band.color).frame(width: 4).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
                 Text(insight.verdict.headline)
-                    .font(size.weight(.semibold))
+                    .font(.haze(headlineStyle, weight: .semibold))
+                    .tracking(-0.4)
                     .fixedSize(horizontal: false, vertical: true)
                 if let second = insight.verdict.secondLine {
-                    Text(second).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    Text(second).font(.haze(.callout)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
-                Text(insight.verdict.forWhom).font(.caption).foregroundStyle(.secondary)
+                Text(insight.verdict.forWhom).font(.haze(.caption)).foregroundStyle(.secondary)
             }
         }
         .fixedSize(horizontal: false, vertical: true)
@@ -51,30 +52,46 @@ public struct BigNumber: View {
         self.numberSize = numberSize
     }
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     public var body: some View {
+        let big = typeSize.isAccessibilitySize
         VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(insight.numberText)
-                    .font(.system(size: numberSize, weight: .bold, design: .rounded).monospacedDigit())
-                    .foregroundStyle(snapshot.band.textColor)
-                    .contentTransition(.numericText())
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(HazeCopy.pm25Unit).font(.callout.weight(.medium))
-                    Text(HazeCopy.pm25Label).font(.caption).foregroundStyle(.secondary)
+            // The hero number never wraps: one line, shrinking if it must. At accessibility sizes the unit
+            // moves below the number instead of competing for the same line.
+            let number = Text(insight.numberText)
+                .font(.haze(size: numberSize, weight: .bold, relativeTo: .largeTitle).monospacedDigit())
+                .tracking(-0.045 * numberSize)
+                .foregroundStyle(snapshot.band.textColor)
+                .lineLimit(1)
+                .minimumScaleFactor(0.3)
+                .contentTransition(.numericText())
+            let unit = VStack(alignment: .leading, spacing: 0) {
+                Text(HazeCopy.pm25Unit).font(.haze(.callout, weight: .medium))
+                Text(HazeCopy.pm25Label).font(.haze(.caption)).foregroundStyle(.secondary)
+            }
+            Group {
+                if big {
+                    VStack(alignment: .leading, spacing: 2) { number; unit }
+                } else {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) { number; unit }
                 }
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("P M 2.5 \(insight.uncertainty.a11y) micrograms per cubic metre")
-            if let text = insight.uncertainty.text {
-                Text(text).font(.caption).foregroundStyle(.secondary)
+            Text(insight.uncertaintyLine).font(.haze(.caption)).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            let trend = Label(insight.trendWords, systemImage: snapshot.trend.direction.symbolName)
+                .font(.haze(.subheadline))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            if big {
+                VStack(alignment: .leading, spacing: 6) { BandChip(band: snapshot.band, stale: snapshot.stale); trend }
+            } else {
+                HStack(spacing: 8) { BandChip(band: snapshot.band, stale: snapshot.stale); trend }
             }
-            HStack(spacing: 8) {
-                BandChip(band: snapshot.band, stale: snapshot.stale)
-                Label(insight.trendWords, systemImage: snapshot.trend.direction.symbolName)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            Text(insight.anchor).font(.caption).foregroundStyle(.secondary)
+            Text(insight.anchor).font(.haze(.caption)).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }
@@ -89,7 +106,7 @@ public struct ProvenanceLine: View {
             Label(insight.provenance.full, systemImage: "mappin.and.ellipse")
             if let note = insight.provenance.note { Label(note, systemImage: "info.circle") }
         }
-        .font(.caption)
+        .font(.haze(.caption))
         .foregroundStyle(.secondary)
     }
 }
@@ -106,7 +123,7 @@ public struct ActionsList: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             if insight.actions.isEmpty, let calm = insight.calmLine {
-                Label(calm, systemImage: "leaf").font(.callout)
+                Label(calm, systemImage: "leaf").font(.haze(.callout))
             }
             ForEach(insight.actions, id: \.self) { a in
                 Label {
@@ -114,7 +131,7 @@ public struct ActionsList: View {
                 } icon: {
                     Image(systemName: "checkmark.circle").foregroundStyle(band.textColor)
                 }
-                .font(.callout)
+                .font(.haze(.callout))
             }
         }
     }
@@ -127,8 +144,8 @@ public struct OfficialPsiView: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 1) {
-            Text(HazeCopy.officialPsiLabel(snapshot.officialPsi24h)).font(.subheadline.weight(.medium))
-            Text(HazeCopy.officialCaption).font(.caption2).foregroundStyle(.secondary)
+            Text(HazeCopy.officialPsiLabel(snapshot.officialPsi24h)).font(.haze(.subheadline, weight: .medium))
+            Text(HazeCopy.officialCaption).font(.haze(.caption2)).foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .combine)
     }
@@ -138,41 +155,46 @@ public struct OfficialPsiView: View {
 public struct ChartSection: View {
     var snapshot: Snapshot
     var height: CGFloat
+    var showOfficial: Bool
     var onWhy: (() -> Void)?
 
-    public init(snapshot: Snapshot, height: CGFloat = 150, onWhy: (() -> Void)? = nil) {
+    public init(snapshot: Snapshot, height: CGFloat = 150, showOfficial: Bool = true, onWhy: (() -> Void)? = nil) {
         self.snapshot = snapshot
         self.height = height
+        self.showOfficial = showOfficial
         self.onWhy = onWhy
     }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(HazeCopy.chartTitle).font(.headline)
-            OfficialPsiView(snapshot: snapshot)
+            Text(HazeCopy.chartTitle).hazeHeadline(.headline)
+            if showOfficial { OfficialPsiView(snapshot: snapshot) }
             LagChart(history: snapshot.history).frame(height: height)
-            Text(HazeCopy.chartCaption).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text(HazeCopy.chartCaption).font(.haze(.caption)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             if let onWhy {
-                Button(action: onWhy) { Label(HazeCopy.whyTwoNumbersLink, systemImage: "info.circle").font(.callout) }
+                Button(action: onWhy) { Label(HazeCopy.whyTwoNumbersLink, systemImage: "info.circle").font(.haze(.callout)) }
                     .buttonStyle(.borderless)
             }
         }
     }
 }
 
-/// 6. Regions.
+/// 6. Regions. Tapping a region shows that NEA station.
 public struct RegionsSection: View {
     var snapshot: Snapshot
     var compact: Bool
-    public init(snapshot: Snapshot, compact: Bool = false) {
+    var onSelect: ((String) -> Void)?
+    public init(snapshot: Snapshot, compact: Bool = false, onSelect: ((String) -> Void)? = nil) {
         self.snapshot = snapshot
         self.compact = compact
+        self.onSelect = onSelect
     }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(HazeCopy.regionsHeading).font(.headline)
-            RegionGrid(snapshot: snapshot, highlight: snapshot.locationMode == .island ? nil : snapshot.nearestRegion, compact: compact)
+            Text(HazeCopy.regionsHeading).hazeHeadline(.headline)
+            RegionGrid(snapshot: snapshot, highlight: snapshot.locationMode == .island ? nil : snapshot.nearestRegion,
+                       compact: compact, onSelect: onSelect)
         }
     }
 }
@@ -184,8 +206,8 @@ public struct TrustFooter: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            if let snapshot { Text(snapshot.asOfText).font(.caption2.monospacedDigit()).foregroundStyle(.secondary) }
-            Text(HazeCopy.footer).font(.caption2).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            if let snapshot { Text(snapshot.asOfText).font(.haze(.caption2).monospacedDigit()).foregroundStyle(.secondary) }
+            Text(HazeCopy.footer).font(.haze(.caption2)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
     }
 }
@@ -193,12 +215,13 @@ public struct TrustFooter: View {
 /// "Who are you checking for?" (COPY §1).
 public struct ProfilePicker: View {
     @Binding var profiles: Set<Profile>
+    @ScaledMetric(relativeTo: .callout) private var iconWidth: CGFloat = 20
     public init(profiles: Binding<Set<Profile>>) { _profiles = profiles }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(HazeCopy.profileTitle).font(.headline)
-            Text(HazeCopy.profileSubtitle).font(.caption).foregroundStyle(.secondary)
+            Text(HazeCopy.profileTitle).hazeHeadline(.headline)
+            Text(HazeCopy.profileSubtitle).font(.haze(.caption)).foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 6) {
                 ForEach(Profile.allCases) { p in
                     let on = profiles.contains(p)
@@ -211,11 +234,12 @@ public struct ProfilePicker: View {
                         }
                         profiles = Set(Profile.normalise(next))
                     } label: {
-                        HStack(spacing: 8) {
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
                             Image(systemName: on ? "checkmark.square.fill" : "square")
                                 .foregroundStyle(on ? Color.accentColor : .secondary)
-                            Image(systemName: p.symbolName).frame(width: 18).foregroundStyle(.secondary)
-                            Text(p.label)
+                            // Scaled width so large symbols never overlap the label.
+                            Image(systemName: p.symbolName).frame(minWidth: iconWidth).foregroundStyle(.secondary)
+                            Text(p.label).fixedSize(horizontal: false, vertical: true)
                             Spacer(minLength: 0)
                         }
                         .contentShape(Rectangle())
@@ -224,8 +248,8 @@ public struct ProfilePicker: View {
                     .accessibilityAddTraits(on ? .isSelected : [])
                 }
             }
-            .font(.callout)
-            Text(HazeCopy.profileFootnote).font(.caption2).foregroundStyle(.secondary)
+            .font(.haze(.callout))
+            Text(HazeCopy.profileFootnote).font(.haze(.caption2)).foregroundStyle(.secondary)
         }
     }
 }
@@ -237,26 +261,26 @@ public struct ExplainerView: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(HazeCopy.whyTwoNumbersLink).font(.headline)
-            Text(HazeCopy.whyTwoNumbers).font(.callout)
+            Text(HazeCopy.whyTwoNumbersLink).hazeHeadline(.headline)
+            Text(HazeCopy.whyTwoNumbers).font(.haze(.callout))
             if let snapshot {
-                Text(snapshot.asOfText).font(.caption).foregroundStyle(.secondary)
-                Text(HazeCompute.typicalText()).font(.caption).foregroundStyle(.secondary)
+                Text(snapshot.asOfText).font(.haze(.caption)).foregroundStyle(.secondary)
+                Text(HazeCompute.typicalText()).font(.haze(.caption)).foregroundStyle(.secondary)
             }
             Divider()
-            Text("More tips").font(.headline)
-            ForEach(HazeCopy.moreTips, id: \.self) { Label($0, systemImage: "lightbulb").font(.callout) }
+            Text("More tips").hazeHeadline(.headline)
+            ForEach(HazeCopy.moreTips, id: \.self) { Label($0, systemImage: "lightbulb").font(.haze(.callout)) }
             Link(destination: HazeCopy.neaForecastURL) { Label("NEA haze forecast", systemImage: "arrow.up.right.square") }
-                .font(.callout)
+                .font(.haze(.callout))
             Divider()
-            Text(HazeCopy.howTitle).font(.title3.weight(.semibold))
+            Text(HazeCopy.howTitle).hazeHeadline(.title3)
             ForEach(HazeCopy.howSections, id: \.title) { section in
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(section.title).font(.subheadline.weight(.semibold))
-                    Text(section.body).font(.callout)
+                    Text(section.title).font(.haze(.subheadline, weight: .semibold))
+                    Text(section.body).font(.haze(.callout))
                 }
             }
-            Text(HazeCopy.privacyLine).font(.caption).foregroundStyle(.secondary)
+            Text(HazeCopy.privacyLine).font(.haze(.caption)).foregroundStyle(.secondary)
         }
         .fixedSize(horizontal: false, vertical: true)
     }
@@ -273,8 +297,8 @@ public struct NotifyAskCard: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(HazeCopy.notifyAskTitle).font(.subheadline.weight(.semibold))
-            Text(HazeCopy.notifyAskBody).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text(HazeCopy.notifyAskTitle).font(.haze(.subheadline, weight: .semibold))
+            Text(HazeCopy.notifyAskBody).font(.haze(.caption)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack {
                 Button(HazeCopy.notifyAskYes, action: onYes).buttonStyle(.borderedProminent)
                 Button(HazeCopy.notifyAskNo, action: onNo).buttonStyle(.borderless)
@@ -286,81 +310,61 @@ public struct NotifyAskCard: View {
     }
 }
 
-// MARK: - Shareable image (no verdict, no Instant PSI — COPY §15)
-
-public struct ShareCard: View {
-    var snapshot: Snapshot
-    var insight: HazeInsight
-
-    public init(snapshot: Snapshot, insight: HazeInsight) {
-        self.snapshot = snapshot
-        self.insight = insight
-    }
+/// The notification ask, then its real result inline (granted / denied / error). COPY §11.
+public struct NotifyAskSection: View {
+    let store: HazeStore
+    public init(store: HazeStore) { self.store = store }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("HazeNow").font(.headline)
-                Spacer()
-                Text("\(snapshot.placeText) · \(HazeFormat.hour(snapshot.observedAt))").font(.caption).foregroundStyle(.secondary)
-            }
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(insight.numberText)
-                    .font(.system(size: 72, weight: .bold, design: .rounded).monospacedDigit())
-                    .foregroundStyle(snapshot.band.textColor)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("µg/m³ · 1-hr PM2.5").font(.callout)
-                    BandChip(band: snapshot.band, compact: true, stale: snapshot.stale)
+        if let result = store.notifyAskResult {
+            VStack(alignment: .leading, spacing: 8) {
+                switch result {
+                case .requesting, .notDetermined:
+                    HStack(spacing: 8) { ProgressView().controlSize(.small); Text("Asking for permission…") }
+                        .font(.haze(.caption))
+                case .granted:
+                    Label("You're set. We'll message when the band changes, and when it's clear.", systemImage: "checkmark.circle.fill")
+                        .font(.haze(.callout))
+                case .denied, .error:
+                    Label("Notifications are off for HazeNow.", systemImage: "bell.slash")
+                        .font(.haze(.callout, weight: .semibold))
+                    if case let .error(msg) = result {
+                        Text(msg).font(.haze(.caption2)).foregroundStyle(.secondary)
+                    }
+                    Button("Open System Settings") { HazeNotifier.openSystemSettings() }
+                        .buttonStyle(.bordered).controlSize(.small)
+                }
+                if result != .requesting {
+                    Button("Dismiss") { store.dismissNotifyResult() }.buttonStyle(.borderless).font(.haze(.caption))
                 }
             }
-            Text(insight.trendWords).font(.callout).foregroundStyle(.secondary)
-            OfficialPsiView(snapshot: snapshot)
-            Text(HazeCopy.chartTitle).font(.subheadline.weight(.semibold))
-            LagChart(history: snapshot.history).frame(height: 170)
-            Text(HazeCopy.chartCaption).font(.caption).foregroundStyle(.secondary)
-            Text(HazeCopy.footer).font(.caption2).foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.secondary.opacity(0.1)))
+        } else if store.shouldAskNotify {
+            NotifyAskCard(onYes: { Task { await store.answerNotifyAsk(true) } },
+                          onNo: { Task { await store.answerNotifyAsk(false) } })
         }
-        .padding(24)
-        .frame(width: 520)
-        .background(Color.white)
-        .environment(\.colorScheme, .light)
-    }
-
-    /// Render to a SwiftUI Image (Transferable) via ImageRenderer.
-    @MainActor
-    public func renderImage(scale: CGFloat = 2) -> Image? {
-        let renderer = ImageRenderer(content: self)
-        renderer.scale = scale
-        #if os(macOS)
-        return renderer.nsImage.map { Image(nsImage: $0) }
-        #else
-        return renderer.uiImage.map { Image(uiImage: $0) }
-        #endif
     }
 }
 
-/// ShareLink with the rendered card + COPY §15 share text.
-public struct ShareSnapshotButton: View {
-    var snapshot: Snapshot
-    var insight: HazeInsight
-    @State private var image: Image?
-
-    public init(snapshot: Snapshot, insight: HazeInsight) {
-        self.snapshot = snapshot
-        self.insight = insight
-    }
-
+/// Under the Settings toggle: reflects the real system permission.
+public struct NotifyPermissionNote: View {
+    let store: HazeStore
+    public init(store: HazeStore) { self.store = store }
     public var body: some View {
-        let text = HazeCompute.shareText(snapshot)
-        Group {
-            if let image {
-                ShareLink(item: image, message: Text(text), preview: SharePreview("HazeNow · PM2.5 \(snapshot.pm25)", image: image)) {
-                    Label("Share", systemImage: "square.and.arrow.up")
+        switch store.notifyStatus {
+        case .denied, .error:
+            if store.notifyOnRise || store.notifyAsked {
+                HStack {
+                    Text("Notifications are off for HazeNow.").font(.haze(.caption)).foregroundStyle(.secondary)
+                    Button("Open System Settings") { HazeNotifier.openSystemSettings() }
+                        .buttonStyle(.borderless).font(.haze(.caption))
                 }
-            } else {
-                ShareLink(item: text) { Label("Share", systemImage: "square.and.arrow.up") }
             }
+        default:
+            EmptyView()
         }
-        .task(id: snapshot) { image = ShareCard(snapshot: snapshot, insight: insight).renderImage() }
     }
 }

@@ -51,7 +51,7 @@ struct ComplicationView: View {
                 .tint(bandGradient)
             case .accessoryCorner:
                 Text("\(s.pm25)")
-                    .font(.title3.monospacedDigit())
+                    .font(.haze(.title3).monospacedDigit())
                     .widgetLabel { Text("\(s.band.label) \(s.trend.direction.arrow)") }
             case .accessoryInline:
                 Text("\(s.compactText) \(s.band.label)")
@@ -59,11 +59,12 @@ struct ComplicationView: View {
                 VStack(alignment: .leading) {
                     HStack(spacing: 4) {
                         Image(systemName: s.band.symbolName).foregroundStyle(s.band.color)
-                        Text("\(s.pm25) \(s.trend.direction.arrow)").font(.headline.monospacedDigit())
-                        Text(s.band.label).font(.caption)
+                        Text("\(s.pm25)").font(.haze(.headline, weight: .bold).monospacedDigit())
+                        TrendArrow(s.trend.direction).font(.caption)
+                        Text(s.band.label).font(.haze(.caption))
                     }
-                    Text(HazeCompute.verdict(for: s, profiles: HazeSettings.shared.profiles).short).font(.caption)
-                    Text("\(HazeFormat.hour(s.observedAt)) · NEA").font(.caption2)
+                    Text(HazeCompute.verdict(for: s, profiles: HazeSettings.shared.profiles).short).font(.haze(.caption))
+                    Text("\(HazeFormat.hour(s.observedAt)) · NEA").font(.haze(.caption2))
                 }
             }
         } else {

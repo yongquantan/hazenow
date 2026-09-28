@@ -15,9 +15,12 @@ let package = Package(
     ],
     targets: [
         // Pure Foundation: models, computation, networking. No UI imports.
-        .target(name: "HazeKit", resources: [.copy("Resources/Scenarios"), .copy("Resources/Data")]),
+        .target(name: "HazeKit", resources: [.copy("Resources/Scenarios"), .copy("Resources/Data"), .copy("Resources/Fonts")]),
         // Shared SwiftUI building blocks (colors, sparkline, region grid) used by apps + widgets.
         .target(name: "HazeUI", dependencies: ["HazeKit"]),
+        // Dev tool (macOS): export every share card for the mock scenarios and personas as PNGs.
+        //   swift run hazecards ../docs/cards
+        .executableTarget(name: "hazecards", dependencies: ["HazeKit", "HazeUI"]),
         .testTarget(
             name: "HazeKitTests",
             dependencies: ["HazeKit"],

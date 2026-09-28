@@ -71,3 +71,17 @@ export function findArea(name: string, areas: readonly Area[] = SG_AREAS): Area 
 export function roundCoord(x: number): number {
   return Math.round(x * 100) / 100;
 }
+
+/** Nearest planning area to a point (by its representative point), for naming a GPS spot on share cards. */
+export function nearestArea(point: { lat: number; lon: number }, areas: readonly Area[] = SG_AREAS): Area {
+  let best = areas[0];
+  let bestD = Infinity;
+  for (const a of areas) {
+    const d = (a.lat - point.lat) ** 2 + ((a.lon - point.lon) * Math.cos((point.lat * Math.PI) / 180)) ** 2;
+    if (d < bestD) {
+      bestD = d;
+      best = a;
+    }
+  }
+  return best;
+}

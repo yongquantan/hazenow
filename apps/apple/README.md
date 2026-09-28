@@ -33,9 +33,10 @@ cd apps/apple
 # 2. Regenerate the Xcode project after editing project.yml
 xcodegen generate
 
-# 3. macOS menu bar app, unsigned (embeds the widget extension)
+# 3. macOS menu bar app, ad-hoc signed (no team needed). Use this rather than CODE_SIGNING_ALLOWED=NO:
+#    a linker-only signature makes UserNotifications refuse the app (UNErrorDomain 1, no prompt at all).
 xcodebuild -project HazeNow.xcodeproj -scheme HazeNowMac -destination 'platform=macOS' \
-  -derivedDataPath build/dd CODE_SIGNING_ALLOWED=NO build
+  -derivedDataPath build/dd CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= CODE_SIGN_ENTITLEMENTS= build
 open build/dd/Build/Products/Debug/HazeNow.app
 
 # 4. iOS app + widgets for the simulator, unsigned
@@ -53,6 +54,13 @@ xcodebuild -project HazeNow.xcodeproj -scheme HazeNowWatch -destination 'generic
 when you can't grant Screen Recording permission for screenshots.
 
 ### Unsigned builds: what works
+
+- **Notifications on macOS** need a sealed bundle signature. With `CODE_SIGNING_ALLOWED=NO` (only the linker's ad-hoc
+  signature) `requestAuthorization` fails immediately with `UNErrorDomain error 1` and no prompt appears. The app then
+  shows "Notifications are off for HazeNow." with an "Open System Settings" button. With the ad-hoc command above,
+  the system prompt appears (the app activates itself first so the prompt isn't hidden behind the popover). Once
+  granted, a confirmation notification is delivered. This was verified on the dev Mac: granted, and the
+  `hazenow.confirm` banner was delivered.
 
 - **macOS app:** runs fine unsigned (the linker ad-hoc signs it). Entitlements aren't applied, so the app runs without
   a sandbox and without an App Group. `HazeSettings` detects the missing App Group and uses standard defaults.
@@ -160,6 +168,48 @@ The app icons come from `brand/png`. iOS uses the single-size 1024 with dark and
 a grayscale mark on transparent, generated from `brand/svg/app-icon.svg`. macOS uses `macos-16…1024` in every
 @1x/@2x slot. The menu bar shows the live `● 105 ▲`, with the template mark only while loading. Widget and Live
 Activity headers draw the small mark with a band-tinted dot (`#B06BC4` for Very High on dark).
+
+### Typeface
+
+The brand typeface is Apfel Grotezk (SIL OFL). Regular, Mittel and Fett `.otf` files and `OFL.txt` are bundled in
+`HazeKit/Sources/HazeKit/Resources/Fonts`, so every target, including the widget extension and watch, gets them through
+the HazeKit resource bundle. They're registered with `CTFontManagerRegisterFontURLs` at launch (`HazeFonts.register()`),
+and `Font.haze` also registers them lazily. Use `Font.haze(size:weight:)` or `Font.haze(.style, weight:)`: body text
+is Regular, headlines are Mittel via `.hazeHeadline()` with tight tracking, and big numbers are Fett. Styles scale with
+Dynamic Type. The menu bar status text and the notch pill keep the system font so they match macOS.
+
+## Share system (SPEC v1.6–1.7)
+
+- `HazeKit/Sources/HazeKit/HazeShare.swift` is a port of `packages/core/src/share.ts` with the same names and
+  outputs: `pickShareCard` (the auto-pick rules 1–5 and alternates), `episodeStats`, `dayAverage`, `sharePlace`,
+  `ShareCardContent` (TS `shareCardContent`), `shareCardText` and `shareFileName`. `ShareTests.swift` mirrors the TS
+  tests case for case, and also covers stale shares (COPY §19) and the Clementi range test (v1.7).
+- Card views are in `HazeKit/Sources/HazeUI/ShareCards.swift`: 1 Now, 2 Two clocks, 3 For our group, 4 All clear, and
+  6 Link preview. They are laid out 1:1 from `docs/share-cards/*.html` in Apfel Grotezk at fixed sizes, and
+  `ImageRenderer` renders them at exactly 1080×1350 or 1200×630 px at scale 1, whatever the screen DPR. Headlines
+  shrink to fit.
+- **iOS:** a prominent **Share** button sits under the verdict. It opens a sheet with a large preview of the
+  auto-picked card, a swipeable row of eligible alternates, and a `ShareLink` that sends the PNG (with a timestamped
+  filename), the text and the `?area=` link. "Why two numbers?" has "Share the two clocks". Band notifications carry a
+  **Share** action. The Live Activity, and a share icon on medium and large widgets, open `hazenow://share`.
+  For QA, `-HazeOpenShare YES` opens the sheet at launch.
+- **macOS:** a **Share** button next to the verdict opens a preview with alternates, and the **Share…** button shows
+  `NSSharingServicePicker` with the PNG file and the text plus link.
+- **About:** "Made by Yong Quan Tan" in the footer opens the COPY §18 About text, linking LinkedIn, Kairos Labs and
+  GitHub in that order.
+- **Exports** (the dev tool `hazecards`, macOS only):
+  ```sh
+  cd apps/apple/HazeKit
+  swift run hazecards --docs ../docs/cards      # the 6 committed examples (below)
+  swift run hazecards /tmp/hazenow-cards         # every card: all mock scenarios × cards, each persona,
+                                                 # all-clear, long names, plus INDEX.tsv with pixel sizes
+  ```
+  `apps/apple/docs/cards/` keeps only `now-elevated.png`, `group-kids-very_high.png`, `clocks-elevated.png`,
+  `clear.png`, `linkpreview-elevated.png` and `longname-now-very_high.png`. Everything else in that folder,
+  including `INDEX.tsv`, is gitignored. The tool reports any image that isn't exactly 1080×1350 or 1200×630.
+- **Stale readings** (COPY §19): cards still share, but with no trend (no detail line, stats trend or preview arrow,
+  and none in the share text). The place/time line reads "… reading from {time} (latest available)", the headline is
+  "Latest NEA reading is delayed.", and the Two clocks axis ends at the reading's hour instead of "Now".
 
 ## Signing & distribution
 

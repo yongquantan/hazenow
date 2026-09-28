@@ -152,6 +152,49 @@ struct ExperienceTests {
         #expect(Uncertainty(snapshot: Self.snap(off, .region("south")), point: nil).range == 49...117)
     }
 
+    @Test func heroNumberHasNoTildeAndUncertaintyLine() {
+        let p2 = (lat: 1.395, lon: 103.82)
+        let g = Self.snap(.gps(lat: p2.lat, lon: p2.lon))
+        let i = HazeInsight(snapshot: g, location: .gps(lat: p2.lat, lon: p2.lon), placeName: "Tampines", now: Self.now)
+        #expect(i.numberText == "\(g.pm25)")
+        #expect(i.uncertaintyLine == "Estimate for Tampines · range 49–105")
+        let east = (lat: 1.35735, lon: 103.94)
+        let e = HazeInsight(snapshot: Self.snap(.gps(lat: east.lat, lon: east.lon)), location: .gps(lat: east.lat, lon: east.lon), now: Self.now)
+        #expect(e.uncertaintyLine == "Measured at East station")
+        #expect(HazeInsight(snapshot: Self.snap(.region("west")), location: .region("west"), now: Self.now).uncertaintyLine == "Measured at West station")
+        var off = Self.latest; off["south"] = -1
+        let isl = HazeInsight(snapshot: Self.snap(off, .region("south")), location: .region("south"), now: Self.now)
+        #expect(isl.numberText == "89")
+        #expect(isl.uncertaintyLine == "Average of other stations · range 49–117")
+        #expect(!Snapshot.sample.compactText.contains("~"))
+        #expect(TrendDirection.up.symbolName == "arrow.up" && TrendDirection.down.symbolName == "arrow.down")
+    }
+
+    @Test func chartSummaryUsesAveragePM25NotPSI() {
+        let base = HazeFormat.parseISO8601("2026-09-28T14:00:00+08:00")!
+        let h = [(40, 88, 30), (90, 90, 33), (120, 92, 38)].enumerated().map { i, v in
+            HistoryPoint(time: base.addingTimeInterval(Double(i) * 3600), pm25: v.0, psi24h: v.1, pm25Avg24h: v.2)
+        }
+        #expect(HazeCompute.chartSummary(h) == "Chart. Over the last 24 hours PM2.5 went from 40 to 120, peaking at 120 at 4pm. NEA's 24-hr average PM2.5 went from 30 to 38.")
+        #expect(!HazeCompute.chartSummary(h).contains("PSI"))
+    }
+
+    @Test func widgetPlacePinsRegardlessOfAppPlace() {
+        let t = HazeFormat.parseISO8601("2026-09-28T16:00:00+08:00")!
+        let values: [String: Double] = ["north": 150, "south": 190, "west": 205, "east": 172, "central": 188]
+        let d = HazeData(readings: [HourlyReading(time: t, published: t, values: values)], psi24h: [:], regions: HazeRegions.fallback)
+        let app = ResolvedPlace.resolve(.area("Bukit Timah"), gps: nil, saved: [])
+        let east = WidgetPlaceChoice.east.resolve(appPlace: app, saved: [])
+        #expect(east.input == .region("east"))
+        #expect(east.label == "East")
+        #expect(HazeCompute.snapshot(data: d, location: east.input, now: t)!.pm25 == 172)
+        #expect(WidgetPlaceChoice.central.resolve(appPlace: app, saved: []).input == .region("central"))
+        #expect(WidgetPlaceChoice.automatic.resolve(appPlace: app, saved: []).label == "Bukit Timah")
+        let home = SavedPlace(kind: .home, area: SGAreas.named("Tampines")!)
+        #expect(WidgetPlaceChoice.home.resolve(appPlace: app, saved: [home]).label == "Home")
+        #expect(WidgetPlaceChoice.work.resolve(appPlace: app, saved: [home]).input == .island) // unset → island, never the app's area
+    }
+
     @Test func provenanceLines() {
         let s = Self.snap(.region("west"))
         let pr = Provenance(snapshot: s, point: nil, now: HazeFormat.parseISO8601("2026-09-28T16:47:00+08:00")!)

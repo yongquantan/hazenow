@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Share card: for our group</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@font-face{font-family:'Apfel Grotezk';src:url(/_blob/7bbf2d2961f8f71175d54522f4495026) format('woff2');font-weight:400}@font-face{font-family:'Apfel Grotezk';src:url(/_blob/9904fa6eee09b2961b48fce95531de93) format('woff2');font-weight:500}@font-face{font-family:'Apfel Grotezk';src:url(/_blob/07d4a5f18b60be5df28dec511c3309d5) format('woff2');font-weight:700}
+body{margin:0;font-family:'Apfel Grotezk',system-ui,sans-serif;background:#F5F0E6;color:#14232B}
+</style>
+</helmet>
+<div style="width: 1080px; height: 1350px; box-sizing: border-box; padding: 80px 84px 72px; display: flex; flex-direction: column; justify-content: space-between; background: #F5F0E6">
+
+<div style="display: flex; justify-content: space-between; align-items: center">
+<div style="display: flex; align-items: center; gap: 14px">
+<svg width="52" height="52" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="38" r="17" fill="#E8A317"></circle><rect x="17" y="61" width="66" height="7.5" rx="3.75" fill="#14232B"></rect><rect x="27" y="73.5" width="46" height="7.5" rx="3.75" fill="#14232B" opacity="0.7"></rect><rect x="38" y="86" width="24" height="7.5" rx="3.75" fill="#14232B" opacity="0.45"></rect></svg>
+<div style="font-size: 34px; font-weight: 700; letter-spacing: -0.02em">HazeNow</div>
+</div>
+<div style="font-size: 30px; font-weight: 500">hazenow.sg</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 28px">
+<div style="display: inline-flex; align-self: flex-start; font-size: 30px; font-weight: 700; background: #14232B; color: #F5F0E6; border-radius: 999px; padding: 12px 28px">For the kids · Recess check</div>
+<div style="font-size: 32px; font-weight: 500; color: #3D4F57">{{place}} · {{when}}</div>
+<h1 style="margin: 0; font-size: 136px; font-weight: 500; line-height: 0.95; letter-spacing: -0.045em">Calm play only, for now.</h1>
+<div style="display: flex; align-items: center; gap: 16px; font-size: 34px">
+<span style="width: 24px; height: 24px; border-radius: 12px; background: #E8A317; display: inline-block"></span>
+<span style="font-weight: 700">PM2.5 {{pm}}</span><span style="color: #3D4F57">µg/m³ · Elevated · steady</span>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 18px; border-top: 2px solid #D9D4C9; padding-top: 32px">
+<div style="display: flex; gap: 20px; align-items: baseline; font-size: 36px; line-height: 1.3"><span style="color: #9FB3BB; font-weight: 700">1</span><span>Skip running games outside this hour.</span></div>
+<div style="display: flex; gap: 20px; align-items: baseline; font-size: 36px; line-height: 1.3"><span style="color: #9FB3BB; font-weight: 700">2</span><span>Classroom windows shut if it smells hazy.</span></div>
+<div style="display: flex; gap: 20px; align-items: baseline; font-size: 36px; line-height: 1.3"><span style="color: #9FB3BB; font-weight: 700">3</span><span>Next check at 11am.</span></div>
+</div>
+
+<div style="display: flex; justify-content: space-between; align-items: flex-end; border-top: 2px solid #D9D4C9; padding-top: 28px; font-size: 24px; color: #3D4F57; line-height: 1.45">
+<div>Based on NEA’s 1-hr PM2.5 advice<br>Data: NEA via data.gov.sg · East station</div>
+<div style="text-align: right">Free and open source<br>Made by {{credit}}</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"place":{"editor":"text","default":"Tampines"},"when":{"editor":"text","default":"Mon 28 Sep, 10am"},"credit":{"editor":"text","default":"Yong Quan Tan"},"$preview":{"width":1080,"height":1350}}'>
+class Component extends DCLogic {
+renderVals() {
+return { place: this.props.place ?? 'Tampines', when: this.props.when ?? 'Mon 28 Sep, 10am', credit: this.props.credit ?? 'Yong Quan Tan', pm: 71 };
+}
+}
+</script>
+</body>
+</html>

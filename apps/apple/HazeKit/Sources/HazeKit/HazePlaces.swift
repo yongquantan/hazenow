@@ -144,3 +144,20 @@ public struct ResolvedPlace: Sendable, Hashable {
         }
     }
 }
+
+
+/// A widget's configured place (the widget's "Place" parameter). Pure so it can be unit-tested.
+public enum WidgetPlaceChoice: String, Sendable, CaseIterable {
+    case automatic, home, work, island, north, west, central, east, south
+
+    /// Resolve against the app's settings. Only `.automatic` follows the app; every other choice pins the widget.
+    public func resolve(appPlace: ResolvedPlace, saved: [SavedPlace]) -> ResolvedPlace {
+        switch self {
+        case .automatic: appPlace
+        case .home: ResolvedPlace.resolve(.saved(.home), gps: nil, saved: saved)
+        case .work: ResolvedPlace.resolve(.saved(.work), gps: nil, saved: saved)
+        case .island: ResolvedPlace.resolve(.island, gps: nil, saved: saved)
+        case .north, .west, .central, .east, .south: ResolvedPlace.resolve(.region(rawValue), gps: nil, saved: saved)
+        }
+    }
+}

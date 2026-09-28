@@ -13,7 +13,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import android.content.ComponentName
 import sg.hazenow.R
+import sg.hazenow.Refresher
 import sg.hazenow.data.HazeRepository
 import sg.hazenow.data.SettingsRepo
 import sg.hazenow.ui.MainActivity
@@ -22,12 +24,26 @@ import sg.hazenow.ui.MainActivity
 class HazeTileService : TileService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
+    override fun onTileAdded() {
+        super.onTileAdded()
+        requestListeningState(this, ComponentName(this, HazeTileService::class.java))
+        render()
+    }
+
     override fun onStartListening() {
         super.onStartListening()
+        render()
+    }
+
+    /**
+     * Show the cached reading straight away (QA C-tile: never "Unavailable" while data exists). If nothing is
+     * cached yet, fetch once and render again.
+     */
+    private fun render() {
         scope.launch {
-            val data = withContext(Dispatchers.IO) {
-                HazeRepository.get(this@HazeTileService).compute(SettingsRepo(this@HazeTileService).current())
-            }
+            val app = applicationContext
+            var data = withContext(Dispatchers.IO) { HazeRepository.get(app).compute(SettingsRepo(app).current()) }
+            if (data == null) data = withContext(Dispatchers.IO) { runCatching { Refresher.refresh(app) }.getOrNull() }
             val tile = qsTile ?: return@launch
             if (data == null) {
                 tile.label = "Haze now"

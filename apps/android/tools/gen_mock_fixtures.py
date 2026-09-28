@@ -45,6 +45,8 @@ SCENARIOS = {
     "south_offline": series(lambda h: 104 - (h % 2) if h < 6 else max(30, 104 - (h - 5) * 9)),
     "all_offline_stale": series(lambda h: 110 - h if h < 10 else 60),
     "rising_fast": series(lambda h: 105 if h == 0 else (80 if h == 1 else max(30, 80 - (h - 1) * 6))),
+    # Back to Normal after an overnight episode (worst hour 162), for the all-clear card.
+    "all_clear": series(lambda h: 22 + h if h < 3 else (162 - abs(h - 8) * 14 if h <= 14 else 30)),
 }
 SCENARIOS["south_offline"][0]["south"] = -1
 for h in range(3):  # newest 3 hours: every station offline

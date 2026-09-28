@@ -8,3 +8,11 @@ captures/
 *.keystore
 *.jks
 keystore.properties
+# Share-card exports: keep only the representative set (see README "Card exports")
+docs/cards/*
+!docs/cards/now-elevated.png
+!docs/cards/group-kids-very_high.png
+!docs/cards/clocks-elevated.png
+!docs/cards/clear.png
+!docs/cards/linkpreview-elevated.png
+!docs/cards/longname-choa-chu-kang-very_high-now.png

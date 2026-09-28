@@ -1,4 +1,5 @@
 import AppIntents
+import OSLog
 import HazeKit
 import HazeUI
 import SwiftUI
@@ -28,14 +29,8 @@ enum WidgetPlace: String, AppEnum {
     ]
 
     func resolve(_ settings: HazeSettings) -> ResolvedPlace {
-        let saved = settings.savedPlaces
-        switch self {
-        case .automatic: return settings.resolvedPlace
-        case .home: return ResolvedPlace.resolve(.saved(.home), gps: nil, saved: saved)
-        case .work: return ResolvedPlace.resolve(.saved(.work), gps: nil, saved: saved)
-        case .island: return ResolvedPlace.resolve(.island, gps: nil, saved: saved)
-        default: return ResolvedPlace.resolve(.region(rawValue), gps: nil, saved: saved)
-        }
+        (WidgetPlaceChoice(rawValue: rawValue) ?? .automatic)
+            .resolve(appPlace: settings.resolvedPlace, saved: settings.savedPlaces)
     }
 }
 
@@ -79,9 +74,13 @@ struct HazeProvider: AppIntentTimelineProvider {
         return Timeline(entries: [entry], policy: .after(PollSchedule.widgetNextRefresh()))
     }
 
+    static let log = Logger(subsystem: "sg.hazenow.widgets", category: "timeline")
+
     static func load(_ place: WidgetPlace) async -> HazeEntry {
         let settings = HazeSettings.shared
         let resolved = place.resolve(settings)
+        // QA: `log stream --predicate 'subsystem == "sg.hazenow.widgets"'` shows the configured place per reload.
+        log.info("timeline place=\(place.rawValue, privacy: .public) resolved=\(resolved.label, privacy: .public)")
         let profiles = settings.profiles
         do {
             let loaded = try await HazeSource.load(settings: settings, client: HazeClient(), includeV2: false)
@@ -144,6 +143,7 @@ struct HazeWidgetView: View {
             case .accessoryCircular: CircularView(s: s)
             case .accessoryRectangular: RectangularView(s: s, insight: insight)
             case .accessoryInline:
+                // Inline widgets render in the system font, which has the ▲▼ glyphs.
                 Label("\(insight.numberText) \(s.trend.direction.arrow) \(s.band.label)", systemImage: s.band.symbolName)
                     .accessibilityLabel(insight.compactLabel)
             #endif
@@ -152,7 +152,7 @@ struct HazeWidgetView: View {
         } else {
             VStack(spacing: 4) {
                 Image(systemName: "wifi.slash")
-                Text(HazeCopy.offlineNoCacheTitle).font(.caption).multilineTextAlignment(.center)
+                Text(HazeCopy.offlineNoCacheTitle).font(.haze(.caption)).multilineTextAlignment(.center)
                 MockBadge(scenario: entry.mockScenario)
             }
             .foregroundStyle(.secondary)
@@ -172,10 +172,10 @@ private struct CompactLine: View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(insight.numberText)
-                    .font(.system(size: size, weight: .bold, design: .rounded).monospacedDigit())
+                    .font(.haze(size: size, weight: .bold, relativeTo: .largeTitle).monospacedDigit())
                     .foregroundStyle(s.band.textColor)
                     .minimumScaleFactor(0.6).lineLimit(1)
-                Text(s.trend.direction.arrow).font(.system(size: size * 0.32)).foregroundStyle(.secondary)
+                TrendArrow(s.trend.direction).font(.system(size: size * 0.32)).foregroundStyle(.secondary)
             }
             BandChip(band: s.band, compact: true, stale: s.stale)
         }
@@ -188,10 +188,18 @@ private struct CompactLine: View {
 private struct Header: View {
     let e: HazeEntry
     let band: Band
+    var share = false
     var body: some View {
         HStack(spacing: 5) {
             HazeMark(band: band, size: 14)
-            Text(e.placeLabel).font(.caption.weight(.semibold)).lineLimit(1)
+            Text(e.placeLabel).font(.haze(.caption, weight: .semibold)).lineLimit(1)
+            if share {
+                Spacer(minLength: 4)
+                Link(destination: URL(string: "hazenow://share")!) {
+                    Image(systemName: "square.and.arrow.up").font(.caption.weight(.semibold))
+                }
+                .accessibilityLabel("Share")
+            }
         }
     }
 }
@@ -205,7 +213,7 @@ private struct Footer: View {
             if e.offline { Image(systemName: "wifi.slash") }
             MockBadge(scenario: e.mockScenario)
         }
-        .font(.caption2)
+        .font(.haze(.caption2))
         .foregroundStyle(.secondary)
     }
 }
@@ -233,15 +241,15 @@ private struct MediumView: View {
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
             VStack(alignment: .leading, spacing: 6) {
-                Header(e: e, band: s.band)
-                Text(insight.verdict.short).font(.headline).lineLimit(2).minimumScaleFactor(0.8)
+                Header(e: e, band: s.band, share: true)
+                Text(insight.verdict.short).hazeHeadline(.headline).lineLimit(2).minimumScaleFactor(0.8)
                 CompactLine(s: s, insight: insight, size: 38)
                 Spacer(minLength: 0)
                 Footer(e: e, s: s)
             }
             VStack(alignment: .leading, spacing: 6) {
                 Sparkline(history: s.history, band: s.band).frame(maxHeight: .infinity)
-                Text(HazeCopy.officialPsiLabel(s.officialPsi24h)).font(.caption2).lineLimit(1).minimumScaleFactor(0.8)
+                Text(HazeCopy.officialPsiLabel(s.officialPsi24h)).font(.haze(.caption2)).lineLimit(1).minimumScaleFactor(0.8)
             }
         }
     }
@@ -254,14 +262,14 @@ private struct LargeView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Header(e: e, band: s.band)
-            Text(insight.verdict.headline).font(.headline).lineLimit(2)
+            Header(e: e, band: s.band, share: true)
+            Text(insight.verdict.headline).hazeHeadline(.headline).lineLimit(2)
             HStack(alignment: .top) {
                 CompactLine(s: s, insight: insight, size: 44)
                 Spacer()
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text(insight.trendWords).font(.caption).multilineTextAlignment(.trailing)
-                    Text(HazeCopy.officialPsiLabel(s.officialPsi24h)).font(.caption2).foregroundStyle(.secondary)
+                    Text(insight.trendWords).font(.haze(.caption)).multilineTextAlignment(.trailing)
+                    Text(HazeCopy.officialPsiLabel(s.officialPsi24h)).font(.haze(.caption2)).foregroundStyle(.secondary)
                 }
             }
             LagChart(history: s.history, showLegend: false, showAxes: false).frame(maxHeight: .infinity)
@@ -294,12 +302,13 @@ private struct RectangularView: View {
         VStack(alignment: .leading, spacing: 1) {
             HStack(spacing: 4) {
                 Image(systemName: s.band.symbolName)
-                Text("\(insight.numberText) \(s.trend.direction.arrow)").font(.headline.monospacedDigit())
-                Text(s.band.label).font(.caption)
+                Text(insight.numberText).font(.haze(.headline, weight: .bold).monospacedDigit())
+                TrendArrow(s.trend.direction).font(.caption)
+                Text(s.band.label).font(.haze(.caption))
             }
             .widgetAccentable()
-            Text(insight.verdict.short).font(.caption).lineLimit(1)
-            Text("\(HazeFormat.hour(s.observedAt)) · NEA").font(.caption2).lineLimit(1)
+            Text(insight.verdict.short).font(.haze(.caption)).lineLimit(1)
+            Text("\(HazeFormat.hour(s.observedAt)) · NEA").font(.haze(.caption2)).lineLimit(1)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(insight.compactLabel)

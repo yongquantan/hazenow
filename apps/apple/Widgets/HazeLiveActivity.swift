@@ -12,37 +12,43 @@ struct HazeLiveActivity: Widget {
             LockScreenActivityView(state: context.state, place: context.attributes.place)
                 .activityBackgroundTint(Color.black.opacity(0.6))
                 .activitySystemActionForegroundColor(.white)
+                .widgetURL(URL(string: "hazenow://share"))
         } dynamicIsland: { context in
             let st = context.state
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     HStack(spacing: 6) {
                         Image(systemName: st.band.symbolName).foregroundStyle(st.band.color)
-                        Text(st.numberText).font(.title2.weight(.bold).monospacedDigit()).foregroundStyle(st.band.textColor)
+                        Text(st.numberText).font(.haze(.title2, weight: .bold).monospacedDigit()).foregroundStyle(st.band.textColor)
                     }
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     VStack(alignment: .trailing, spacing: 0) {
-                        Label(st.band.label, systemImage: st.band.symbolName).font(.caption.weight(.semibold))
-                        Text(st.arrow).font(.caption2).foregroundStyle(.secondary)
+                        Label(st.band.label, systemImage: st.band.symbolName).font(.haze(.caption, weight: .semibold))
+                        TrendArrow(st.direction).font(.caption2).foregroundStyle(.secondary)
                     }
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     HStack {
-                        Text(st.verdictShort).font(.callout)
+                        Text(st.verdictShort).font(.haze(.callout))
                         Spacer()
                         Text("\(context.attributes.place) · \(HazeFormat.hour(st.observedAt)) · NEA")
-                            .font(.caption2).foregroundStyle(.secondary)
+                            .font(.haze(.caption2)).foregroundStyle(.secondary)
                     }
                 }
             } compactLeading: {
                 HazeMark(band: st.band, size: 16)
             } compactTrailing: {
-                Text("\(st.numberText)\(st.arrow)").monospacedDigit().foregroundStyle(st.band.textColor)
+                HStack(spacing: 2) {
+                    Text(st.numberText).monospacedDigit()
+                    TrendArrow(st.direction).font(.caption2)
+                }
+                .foregroundStyle(st.band.textColor)
             } minimal: {
-                Text("\(st.pm25)").font(.caption2.monospacedDigit()).foregroundStyle(st.band.textColor)
+                Text("\(st.pm25)").font(.haze(.caption2).monospacedDigit()).foregroundStyle(st.band.textColor)
             }
             .keylineTint(st.band.color)
+            .widgetURL(URL(string: "hazenow://share"))
         }
     }
 }
@@ -56,21 +62,21 @@ struct LockScreenActivityView: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 5) {
                     HazeMark(band: state.band, size: 14)
-                    Text("Haze watch · \(place)").font(.caption).foregroundStyle(.secondary)
+                    Text("Haze watch · \(place)").font(.haze(.caption)).foregroundStyle(.secondary)
                 }
-                Text(state.verdictShort).font(.headline)
+                Text(state.verdictShort).hazeHeadline(.headline)
                 Text("\(HazeFormat.hour(state.observedAt)) · \(HazeCopy.attribution)")
-                    .font(.caption2).foregroundStyle(.secondary)
+                    .font(.haze(.caption2)).foregroundStyle(.secondary)
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 2) {
                 HStack(alignment: .firstTextBaseline, spacing: 3) {
-                    Text(state.numberText).font(.system(size: 36, weight: .bold, design: .rounded).monospacedDigit())
-                    Text(state.arrow).font(.callout)
+                    Text(state.numberText).font(.haze(size: 36, weight: .bold, relativeTo: .largeTitle).monospacedDigit())
+                    TrendArrow(state.direction).font(.callout)
                 }
                 .foregroundStyle(state.band.textColor)
                 Label(state.stale ? "\(state.band.label) \(HazeCopy.oldSuffix)" : state.band.label, systemImage: state.band.symbolName)
-                    .font(.caption.weight(.semibold))
+                    .font(.haze(.caption, weight: .semibold))
             }
         }
         .padding(16)

@@ -11,7 +11,7 @@ struct ContentView: View {
     @Environment(\.openURL) private var openURL
 
     enum Sheet: String, Identifiable {
-        case explainer, profiles, areas, onboarding
+        case explainer, profiles, areas, onboarding, share, shareClocks, about
         var id: String { rawValue }
     }
 
@@ -36,23 +36,30 @@ struct ContentView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     PlaceSwitcherMenu(store: store, onPickArea: { sheet = .areas }) {
                         Label(store.resolved.label, systemImage: store.isMyLocation ? "location.fill" : "mappin")
-                            .font(.headline)
+                            .hazeHeadline(.headline)
                     }
                 }
                 ToolbarItem(placement: .principal) { MockBadge(scenario: store.mockScenario) }
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     Button { sheet = .profiles } label: { Image(systemName: "person.2") }
                         .accessibilityLabel(HazeCopy.profileTitle)
-                    if let s = store.snapshot, let insight = store.insight {
-                        ShareSnapshotButton(snapshot: s, insight: insight).labelStyle(.iconOnly)
-                    }
                 }
             }
             .sheet(item: $sheet) { which in
                 NavigationStack { sheetContent(which) }
-                    .presentationDetents(which == .explainer ? [.medium, .large] : [.large])
+                    .presentationDetents(which == .explainer || which == .about ? [.medium, .large] : [.large])
             }
-            .onAppear { if !store.onboarded { sheet = .onboarding } }
+            .onAppear {
+                if !store.onboarded { sheet = .onboarding }
+                // QA: `-HazeOpenShare YES` opens the share sheet at launch (no URL confirmation dialog).
+                else if UserDefaults.standard.bool(forKey: "HazeOpenShare") { sheet = .share }
+                // QA: `-HazeOpenSheet profiles|about|explainer|areas` opens that sheet at launch.
+                else if let name = UserDefaults.standard.string(forKey: "HazeOpenSheet"), let s = Sheet(rawValue: name) { sheet = s }
+            }
+            .onOpenURL { url in
+                if url.host == "share" { sheet = .share } else if url.host == "about" { sheet = .about }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .hazeNowOpenShare)) { _ in sheet = .share }
         }
     }
 
@@ -60,14 +67,39 @@ struct ContentView: View {
     private func sheetContent(_ which: Sheet) -> some View {
         switch which {
         case .explainer:
-            ScrollView { ExplainerView(snapshot: store.snapshot).padding(20) }
-                .navigationTitle(HazeCopy.whyTwoNumbersLink)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Button { sheet = .shareClocks } label: {
+                        Label("Share the two clocks", systemImage: "square.and.arrow.up")
+                    }
+                    .buttonStyle(.bordered)
+                    ExplainerView(snapshot: store.snapshot)
+                }
+                .padding(20)
+            }
+            .navigationTitle(HazeCopy.whyTwoNumbersLink)
+            .toolbar { Button("Done") { sheet = nil } }
+        case .share, .shareClocks:
+            Group {
+                if let model = ShareModel(store: store, fromWhyTwoNumbers: which == .shareClocks) {
+                    ShareComposer(model: model).padding()
+                } else {
+                    ContentUnavailableView(HazeCopy.loading, systemImage: "hourglass")
+                }
+            }
+            .navigationTitle("Share")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { Button("Done") { sheet = nil } }
+        case .about:
+            ScrollView { AboutView().padding(20) }
+                .navigationTitle("About")
                 .toolbar { Button("Done") { sheet = nil } }
         case .profiles:
             Form {
                 ProfilePicker(profiles: $store.profiles)
                 Section {
                     Toggle("Notify when the band changes", isOn: $store.notifyOnRise)
+                    NotifyPermissionNote(store: store)
                     Toggle("Also notify at Elevated", isOn: $store.elevatedForGeneral).disabled(!store.notifyOnRise)
                 } footer: {
                     Text("Band changes only, with an all-clear. At most 3 a day. Never 10pm–7am.")
@@ -83,7 +115,7 @@ struct ContentView: View {
                                 .disabled(store.resolved.input.coordinate == nil)
                         }
                     }
-                    Text(HazeCopy.privacyLine).font(.footnote).foregroundStyle(.secondary)
+                    Text(HazeCopy.privacyLine).font(.haze(.footnote)).foregroundStyle(.secondary)
                 }
             }
             .navigationTitle("Settings")
@@ -109,34 +141,42 @@ struct ContentView: View {
     @ViewBuilder
     private func loaded(_ s: Snapshot, _ insight: HazeInsight) -> some View {
         if let note = store.locationNote {
-            Label(note, systemImage: "location.slash").font(.footnote).foregroundStyle(.secondary)
+            Label(note, systemImage: "location.slash").font(.haze(.footnote)).foregroundStyle(.secondary)
         }
         if store.locationDenied {
             LocationDeniedChip { if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) } }
         }
         if store.loadError == .offline {
-            Label(HazeCopy.offlineChip, systemImage: "wifi.slash").font(.footnote.weight(.semibold)).foregroundStyle(.secondary)
+            Label(HazeCopy.offlineChip, systemImage: "wifi.slash").font(.haze(.footnote, weight: .semibold)).foregroundStyle(.secondary)
         }
         VerdictHeader(snapshot: s, insight: insight, size: .title)
             .padding(.top, 8)
+        Button { sheet = .share } label: {
+            Label("Share", systemImage: "square.and.arrow.up")
+                .font(.haze(.headline, weight: .semibold))
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.borderedProminent)
+        .controlSize(.large)
+        .tint(Color(red: 0.08, green: 0.14, blue: 0.17))
         BigNumber(snapshot: s, insight: insight, numberSize: 108)
             .animation(.smooth, value: s.pm25)
         ProvenanceLine(insight: insight)
+        OfficialPsiView(snapshot: s)   // above the fold (SPEC v1.2 §1)
         if let detail = store.statusDetail {
-            Text(detail).font(.footnote).foregroundStyle(.secondary)
+            Text(detail).font(.haze(.footnote)).foregroundStyle(.secondary)
         }
         card { ActionsList(insight: insight, band: s.band) }
-        if store.shouldAskNotify {
-            NotifyAskCard(onYes: { store.answerNotifyAsk(true) }, onNo: { store.answerNotifyAsk(false) })
-        }
-        card { ChartSection(snapshot: s, height: 190, onWhy: { sheet = .explainer }) }
-        card { RegionsSection(snapshot: s) }
+        NotifyAskSection(store: store)
+        card { ChartSection(snapshot: s, height: 190, showOfficial: false, onWhy: { sheet = .explainer }) }
+        card { RegionsSection(snapshot: s, onSelect: { store.placeMode = .region($0) }) }
         card { hazeWatch(s) }
         Link(destination: HazeCopy.neaForecastURL) {
-            Label(HazeCopy.planningLine, systemImage: "calendar").font(.footnote)
+            Label(HazeCopy.planningLine, systemImage: "calendar").font(.haze(.footnote))
         }
-        Button { sheet = .explainer } label: { Text(HazeCopy.howTitle).font(.footnote) }
+        Button { sheet = .explainer } label: { Text(HazeCopy.howTitle).font(.haze(.footnote)) }
         TrustFooter(snapshot: s)
+        MadeByButton { sheet = .about }
     }
 
     private func errorView(_ error: HazeStore.LoadError) -> some View {
@@ -161,8 +201,8 @@ struct ContentView: View {
                 Label("Haze watch", systemImage: "eye")
             }
             Text("Keeps the current reading on your Lock Screen and Dynamic Island while the app refreshes.")
-                .font(.footnote).foregroundStyle(.secondary)
-            if let m = watch.message { Text(m).font(.footnote).foregroundStyle(.secondary) }
+                .font(.haze(.footnote)).foregroundStyle(.secondary)
+            if let m = watch.message { Text(m).font(.haze(.footnote)).foregroundStyle(.secondary) }
         }
     }
 

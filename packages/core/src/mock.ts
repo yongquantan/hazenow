@@ -10,6 +10,7 @@ export const SCENARIOS = [
   "south_offline",
   "all_offline_stale",
   "rising_fast",
+  "all_clear",
   "network_error",
 ] as const;
 export type ScenarioName = (typeof SCENARIOS)[number];

@@ -49,6 +49,15 @@ object Notifier {
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 
+    /** Opens the app straight into the share sheet (SPEC v1.6 notification action). */
+    private fun shareIntent(context: Context) = PendingIntent.getActivity(
+        context, 1,
+        Intent(context, MainActivity::class.java)
+            .putExtra(MainActivity.EXTRA_SHARE, true)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+    )
+
     /** Persistent low-priority "Haze watch": the number itself is the status-bar icon. */
     fun showWatch(context: Context, data: HazeData) {
         if (!canPost(context)) return
@@ -88,6 +97,7 @@ object Notifier {
             .setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
             .setContentIntent(openApp(context))
+            .addAction(R.drawable.ic_stat_haze, "Share", shareIntent(context))
             .build()
         runCatching { NotificationManagerCompat.from(context).notify(ID_ALERT, n) }
     }

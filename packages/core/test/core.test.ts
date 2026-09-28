@@ -20,6 +20,7 @@ import {
   compactText,
   formatSgtTime,
   formatWithUncertainty,
+  uncertaintyLine,
   getSnapshot,
   haversineKm,
   idw,
@@ -49,6 +50,21 @@ import {
   uncertainty,
   verdict,
   type ApiResponse,
+  stationRange,
+  pickShareCard,
+  episodeStats,
+  shareCardContent,
+  shareCardText,
+  shareFileName,
+  formatCardWhen,
+  nowHeadline,
+  sharePlace,
+  nearestArea,
+  type NowCard,
+  type GroupCard,
+  type ClocksCard,
+  type ClearCard,
+  type PreviewCard,
   searchAreas,
   findArea,
   roundCoord,
@@ -467,7 +483,16 @@ describe("experience & trust (v1.1 + v1.2, strings from docs/COPY.md)", () => {
     expect(u2.range).toEqual([49, 105]);
     expect(u2.text).toBe("Nearby stations read 49–105.");
     expect(u2.a11y).toBe(`about ${g2.pm25}, nearby stations read 49 to 105`);
-    expect(formatWithUncertainty(g2.pm25, u2)).toBe(`~${g2.pm25}`);
+    expect(formatWithUncertainty(g2.pm25, u2)).toBe(String(g2.pm25)); // v1.5: never "~"
+    expect(uncertaintyLine(g2, p2, { placeName: "Yishun" })).toBe("Estimate for Yishun · range 49–105");
+    expect(uncertaintyLine(g1, p1)).toBe("Estimate for your spot");
+    expect(uncertaintyLine(base)).toBe("Measured at South station");
+    const snapped = buildSnapshot({ pm25Latest: pm25Response(LATEST) }, REGION_COORDS.east, NOW);
+    expect(uncertaintyLine(snapped, REGION_COORDS.east, { placeName: "Tampines" })).toBe("Measured at East station");
+    const isle = buildSnapshot({ pm25Latest: pm25Response(LATEST) }, { region: "island" }, NOW);
+    expect(uncertaintyLine(isle)).toBe("Island average · range 49–117");
+    const off = buildSnapshot({ pm25Latest: pm25Response({ ...LATEST, south: -1 }) }, { region: "south" }, NOW);
+    expect(uncertaintyLine(off)).toBe("Average of other stations · range 49–117");
     expect(uncertainty(buildSnapshot({ pm25Latest: pm25Response(LATEST) }, REGION_COORDS.east, NOW), REGION_COORDS.east).approx).toBe(false);
     // exactly 30 apart is not "more than 30"
     const p3 = { lat: 1.345, lon: 103.8 };
@@ -678,6 +703,11 @@ describe("QA scenarios (fixtures/scenarios)", () => {
     expect(s.trend).toEqual({ delta: 25, direction: "up" });
     expect(verdict(s.band, ["general"], s.trend).secondLine).toBe("Getting worse. Check again in an hour.");
   });
+  test("all_clear → Normal now, All clear card offered", async () => {
+    const s = await snap("all_clear");
+    expect(s.band).toBe("normal");
+    expect(pickShareCard(s).card).toBe("clear");
+  });
   test("network_error → throws", async () => {
     await expect(snap("network_error")).rejects.toThrow();
   });
@@ -722,5 +752,231 @@ describe("areas (SPEC v1.4)", () => {
   test("roundCoord keeps 2 decimals (~1 km)", () => {
     expect(roundCoord(1.354321)).toBe(1.35);
     expect(roundCoord(103.94567)).toBe(103.95);
+  });
+});
+
+describe("no '~' on any number surface (SPEC v1.5)", () => {
+  test("share text, summary, compact, badge", () => {
+    for (const sc of ["elevated", "south_offline", "all_offline_stale"]) {
+      const inputs = require(`../fixtures/scenarios/${sc}.json`);
+      const s = buildSnapshot({ pm25Days: [inputs.pm25, inputs.pm25Yesterday], psiDays: [inputs.psi, inputs.psiYesterday] }, { lat: 1.395, lon: 103.82 }, NOW);
+      for (const t of [shareText(s), summaryLine(s), compactText(s), badgeSvg(s)]) expect(t).not.toContain("~");
+    }
+  });
+});
+
+describe("share system (SPEC v1.6)", () => {
+  // Synthetic day: hourly West PM2.5 values ending at 2026-09-28 16:00 SGT, optional 24-hr averages.
+  const END = Date.parse("2026-09-28T16:00:00+08:00");
+  const iso = (t: number) => new Date(t + 8 * 3600_000).toISOString().replace("Z", "+08:00").replace(".000", "");
+  function snap(values: number[], avg?: number[], region = "west") {
+    const n = values.length;
+    const items = values.map((v, i) => {
+      const t = END - (n - 1 - i) * 3600_000;
+      return { timestamp: iso(t), updatedTimestamp: iso(t + 60_000), readings: { pm25_one_hourly: { north: v, south: v, east: v, west: v, central: v } } };
+    });
+    const psiItems = values.map((_, i) => {
+      const t = END - (n - 1 - i) * 3600_000;
+      const a = avg ? avg[i] : 30;
+      return { timestamp: iso(t), updatedTimestamp: iso(t), readings: { psi_twenty_four_hourly: { north: 70, south: 70, east: 70, west: 70, central: 70 }, pm25_twenty_four_hourly: { north: a, south: a, east: a, west: a, central: a } } };
+    });
+    return buildSnapshot({ pm25Days: [{ code: 0, data: { items } }], psiDays: [{ code: 0, data: { items: psiItems } }] }, { region }, END + 35 * 60_000);
+  }
+  const flat = (v: number, n = 24) => Array.from({ length: n }, () => v);
+
+  test("rule 1: Normal now and ≥ Elevated within 12 h → All clear", () => {
+    const s = snap([...flat(30, 14), 80, 120, 162, 140, 90, 60, 50, 40, 30, 22]);
+    const p = pickShareCard(s, ["general"]);
+    expect(p.card).toBe("clear");
+    expect(p.alternates).toEqual(["now", "clocks"]);
+    // Elevated 13+ hours ago doesn't count
+    const old = snap([90, ...flat(30, 23)]);
+    expect(pickShareCard(old).card).toBe("now");
+  });
+  test("rule 2: persona + ≥ Elevated → group, persona by priority", () => {
+    const s = snap(flat(100));
+    expect(pickShareCard(s, ["kids", "elderly"])).toEqual({ card: "group", persona: "kids", alternates: ["now", "clocks"] });
+    expect(pickShareCard(s, ["elderly", "exercising"]).persona).toBe("elderly");
+    expect(pickShareCard(s, ["pregnant", "heart_lung"]).persona).toBe("heart_lung");
+    expect(pickShareCard(s, ["exercising", "outdoor_worker"]).persona).toBe("exercising");
+    expect(pickShareCard(s, ["outdoor_worker"]).persona).toBe("outdoor_worker");
+  });
+  test("rule 1 beats rule 2 (all clear even with a persona)", () => {
+    const s = snap([...flat(30, 20), 90, 60, 40, 30]);
+    expect(pickShareCard(s, ["kids"])).toEqual({ card: "clear", persona: "kids", alternates: ["now", "clocks", "group"] });
+  });
+  test("rule 3: ≥ Elevated without persona → now", () => {
+    expect(pickShareCard(snap(flat(170)), ["general"]).card).toBe("now");
+    expect(pickShareCard(snap(flat(170)), ["general"]).alternates).toEqual(["clocks"]);
+  });
+  test("rule 4: Normal and |1-hr − 24-hr avg| ≥ 40 either way, or from 'Why two numbers?' → clocks", () => {
+    expect(pickShareCard(snap(flat(50), flat(90)), ["general"]).card).toBe("clocks"); // 40 below the average
+    expect(pickShareCard(snap(flat(50), flat(89)), ["general"]).card).toBe("now"); // 39: not enough
+    expect(pickShareCard(snap(flat(20), flat(30)), ["general"], undefined, { fromWhyTwoNumbers: true }).card).toBe("clocks");
+  });
+  test("rule 5: otherwise → now", () => {
+    expect(pickShareCard(snap(flat(20), flat(22)), ["general"])).toEqual({ card: "now", persona: undefined, alternates: ["clocks"] });
+  });
+  test("episode stats: worst hour and hours above Normal", () => {
+    const s = snap([...flat(30, 14), 80, 120, 162, 140, 90, 60, 50, 40, 30, 22]);
+    const ep = episodeStats(s.history)!;
+    expect(ep.worst.pm25).toBe(162);
+    expect(formatSgtTime(ep.worst.time)).toBe("9am");
+    expect(ep.hoursAbove).toBe(6);
+    expect(ep.truncated).toBe(false);
+    expect(episodeStats(snap(flat(20)).history)).toBeNull();
+    expect(episodeStats(snap(flat(90)).history)!.truncated).toBe(true);
+  });
+  test("card words: Now card", () => {
+    const s = snap([...flat(90, 22), 100, 136]);
+    const c = shareCardContent("now", s, ["general"], { placeName: "Tampines" }) as NowCard;
+    expect(c.hook).toBe("Air near Tampines · Mon 28 Sep, 4pm");
+    expect(c.headline).toBe("Elevated, and rising fast.");
+    expect(c.pmDetail).toBe("µg/m³ 1-hr PM2.5 · up 46 in 2 hours");
+    expect([c.adviceMost, c.adviceVulnerable]).toEqual(["Reduce strenuous outdoor activity.", "Avoid strenuous outdoor activity."]);
+    expect(c.psiLine).toContain("The 24-hr PSI (70) averages the whole day.");
+    expect(nowHeadline(snap(flat(20)))).toBe("Normal, and steady.");
+  });
+  test("card words: group, clocks, clear, preview", () => {
+    const g = shareCardContent("group", snap(flat(71)), ["kids"]) as GroupCard;
+    expect(g.chip).toBe("For the kids · Recess check");
+    expect(g.headline).toBe("Calm play only, for now.");
+    expect(g.statsRest).toBe("µg/m³ · Elevated · steady");
+    expect(g.actions.at(-1)).toBe("Next check at 5pm.");
+    expect(g.actions.join(" ")).not.toMatch(/N95/);
+    expect((shareCardContent("group", snap(flat(200)), ["elderly"]) as GroupCard).headline).toBe("Stay indoors for now.");
+    const k = shareCardContent("clocks", snap(flat(134), flat(43))) as ClocksCard;
+    expect([k.pm25, k.avg, k.psi, k.bars.length]).toEqual([134, 43, 70, 24]);
+    const cl = shareCardContent("clear", snap([...flat(30, 14), 80, 120, 162, 140, 90, 60, 50, 40, 30, 22])) as ClearCard;
+    expect(cl.stats).toBe("Worst hour this episode: 162 at 9am. 6 hours above Normal.");
+    const pv = shareCardContent("preview", snap(flat(100))) as PreviewCard;
+    expect([pv.pm25, pv.direction, pv.psi]).toEqual([100, "steady", 70]);
+  });
+  test("share text per card: headline-matched, ends with the site, no ~ / Instant PSI / anti-NEA words", () => {
+    const s = snap([...flat(90, 22), 100, 136]);
+    const all = (["now", "clocks", "group", "clear"] as const).map((c) => shareCardText(c, s, ["kids"], { placeName: "Tampines" }));
+    expect(all[0]).toBe("Air near Tampines at 4pm: Elevated (PM2.5 136), rising fast. NEA 24-hr PSI: 70 (Moderate). Data: NEA via data.gov.sg. hazenow.sg");
+    expect(all[1]).toMatch(/^Same NEA data, two clocks\. Tampines at 4pm: last hour PM2.5 136, 24-hr average 30\./);
+    expect(all[2]).toMatch(/^For the kids · Recess check, Tampines at 4pm: /);
+    for (const t of all) {
+      expect(t.endsWith("hazenow.sg")).toBe(true);
+      expect(t).not.toMatch(/~|Instant|real number|lagging|Unhealthy/);
+    }
+  });
+  test("share file names carry the time; card dates are absolute", () => {
+    expect(shareFileName("Choa Chu Kang", "2026-09-28T17:00:00+08:00")).toBe("hazenow-choa-chu-kang-2026-09-28-1700.png");
+    expect(shareFileName("West", "2026-09-28T09:00:00+08:00", "clocks")).toBe("hazenow-west-2026-09-28-0900-clocks.png");
+    expect(formatCardWhen("2026-09-29T07:00:00+08:00")).toBe("Tue 29 Sep, 7am");
+  });
+  test("place naming: GPS uses the station distance; nearest area helper", () => {
+    const p = { lat: 1.35, lon: 103.95 };
+    expect(nearestArea(p).name).toBe("Tampines");
+    const s = buildSnapshot({ pm25Latest: pm25Response(LATEST) }, p, NOW);
+    const pl = sharePlace(s, { placeName: "Tampines", point: p });
+    expect(pl.station).toMatch(/^NEA East station · \d\.\d km away$/);
+    expect(sharePlace(buildSnapshot({ pm25Latest: pm25Response(LATEST) }, { region: "island" }, NOW)).hook).toBe("Air across Singapore");
+  });
+});
+
+describe("SPEC v1.7 parity", () => {
+  test("uncertainty range always contains the estimate (Clementi: 120 must not show 137–140)", () => {
+    const clementi = findArea("Clementi")!;
+    const pt = { lat: clementi.lat, lon: clementi.lon };
+    // South offline; the two nearest (Central, West) read 137–140 but the farther North/East pull the
+    // blended estimate to ~120. The old "two nearest" rule showed "range 137–140", excluding the estimate.
+    const vals = { north: 60, south: -1, east: 60, west: 137, central: 140 };
+    const s = buildSnapshot({ pm25Latest: pm25Response(vals) }, pt, NOW);
+    const u = uncertainty(s, pt);
+    expect(s.pm25).toBeLessThan(137);
+    expect(u.range).not.toBeNull();
+    if (u.range) {
+      expect(u.range[0]).toBeLessThanOrEqual(s.pm25);
+      expect(u.range[1]).toBeGreaterThanOrEqual(s.pm25);
+      expect(u.range).not.toEqual([137, 140]);
+    }
+    expect(uncertaintyLine(s, pt, { placeName: "Clementi" })).not.toContain("range 137–140");
+  });
+  test("stationRange: ≥ two nearest, stations within 1.5× nearest distance, widened to the estimate", () => {
+    expect(stationRange([{ v: 137, d: 4 }, { v: 140, d: 5 }, { v: 40, d: 5.5 }], 120)).toEqual([40, 140]);
+    expect(stationRange([{ v: 137, d: 4 }, { v: 140, d: 5 }, { v: 40, d: 9 }], 120)).toEqual([120, 140]);
+    expect(stationRange([{ v: 80, d: 2 }, { v: 90, d: 9 }], 85)).toEqual([80, 90]);
+  });
+  test("island range includes the mean", () => {
+    const s = buildSnapshot({ pm25Latest: pm25Response(LATEST) }, { region: "island" }, NOW);
+    const u = uncertainty(s);
+    expect(u.range![0]).toBeLessThanOrEqual(s.pm25);
+    expect(u.range![1]).toBeGreaterThanOrEqual(s.pm25);
+  });
+  test("stale share (COPY §19): delayed headline, 'reading from … (latest available)', never 'right now'", () => {
+    const s = buildSnapshot({ pm25Latest: pm25Response(LATEST) }, { region: "west" }, Date.parse("2026-09-28T19:00:00+08:00"));
+    expect(s.stale).toBe(true);
+    const now = shareCardContent("now", s) as NowCard;
+    expect(now.headline).toBe("Latest NEA reading is delayed.");
+    expect(now.hook).toBe("West · reading from Mon 28 Sep, 4pm (latest available)");
+    const g = shareCardContent("group", s, ["kids"]) as GroupCard;
+    expect([g.headline, g.place, g.when]).toEqual(["Latest NEA reading is delayed.", "West · reading from Mon 28 Sep, 4pm (latest available)", ""]);
+    const k = shareCardContent("clocks", s) as ClocksCard;
+    expect(k.place).toContain("(latest available)");
+    expect(k.axisEnd).toBe("4pm");
+    for (const c of ["now", "clocks", "group", "clear"] as const) {
+      const t = shareCardText(c, s, ["kids"]);
+      expect(t.startsWith("Latest NEA reading is delayed. West · reading from Mon 28 Sep, 4pm (latest available)")).toBe(true);
+      expect(t).not.toMatch(/right now/);
+    }
+  });
+});
+
+describe("stale cards hide the trend (COPY §19)", () => {
+  const rising = [...Array.from({ length: 22 }, () => 60), 80, 125];
+  const iso = (t: number) => new Date(t + 8 * 3600_000).toISOString().replace("Z", "+08:00").replace(".000", "");
+  const END = Date.parse("2026-09-28T16:00:00+08:00");
+  const items = rising.map((v, i) => ({ timestamp: iso(END - (23 - i) * 3600_000), updatedTimestamp: iso(END - (23 - i) * 3600_000), readings: { pm25_one_hourly: { north: v, south: v, east: v, west: v, central: v } } }));
+  const mk = (now: number) => buildSnapshot({ pm25Days: [{ code: 0, data: { items } }] }, { region: "west" }, now);
+  test("fresh: trend shown, axis ends at Now", () => {
+    const s = mk(END + 30 * 60_000);
+    expect((shareCardContent("now", s) as NowCard).pmDetail).toBe("µg/m³ 1-hr PM2.5 · up 65 in 2 hours");
+    expect((shareCardContent("group", s, ["kids"]) as GroupCard).statsRest).toBe("µg/m³ · Elevated · rising fast");
+    expect((shareCardContent("preview", s) as PreviewCard).direction).toBe("up");
+    expect((shareCardContent("clocks", s) as ClocksCard).axisEnd).toBe("Now");
+  });
+  test("stale: no trend anywhere, axis ends at the reading's hour", () => {
+    const s = mk(END + 3 * 3600_000);
+    expect(s.stale).toBe(true);
+    expect((shareCardContent("now", s) as NowCard).pmDetail).toBe("µg/m³ 1-hr PM2.5");
+    expect((shareCardContent("group", s, ["kids"]) as GroupCard).statsRest).toBe("µg/m³ · Elevated");
+    expect((shareCardContent("preview", s) as PreviewCard).direction).toBeNull();
+    expect((shareCardContent("clocks", s) as ClocksCard).axisEnd).toBe("4pm");
+    for (const c of ["now", "clocks", "group", "clear"] as const) expect(shareCardText(c, s, ["kids"])).not.toMatch(/rising|up \d+|easing|steady/);
+  });
+});
+
+describe("stale wording (COPY §19): 'that hour', never 'next hour' / 'last hour' / 'right now'", () => {
+  const s = buildSnapshot({ pm25Latest: pm25Response(LATEST), psi: R[BASE + "psi"] }, { region: "west" }, Date.parse("2026-09-28T19:00:00+08:00"));
+  test("Now card advice label and PSI line", () => {
+    const c = shareCardContent("now", s) as NowCard;
+    expect(c.adviceLabel).toBe("NEA’s advice for that hour");
+    expect(c.psiLine).toBe("The 24-hr PSI (81) averages the whole day. This reading is for the 4pm hour.");
+  });
+  test("group card: 'Next check at …' becomes 'Check hazenow.sg for NEA's next update.'", () => {
+    const g = shareCardContent("group", s, ["kids"]) as GroupCard;
+    expect(g.actions.at(-1)).toBe("Check hazenow.sg for NEA's next update.");
+    expect(g.actions.join(" ")).not.toMatch(/Next check at/);
+    const fresh = buildSnapshot({ pm25Latest: pm25Response(LATEST) }, { region: "west" }, NOW);
+    expect((shareCardContent("group", fresh, ["kids"]) as GroupCard).actions.at(-1)).toBe("Next check at 5pm.");
+  });
+  test("Two clocks first box reads 'The 4pm hour'", () => {
+    expect((shareCardContent("clocks", s) as ClocksCard).nowLabel).toBe("The 4pm hour");
+  });
+  test("no card string or share text says right now / this hour / the last hour / next hour", () => {
+    const bad = /right now|this hour|the last hour|next hour/i;
+    for (const c of ["now", "clocks", "group", "clear", "preview"] as const) {
+      const content = JSON.stringify(shareCardContent(c, s, ["kids"]));
+      expect(content).not.toMatch(bad);
+      if (c !== "preview") expect(shareCardText(c, s, ["kids"])).not.toMatch(bad);
+    }
+    // fresh cards keep the live wording
+    const fresh = buildSnapshot({ pm25Latest: pm25Response(LATEST) }, { region: "west" }, NOW);
+    expect((shareCardContent("now", fresh) as NowCard).adviceLabel).toBe("NEA’s advice for the next hour");
+    expect((shareCardContent("clocks", fresh) as ClocksCard).nowLabel).toBe("The last hour");
   });
 });

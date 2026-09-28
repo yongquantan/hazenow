@@ -10,3 +10,4 @@ local.properties
 .wrangler/
 __pycache__/
 .qa-runs/
+docs/internal/

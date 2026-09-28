@@ -116,51 +116,6 @@ object ChartPainter {
         return bmp
     }
 
-    /** Share image: no verdict (advice depends on the reader), no Instant PSI (SPEC v1.2 §1). */
-    fun shareCard(data: HazeData, dark: Boolean): Bitmap {
-        val d = 3f
-        val w = (360 * d).toInt()
-        val h = (430 * d).toInt()
-        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        val c = Canvas(bmp)
-        val bg = if (dark) Color.rgb(0x16, 0x18, 0x17) else Color.rgb(0xFA, 0xFA, 0xF7)
-        val fg = if (dark) Color.rgb(0xEE, 0xEE, 0xEA) else Color.rgb(0x1B, 0x1C, 0x1A)
-        val muted = if (dark) Color.rgb(0xB4, 0xB7, 0xB2) else Color.rgb(0x55, 0x59, 0x54)
-        val grid = if (dark) Color.rgb(0x6A, 0x6E, 0x6B) else Color.rgb(0x8A, 0x8E, 0x89)
-        c.drawColor(bg)
-        val s = data.snapshot
-        val bandText = bandColor(s.band, bg, Contrast.TEXT)
-        val pad = 20 * d
-        fun paint(size: Float, color: Int, bold: Boolean = false) = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = size * d; this.color = color
-            typeface = if (bold) Typeface.create(Typeface.DEFAULT, Typeface.BOLD) else Typeface.DEFAULT
-        }
-        var y = pad + 14 * d
-        c.drawText("Air near me right now · HazeNow", pad, y, paint(13f, muted))
-        y += 70 * d
-        val big = paint(66f, bandText, true)
-        c.drawText(data.insight.display, pad, y, big)
-        val bx = pad + big.measureText(data.insight.display) + 10 * d
-        c.drawText("µg/m³ PM2.5 · last hour", bx, y - 32 * d, paint(13f, muted))
-        c.drawText("${s.band.label} · ${data.insight.trendWord ?: "steady"}", bx, y - 10 * d, paint(15f, fg, true))
-        y += 24 * d
-        c.drawText(data.insight.officialPsiLabel, pad, y, paint(13f, fg))
-        y += 16 * d
-        c.drawText(Chart.TITLE, pad, y + 10 * d, paint(13f, fg, true))
-        val chartTop = y + 18 * d
-        val chartH = 190 * d
-        c.save()
-        c.translate(pad, chartTop)
-        draw(c, w - 2 * pad, chartH, s.history, data.avgLine, ChartStyle(bg, fg, grid, muted, true, d))
-        c.restore()
-        y = chartTop + chartH + 20 * d
-        c.drawText("${Chart.LEGEND_BARS} · ${Chart.LEGEND_LINE}", pad, y, paint(10.5f, muted))
-        y += 16 * d
-        c.drawText("The line averages a whole day. The bars show each hour.", pad, y, paint(10.5f, muted))
-        c.drawText("${Format.asOf(s)} · Data: NEA via data.gov.sg", pad, h - pad, paint(11f, muted))
-        return bmp
-    }
-
     /**
      * Brand mark (brand/svg/mark-*.svg, viewBox 100) for live surfaces: the dot takes the NEA band colour,
      * the three haze lines never change. On dark backgrounds Very High uses #B06BC4 (brand README).

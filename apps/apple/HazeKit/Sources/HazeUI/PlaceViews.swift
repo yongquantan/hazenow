@@ -30,15 +30,15 @@ public struct PlaceOnboardingView: View {
                     store.onboarded = true
                 }
             } else {
-                Text(HazeCopy.locationAskTitle).font(.title3.weight(.semibold))
-                Text(HazeCopy.locationAskBody).font(.callout).foregroundStyle(.secondary)
+                Text(HazeCopy.locationAskTitle).hazeHeadline(.title3)
+                Text(HazeCopy.locationAskBody).font(.haze(.callout)).foregroundStyle(.secondary)
                 Button {
                     store.useMyLocation()
                 } label: {
                     Label(HazeCopy.locationAskYes, systemImage: "location").frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                Text(PlaceCopy.explainer).font(.caption).foregroundStyle(.secondary)
+                Text(PlaceCopy.explainer).font(.haze(.caption)).foregroundStyle(.secondary)
                 Button {
                     picking = true
                 } label: {
@@ -50,7 +50,7 @@ public struct PlaceOnboardingView: View {
                     store.onboarded = true
                 }
                 .buttonStyle(.borderless)
-                .font(.caption)
+                .font(.haze(.caption))
             }
         }
     }
@@ -79,7 +79,7 @@ public struct AreaPickerList: View {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(area.name)
                                 if let alias = matchingAlias(area) {
-                                    Text(alias).font(.caption).foregroundStyle(.secondary)
+                                    Text(alias).font(.haze(.caption)).foregroundStyle(.secondary)
                                 }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -125,6 +125,17 @@ public struct PlaceSwitcherMenu<LabelContent: View>: View {
             }
             Button { onPickArea() } label: { Label(PlaceCopy.pickArea, systemImage: "list.bullet") }
             Button { store.placeMode = .island } label: { Label(PlaceCopy.islandLabel, systemImage: "globe.asia.australia") }
+            Menu("NEA stations") {
+                ForEach(HazeRegions.canonicalOrder, id: \.self) { r in
+                    Button { store.placeMode = .region(r) } label: {
+                        if store.placeMode == .region(r) {
+                            Label("\(HazeFormat.regionName(r)) station", systemImage: "checkmark")
+                        } else {
+                            Text("\(HazeFormat.regionName(r)) station")
+                        }
+                    }
+                }
+            }
             Divider()
             Menu("Save this place as…") {
                 ForEach(SavedPlace.Kind.allCases, id: \.self) { kind in
@@ -148,7 +159,7 @@ public struct LocationDeniedChip: View {
     public var body: some View {
         Button(action: openSettings) {
             Label(HazeCopy.locationAskYes, systemImage: "location.slash")
-                .font(.caption.weight(.medium))
+                .font(.haze(.caption, weight: .medium))
                 .padding(.horizontal, 10).padding(.vertical, 4)
                 .background(Capsule().fill(Color.secondary.opacity(0.12)))
         }

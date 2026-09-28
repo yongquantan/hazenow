@@ -76,9 +76,8 @@
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
-            <meta-data
-                android:name="android.service.quicksettings.ACTIVE_TILE"
-                android:value="true" />
+            <!-- Standard (non-active) tile: onStartListening runs every time the panel opens, so the tile
+                 always shows the cached reading (QA C-tile). -->
         </service>
 
         <provider

@@ -16,6 +16,8 @@ import sg.hazenow.work.RefreshWorker
  * Debug-only QA hooks (not in release builds):
  *   adb shell am broadcast -a sg.hazenow.DEBUG_REFRESH -p sg.hazenow
  *   adb shell am broadcast -a sg.hazenow.DEBUG_MOCK -p sg.hazenow --es mock high   (or "off")
+ *   adb shell am broadcast -a sg.hazenow.DEBUG_EXPORT_CARDS -p sg.hazenow
+ *     -> /sdcard/Android/data/sg.hazenow/files/cards/ (PNG for every card × mock scenario × persona)
  * Both refresh immediately in-process (widgets, tile, Haze watch, alerts) and also enqueue the
  * WorkManager one-shot job, so the worker path is exercised too.
  */
@@ -25,6 +27,10 @@ class DebugReceiver : BroadcastReceiver() {
         val app = context.applicationContext
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                if (intent.action == "sg.hazenow.DEBUG_EXPORT_CARDS") {
+                    CardExport.exportAll(app)
+                    return@launch
+                }
                 if (intent.action == "sg.hazenow.DEBUG_MOCK") {
                     val m = intent.getStringExtra("mock")
                     SettingsRepo(app).setMock(if (m == null || m == "off" || m !in MockData.SCENARIOS) null else m)

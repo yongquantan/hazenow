@@ -10,7 +10,7 @@ struct PopoverView: View {
     let notch: NotchController
     @State private var page: Page = .main
 
-    enum Page { case main, settings, about, areas }
+    enum Page { case main, settings, about, areas, share, shareClocks, credits }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -21,12 +21,24 @@ struct PopoverView: View {
                     switch page {
                     case .main:
                         if store.onboarded {
-                            HazeDetailContent(store: store, onWhy: { page = .about })
+                            HazeDetailContent(store: store, onWhy: { page = .about }, onShare: { page = .share },
+                                              onCredits: { page = .credits })
                         } else {
                             PlaceOnboardingView(store: store)
                         }
                     case .settings: SettingsPane(store: store, notch: notch, onPickArea: { page = .areas })
-                    case .about: ExplainerView(snapshot: store.snapshot)
+                    case .about:
+                        VStack(alignment: .leading, spacing: 12) {
+                            Button { page = .shareClocks } label: { Label("Share the two clocks", systemImage: "square.and.arrow.up") }
+                            ExplainerView(snapshot: store.snapshot)
+                        }
+                    case .share, .shareClocks:
+                        if let model = ShareModel(store: store, fromWhyTwoNumbers: page == .shareClocks) {
+                            ShareComposer(model: model)
+                        } else {
+                            Text(HazeCopy.loading)
+                        }
+                    case .credits: AboutView()
                     case .areas:
                         AreaPickerList { area in
                             store.placeMode = .area(area.name)
@@ -84,7 +96,7 @@ struct PlaceMenu: View {
     var body: some View {
         PlaceSwitcherMenu(store: store, onPickArea: onPickArea) {
             Label(store.resolved.label, systemImage: store.isMyLocation ? "location.fill" : "mappin")
-                .font(.headline)
+                .hazeHeadline(.headline)
         }
         .menuStyle(.borderlessButton)
         .fixedSize()
@@ -96,39 +108,44 @@ struct HazeDetailContent: View {
     let store: HazeStore
     var compactChart = false
     var onWhy: (() -> Void)?
+    var onShare: (() -> Void)?
+    var onCredits: (() -> Void)?
 
     var body: some View {
         if let s = store.snapshot, let insight = store.insight {
             VStack(alignment: .leading, spacing: 14) {
                 if let note = store.locationNote {
-                    Label(note, systemImage: "location.slash").font(.caption).foregroundStyle(.secondary)
+                    Label(note, systemImage: "location.slash").font(.haze(.caption)).foregroundStyle(.secondary)
                 }
                 if store.locationDenied {
                     LocationDeniedChip(openSettings: openLocationSettings)
                 }
                 if store.loadError == .offline {
-                    Label(HazeCopy.offlineChip, systemImage: "wifi.slash").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                    Label(HazeCopy.offlineChip, systemImage: "wifi.slash").font(.haze(.caption, weight: .semibold)).foregroundStyle(.secondary)
                 }
-                VerdictHeader(snapshot: s, insight: insight, size: .title3)
+                HStack(alignment: .top) {
+                    VerdictHeader(snapshot: s, insight: insight, size: .title3)
+                    Spacer(minLength: 8)
+                    if let onShare {
+                        Button(action: onShare) { Label("Share", systemImage: "square.and.arrow.up") }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.regular)
+                    }
+                }
                 BigNumber(snapshot: s, insight: insight, numberSize: 54)
                 ProvenanceLine(insight: insight)
+                OfficialPsiView(snapshot: s)
                 if let detail = store.statusDetail {
-                    Text(detail).font(.caption).foregroundStyle(.secondary)
+                    Text(detail).font(.haze(.caption)).foregroundStyle(.secondary)
                 }
                 ActionsList(insight: insight, band: s.band)
-                if store.shouldAskNotify {
-                    NotifyAskCard(onYes: { store.answerNotifyAsk(true) }, onNo: { store.answerNotifyAsk(false) })
-                }
+                NotifyAskSection(store: store)
                 Divider().opacity(0.5)
-                ChartSection(snapshot: s, height: compactChart ? 100 : 130, onWhy: onWhy)
-                RegionsSection(snapshot: s)
-                HStack(alignment: .bottom) {
+                ChartSection(snapshot: s, height: compactChart ? 100 : 130, showOfficial: false, onWhy: onWhy)
+                RegionsSection(snapshot: s, onSelect: { store.placeMode = .region($0) })
+                VStack(alignment: .leading, spacing: 4) {
                     TrustFooter(snapshot: s)
-                    Spacer(minLength: 8)
-                    ShareSnapshotButton(snapshot: s, insight: insight)
-                        .buttonStyle(.borderless)
-                        .labelStyle(.iconOnly)
-                        .help("Share")
+                    if let onCredits { MadeByButton(action: onCredits) }
                 }
             }
         } else if let error = store.loadError {
@@ -143,7 +160,7 @@ struct HazeDetailContent: View {
         } else {
             VStack(spacing: 8) {
                 ProgressView()
-                Text(HazeCopy.loading).font(.callout).foregroundStyle(.secondary)
+                Text(HazeCopy.loading).font(.haze(.callout)).foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, minHeight: 200)
         }
@@ -192,14 +209,15 @@ struct SettingsPane: View {
                         Button(saved == nil ? "Save current" : "Update") { store.save(kind) }
                             .disabled(store.resolved.input.coordinate == nil)
                     }
-                    .font(.callout)
+                    .font(.haze(.callout))
                 }
-                Text(HazeCopy.privacyLine).font(.caption).foregroundStyle(.secondary)
+                Text(HazeCopy.privacyLine).font(.haze(.caption)).foregroundStyle(.secondary)
                 Toggle("Notify when the band changes", isOn: $store.notifyOnRise)
+                NotifyPermissionNote(store: store)
                 Toggle("Also notify at Elevated", isOn: $store.elevatedForGeneral)
                     .disabled(!store.notifyOnRise)
                 Text("Band changes only, with an all-clear. At most 3 a day. Never 10pm–7am.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.haze(.caption)).foregroundStyle(.secondary)
                 Toggle("Show beside the notch", isOn: $showNotch)
                     .onChange(of: showNotch) { _, on in
                         HazeSettings.shared.showNotch = on
@@ -207,19 +225,19 @@ struct SettingsPane: View {
                     }
                 if showNotch && !notch.hasNotchedScreen {
                     Text("No notched display connected. HazeNow stays in the menu bar.")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.haze(.caption)).foregroundStyle(.secondary)
                 }
                 Toggle("Launch at login", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, on in
                         loginError = LaunchAtLogin.set(on)
                         launchAtLogin = LaunchAtLogin.isEnabled
                     }
-                if let loginError { Text(loginError).font(.caption).foregroundStyle(.secondary) }
+                if let loginError { Text(loginError).font(.haze(.caption)).foregroundStyle(.secondary) }
             }
             .toggleStyle(.switch)
             Divider()
             HStack {
-                Text(HazeCopy.footer).font(.caption2).foregroundStyle(.secondary)
+                Text(HazeCopy.footer).font(.haze(.caption2)).foregroundStyle(.secondary)
                 Spacer()
                 Button("Quit") { NSApp.terminate(nil) }
             }

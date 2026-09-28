@@ -4,3 +4,11 @@ DerivedData/
 *.xcuserstate
 xcuserdata/
 .swiftpm/
+# Share-card exports: keep only the 6 representative PNGs (regenerate with `swift run hazecards --docs ../docs/cards`)
+docs/cards/*
+!docs/cards/now-elevated.png
+!docs/cards/group-kids-very_high.png
+!docs/cards/clocks-elevated.png
+!docs/cards/clear.png
+!docs/cards/linkpreview-elevated.png
+!docs/cards/longname-now-very_high.png

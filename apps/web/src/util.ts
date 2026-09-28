@@ -62,3 +62,13 @@ export function bandShape(shape: string, color: string, size = 14, opts: { outli
   }
   return `<svg class="shape" width="${s}" height="${s}" viewBox="0 0 ${s} ${s}" aria-hidden="true">${body}</svg>`;
 }
+
+/**
+ * Trend arrow as inline SVG (SPEC v1.5: the brand font has no ▲▼ glyphs).
+ * Up/down are triangles, steady is a right-pointing one, matching the compact `● 105 ▲` vocabulary.
+ */
+export function trendIcon(direction: "up" | "down" | "steady", cls = "arrow"): string {
+  const d =
+    direction === "up" ? "M6 1.5 11 10.5H1Z" : direction === "down" ? "M6 10.5 1 1.5h10Z" : "M2 1.5 10.5 6 2 10.5Z";
+  return `<svg class="${cls}" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="${d}" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/></svg>`;
+}

@@ -312,4 +312,7 @@ object HazeCore {
             locate(item.valid(metric), coords, selection)?.let { HistoryPoint(item.timestamp, roundHalfUp(it.value)) }
         }.reversed()
     }
+
+    /** Timestamp of the newest hour in the feed, whether or not any station reported valid data. */
+    fun latestHour(responses: List<ApiResponse>): String? = mergeItems(*responses.toTypedArray()).firstOrNull()?.timestamp
 }

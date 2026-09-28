@@ -66,7 +66,7 @@ public struct LagChart: View {
                     HStack(spacing: 12) { legendBars; legendLine }
                     VStack(alignment: .leading, spacing: 2) { legendBars; legendLine }
                 }
-                .font(.caption2)
+                .font(.haze(.caption2))
                 .foregroundStyle(.secondary)
                 .accessibilityHidden(true)
             }

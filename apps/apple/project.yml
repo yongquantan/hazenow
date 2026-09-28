@@ -43,6 +43,9 @@ targets:
         CFBundleDisplayName: HazeNow
         CFBundleName: HazeNow
         LSUIElement: true
+        CFBundleURLTypes:
+          - CFBundleURLName: sg.hazenow
+            CFBundleURLSchemes: [hazenow]
         LSApplicationCategoryType: public.app-category.weather
         NSHumanReadableCopyright: "MIT License. Data: NEA via data.gov.sg"
         NSLocationUsageDescription: "HazeNow uses your approximate location to weight nearby NEA stations. It never leaves your Mac."
@@ -113,6 +116,9 @@ targets:
         CFBundleDisplayName: HazeNow
         UILaunchScreen: {}
         NSSupportsLiveActivities: true
+        CFBundleURLTypes:
+          - CFBundleURLName: sg.hazenow
+            CFBundleURLSchemes: [hazenow]
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UISupportedInterfaceOrientations~ipad:
           [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown,

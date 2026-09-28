@@ -24,8 +24,8 @@
   },
   "files": [
     "dist",
-    "fixtures",
-    "data"
+    "data",
+    "fixtures/scenarios"
   ],
   "sideEffects": false,
   "engines": {

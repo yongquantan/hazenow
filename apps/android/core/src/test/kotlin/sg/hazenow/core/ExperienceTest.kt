@@ -141,6 +141,7 @@ class ExperienceTest {
         val i = Experience.insight(snap(Selection.Region("west")), setOf(Profile.GENERAL, Profile.KIDS), now = now)
         assertEquals("117", i.display)
         assertNull(i.range)
+        assertEquals("Measured at West station", i.sourceLine)
         assertEquals("NEA West station · measured 4pm · 35 min ago", i.provenance)
         assertEquals("NEA 24-hr PSI: 81 (Moderate)", i.officialPsiLabel)
         assertEquals("Rising fast: up 38 in 2 hours", i.trendWords)
@@ -154,18 +155,37 @@ class ExperienceTest {
     @Test fun insightGpsBlendedShowsNumericRange() {
         val s = snap(Selection.Gps(1.35735, 103.76))
         val i = Experience.insight(s, general, 1.35735, 103.76, now)
-        assertTrue(i.display.startsWith("~"))
-        assertEquals(105..117, i.range)
-        assertEquals("Nearby stations read 105–117.", i.rangeLine)
-        assertEquals("${i.display} · range 105–117", i.displayWithRange)
+        assertFalse(i.display.startsWith("~")) // SPEC v1.5
+        assertTrue(i.estimate)
+        // West & Central ~6.7 km, North ~9.4 km (< 1.5× nearest) all shape the estimate.
+        assertEquals(49..117, i.range)
+        assertTrue(s.pm25 in i.range!!)
+        assertEquals("Estimate for your spot · range 49–117", i.sourceLine)
+        assertEquals("Estimate for Clementi · range 49–117",
+            Experience.insight(s, general, 1.35735, 103.76, now, placeName = "Clementi").sourceLine)
+        assertEquals("${i.display} · range 49–117", i.displayWithRange)
         assertTrue(i.provenance.matches(Regex("Near you · (West|Central) station 6\\.\\d km · measured 4pm · 35 min ago")), i.provenance)
         assertTrue(Experience.insight(s, general, 1.35735, 103.76, now, placeName = "Home (Clementi)").provenance.startsWith("Home (Clementi) · "))
-        assertTrue("nearby stations read 105 to 117" in i.accessibility)
+        assertTrue("nearby stations read 49 to 117" in i.accessibility)
+    }
+
+    @Test fun rangeAlwaysContainsTheEstimate() {
+        // Clementi-like spot: South 140 and Central 137 are nearest, but West 107 is almost as close.
+        val r = HazeApi.parse(
+            """{"data":{"items":[{"updatedTimestamp":"2026-09-28T17:00:59+08:00","timestamp":"2026-09-28T17:00:00+08:00",
+            "readings":{"pm25_one_hourly":{"north":55,"south":140,"west":107,"east":108,"central":137}}}]}}""",
+        )
+        val t = Instant.parse("2026-09-28T09:10:00Z")
+        val s = HazeCore.snapshot(listOf(r), null, Selection.Gps(1.31, 103.76), t)!!
+        val i = Experience.insight(s, general, 1.31, 103.76, t, placeName = "Clementi")
+        assertTrue(s.pm25 in i.range!!, "${s.pm25} not in ${i.range}")
+        assertEquals(107, i.range!!.first)
     }
 
     @Test fun insightGpsAtStation() {
         val i = Experience.insight(snap(Selection.Gps(1.29587, 103.82)), general, 1.29587, 103.82, now)
         assertEquals("105", i.display)
+        assertEquals("Measured at South station", i.sourceLine)
         assertEquals("Near you · South station 0.0 km · measured 4pm · 35 min ago", i.provenance)
     }
 
@@ -176,7 +196,8 @@ class ExperienceTest {
         )
         val s = HazeCore.snapshot(listOf(r), null, Selection.Region("south"), now)!!
         val i = Experience.insight(s, general, now = now, selectedRegion = "south")
-        assertEquals("~89", i.display)
+        assertEquals("89", i.display)
+        assertEquals("Estimate for South · range 49–105", i.sourceLine)
         assertEquals("South station is offline. Showing the average of NEA's other stations. · 35 min ago", i.provenance)
         assertEquals(49..105, i.range)
         assertEquals("NEA 24-hr PSI: not available right now", i.officialPsiLabel)
@@ -201,6 +222,24 @@ class ExperienceTest {
         val t = Instant.parse("2026-09-28T11:00:00Z")
         val stale = HazeCore.snapshot(pm, psi, Selection.Region("west"), t)!!
         assertEquals("Newer readings from NEA are late. We'll keep checking.", Experience.insight(stale, general, now = t).note)
+    }
+
+    @Test fun allStationsOfflineUsesCopy10() {
+        // Newest hours published with every station offline -> walk back, stale, "haven't reported since".
+        val bad = (17..18).map { h ->
+            HazeApi.parse(
+                """{"data":{"items":[{"updatedTimestamp":"2026-09-28T$h:01:00+08:00","timestamp":"2026-09-28T$h:00:00+08:00",
+                "readings":{"pm25_one_hourly":{"north":-1,"south":-1,"west":-1,"east":-1,"central":-1}}}]}}""",
+            )
+        }
+        val t = Instant.parse("2026-09-28T11:30:00Z") // 19:30 SGT; last valid hour 16:00
+        val feed = bad + pm
+        val s = HazeCore.snapshot(feed, psi, Selection.Region("south"), t)!!
+        assertTrue(s.stale)
+        assertEquals("2026-09-28T18:00:00+08:00", HazeCore.latestHour(feed))
+        assertEquals("NEA's stations haven't reported since 4pm.", Experience.insight(s, general, now = t, latestHourAt = HazeCore.latestHour(feed)).note)
+        // Without newer (empty) hours it's just late.
+        assertEquals("Newer readings from NEA are late. We'll keep checking.", Experience.insight(s, general, now = t, latestHourAt = s.observedAt).note)
     }
 
     @Test fun noBannedWordsOrInstantPsiAnywhere() {

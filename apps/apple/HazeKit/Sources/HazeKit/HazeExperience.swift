@@ -366,9 +366,10 @@ extension HazeCompute {
     public static func chartSummary(_ history: [HistoryPoint]) -> String {
         guard let first = history.first, let last = history.last else { return "Chart. No readings yet." }
         let max = history.reduce(first) { $1.pm25 > $0.pm25 ? $1 : $0 }
-        let line = history.compactMap(\.psi24h)
-        let psi = line.count >= 2 ? " NEA 24-hr PSI went from \(line.first!) to \(line.last!)." : ""
-        return "Chart. Over the last 24 hours PM2.5 went from \(first.pm25) to \(last.pm25), peaking at \(max.pm25) at \(HazeFormat.hour(max.time)).\(psi)"
+        // COPY §8: the plotted line is NEA's 24-hr average PM2.5 (µg/m³), not the PSI index.
+        let line = history.compactMap(\.pm25Avg24h)
+        let avg = line.count >= 2 ? " NEA's 24-hr average PM2.5 went from \(line.first!) to \(line.last!)." : ""
+        return "Chart. Over the last 24 hours PM2.5 went from \(first.pm25) to \(last.pm25), peaking at \(max.pm25) at \(HazeFormat.hour(max.time)).\(avg)"
     }
 
     /// COPY §15 share text (no verdict, no Instant PSI).
@@ -413,7 +414,7 @@ public struct Uncertainty: Sendable, Hashable {
         if s.locationMode == .region { self = exact; return }
         guard s.locationMode == .gps, let point else {
             let vs = valid.map(\.v)
-            self = vs.isEmpty ? approx(nil) : approx(vs.min()!...vs.max()!)
+            self = vs.isEmpty ? approx(nil) : approx(min(vs.min()!, s.pm25)...max(vs.max()!, s.pm25))
             return
         }
         let near = valid
@@ -425,7 +426,11 @@ public struct Uncertainty: Sendable, Hashable {
         let far = a.d > Self.uncertainKm
         let disagree = b.map { abs(a.v - $0.v) > Self.disagreeUgm3 } ?? false
         guard far || disagree else { self = approx(nil); return }
-        let vals = [a.v] + (b.map { [$0.v] } ?? [])
+        // SPEC v1.7: stations within 1.5× the nearest distance (at least the two nearest),
+        // then widened so the range always contains the estimate.
+        let cutoff = a.d * 1.5
+        var vals = near.enumerated().filter { $0.offset < 2 || $0.element.d <= cutoff }.map(\.element.v)
+        vals.append(s.pm25)
         self = approx(vals.min()!...vals.max()!)
     }
 
@@ -437,6 +442,7 @@ public struct Uncertainty: Sendable, Hashable {
     }
 
     /// "~105" / "105"
+    /// TS parity only (`formatWithUncertainty`). UI must not use it: SPEC v1.5 drops "~" from the hero number.
     public func format(_ value: Int) -> String { (approx ? "~" : "") + "\(value)" }
 }
 
@@ -505,6 +511,22 @@ public struct Provenance: Sendable, Hashable {
 
 // MARK: - Insight: everything a full surface needs, in one value
 
+extension HazeInsight {
+    static func uncertaintyLine(_ s: Snapshot, uncertainty u: Uncertainty, placeName: String?) -> String {
+        let range = u.range.map { " · range \($0.lowerBound)–\($0.upperBound)" } ?? ""
+        switch s.locationMode {
+        case .region:
+            return "Measured at \(HazeFormat.regionName(s.nearestRegion)) station"
+        case .gps where !u.approx:
+            return "Measured at \(HazeFormat.regionName(s.nearestRegion)) station"
+        case .gps:
+            return "Estimate for \(placeName ?? "your spot")\(range)"
+        case .island:
+            return "\(s.nearestRegion.isEmpty ? "Island average" : "Average of other stations")\(range)"
+        }
+    }
+}
+
 public struct HazeInsight: Sendable, Hashable {
     public var verdict: Verdict
     public var actions: [String]
@@ -514,8 +536,11 @@ public struct HazeInsight: Sendable, Hashable {
     public var anchor: String
     public var uncertainty: Uncertainty
     public var provenance: Provenance
-    /// "105" / "~105"
+    /// The hero number: always a clean integer, never "~" (SPEC v1.5 §1).
     public var numberText: String
+    /// Small line under the number carrying the uncertainty (SPEC v1.5 §1):
+    /// "Estimate for Tampines · range 83–117" / "Measured at East station".
+    public var uncertaintyLine: String
     /// VoiceOver for the headline block.
     public var headlineLabel: String
     /// VoiceOver for compact surfaces.
@@ -531,7 +556,8 @@ public struct HazeInsight: Sendable, Hashable {
         anchor = HazeCompute.bandAnchor(s.band)
         uncertainty = Uncertainty(snapshot: s, point: location.coordinate)
         provenance = Provenance(snapshot: s, point: location.coordinate, placeName: placeName, now: now)
-        numberText = uncertainty.format(s.pm25)
+        numberText = "\(s.pm25)"
+        uncertaintyLine = Self.uncertaintyLine(s, uncertainty: uncertainty, placeName: placeName)
         let base = HazeCompute.headlineLabel(s, profiles: ids)
         headlineLabel = uncertainty.approx ? base.replacingOccurrences(of: "PM2.5 \(s.pm25),", with: "PM2.5 \(uncertainty.a11y),") : base
         compactLabel = HazeCompute.accessibleLabel(s)

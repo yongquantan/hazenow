@@ -59,6 +59,13 @@ const scenarios = {
     description: "Every region is +25 on the previous hour (e.g. Central 80 → 105).",
     make: (d) => setHour(d, 1, Object.fromEntries(REGIONS.map((r) => [r, hour(d, 0)[r] - 25]))),
   },
+  all_clear: {
+    description: "Back to Normal after an Elevated afternoon: 4pm reads North 20, South 24, East 22, West 26, Central 23 (3pm was still Elevated).",
+    make: (d) => {
+      setHour(d, 0, { north: 20, south: 24, east: 22, west: 26, central: 23 });
+      setHour(d, 1, { north: 38, south: 58, east: 44, west: 60, central: 52 });
+    },
+  },
   network_error: {
     description: "Simulate the network failing: clients should behave as if every request threw.",
     simulate: "network_error",

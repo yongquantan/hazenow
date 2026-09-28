@@ -1,0 +1,24 @@
+{
+  "name": "hazenow-proxy",
+  "version": "0.1.0",
+  "private": true,
+  "description": "HazeNow edge proxy for Southeast Asia: allow-listed, budgeted, cached upstream fetches with CORS and attribution.",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "node dist/server.js",
+    "test": "bun test",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "typescript": "^5.6.0",
+    "@types/node": "^22.0.0",
+    "@types/bun": "^1.1.0"
+  }
+}

@@ -2,7 +2,7 @@
 
 A dot (the reading) above three fading haze lines. On live surfaces the dot takes the NEA band colour; the lines never change. Store/app icons keep the ivory dot so the brand is never alarming.
 
-Palette: Ink `#14232B` · Ivory `#F5F0E6` · Mist `#9FB3BB` · Paper `#F3F1EC`. Type: Instrument Serif (display) / Instrument Sans (UI).
+Palette: Ink `#14232B` · Ivory `#F5F0E6` · Mist `#9FB3BB` · Paper `#F3F1EC`. Type: **Apfel Grotezk** (SIL OFL, `fonts/`) — headlines Mittel 500 at about −0.04em tracking, big numbers Fett 700 at about −0.05em, body Regular 400.
 Band dot colours: Normal `#2E9E5B` · Elevated `#E8A317` · High `#E4572E` · Very High `#7B2D8E` (on dark backgrounds use `#B06BC4`).
 
 | file | use |

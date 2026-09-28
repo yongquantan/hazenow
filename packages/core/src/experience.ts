@@ -315,7 +315,7 @@ export function median(xs: readonly number[]): number {
 /* ------------------------------------------------------------------ uncertainty (COPY §6) */
 
 export interface Uncertainty {
-  /** Blended value: prefix with "~". */
+  /** Blended/estimated value (never shown as "~" on the number, SPEC v1.5; use `line`). */
   approx: boolean;
   /** [lo, hi] of the two nearest valid stations (or all online stations in island mode), or null. */
   range: [number, number] | null;
@@ -327,8 +327,8 @@ export interface Uncertainty {
 
 /**
  * - region mode with a live reading: a measurement → exact.
- * - island fallback: "~", range = min–max of online stations.
- * - gps: exact if snapped (<0.5 km). Otherwise "~"; add the range of the two nearest valid stations when
+ * - island fallback: estimate, range = min–max of online stations.
+ * - gps: exact if snapped (<0.5 km). Otherwise an estimate; add the range of the two nearest valid stations when
  *   the nearest is > 5 km away or the two differ by more than 30.
  */
 export function uncertainty(s: Pick<Snapshot, "pm25" | "regions" | "locationMode">, point?: LatLon | null): Uncertainty {
@@ -344,7 +344,7 @@ export function uncertainty(s: Pick<Snapshot, "pm25" | "regions" | "locationMode
   if (s.locationMode === "island" || !point) {
     if (valid.length === 0) return approx(null);
     const vs = valid.map(([, r]) => r.pm25);
-    return approx([Math.min(...vs), Math.max(...vs)]);
+    return approx([Math.min(...vs, s.pm25), Math.max(...vs, s.pm25)]);
   }
   const near = valid
     .map(([name, r]) => ({ name, v: r.pm25, d: haversineKm(point, { lat: r.lat, lon: r.lon }) }))
@@ -355,13 +355,42 @@ export function uncertainty(s: Pick<Snapshot, "pm25" | "regions" | "locationMode
   const far = a.d > UNCERTAIN_KM;
   const disagree = !!b && Math.abs(a.v - b.v) > DISAGREE_UGM3;
   if (!far && !disagree) return approx(null);
-  const vals = b ? [a.v, b.v] : [a.v];
-  return approx([Math.min(...vals), Math.max(...vals)]);
+  return approx(stationRange(near, s.pm25));
 }
 
-/** "~105", "105". */
-export function formatWithUncertainty(value: number, u: Uncertainty): string {
-  return `${u.approx ? "~" : ""}${value}`;
+/**
+ * SPEC v1.7 range rule: min/max over valid stations within 1.5× the nearest station's distance
+ * (always at least the two nearest), then widened to include the estimate itself.
+ */
+export function stationRange(near: readonly { v: number; d: number }[], estimate: number): [number, number] {
+  const limit = near[0].d * 1.5;
+  const pool = near.filter((n, i) => i < 2 || n.d <= limit).map((n) => n.v);
+  return [Math.min(...pool, estimate), Math.max(...pool, estimate)];
+}
+
+/** The hero number is always a clean integer (SPEC v1.5): no "~". Kept for API compatibility. */
+export function formatWithUncertainty(value: number, _u?: Uncertainty): string {
+  return String(value);
+}
+
+/**
+ * The small line under the hero number (SPEC v1.5 §1):
+ *   "Measured at East station"                (region mode, or GPS within 0.5 km of a station)
+ *   "Estimate for Tampines · range 83–117"    (area/GPS blend; range only when uncertain)
+ *   "Estimate for your spot"                  (GPS blend, no place name)
+ *   "Island average · range 49–117"           (island view)
+ *   "Average of other stations · range 49–117" (picked region's station offline)
+ */
+export function uncertaintyLine(
+  s: Pick<Snapshot, "pm25" | "regions" | "locationMode" | "nearestRegion">,
+  point?: LatLon | null,
+  opts: { placeName?: string } = {},
+): string {
+  const u = uncertainty(s, point);
+  const range = u.range ? ` · range ${u.range[0]}–${u.range[1]}` : "";
+  if (!u.approx) return `Measured at ${regionLabel(s.nearestRegion)} station`;
+  if (s.locationMode === "island") return `${s.nearestRegion ? "Average of other stations" : "Island average"}${range}`;
+  return `Estimate for ${opts.placeName ?? "your spot"}${range}`;
 }
 
 /* ------------------------------------------------------------------ provenance (COPY §6) */

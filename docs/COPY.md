@@ -425,6 +425,7 @@ For `exercising`: "Air's back to Normal (PM2.5 {pm25}). Fine for your run."
 ## 15. Share text
 
 "Air near me right now: {bandLabel} (PM2.5 {pm25}), {trendWord}. NEA 24-hr PSI: {psi}. Data: NEA via data.gov.sg. {shareUrl}"
+Region or area mode: replace "near me" with "in the {Region}" / "in {Area}" (e.g. "Air in the South right now: …", "Air in Tampines right now: …"). "near me" only in location mode, so a forwarded message never implies the reader's location.
 
 (The share text has no verdict. Advice depends on the reader's profile, not the sharer's.)
 
@@ -452,3 +453,15 @@ Profile label: "I work outdoors" · for-label: "For outdoor work" · not a sensi
 
 Actions (Elevated+): "Take breaks in the shade or indoors, and drink water." · "Ask your supervisor about indoor breaks and lighter tasks."
 Needs review by a workplace-safety source (MOM haze guidelines for employers) before launch.
+
+## 18. About (from "Made by Yong Quan Tan") — canonical, all platforms
+
+Title: "About HazeNow"
+Body 1: "I built HazeNow because the number most of us check during a haze, the 24-hr PSI, moves slowly. NEA also publishes the last hour's PM2.5, and recommends it for deciding what to do right now. HazeNow puts that number first, in plain words, using only NEA's data."
+Body 2: "It's free and open source (MIT). No ads, no tracking, no account. Your location stays on your phone."
+Signature: "— Yong Quan Tan"
+Links, in order: "LinkedIn" → https://www.linkedin.com/in/yongquantan · "Kairos Labs · kairoslabs.sg" → https://kairoslabs.sg (subtitle: "I run Kairos Labs, an applied AI studio.") · "Source code on GitHub" → https://github.com/yongquantan/hazenow
+Status: Approved by Yong Quan (2026-09-28).
+
+## 19. Stale share
+If the reading is stale (SPEC: observedAt older than 2h15m), cards still share but the place/time line reads "{Area} · reading from {time} (latest available)" and the verdict headline is replaced by "Latest NEA reading is delayed." Never present stale data as "now". Two clocks keeps its fixed headline; its chart axis ends at the reading's hour (e.g. "3pm"), not "Now". Stale Now card: advice label "NEA's advice for that hour" (not "for the next hour"); PSI line "The 24-hr PSI ({psi}) averages the whole day. This reading is for the 3pm hour." Hide the trend (SPEC v1.7). Any "right now"/"this hour"/"the last hour" phrasing becomes "that hour"/"the {time} hour" when stale. Stale "For our group": replace "Next check at {time}." with "Check hazenow.sg for NEA's next update."

@@ -1,4 +1,9 @@
 import CoreLocation
+#if os(macOS)
+import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 import Foundation
 import HazeKit
 import Observation
@@ -82,8 +87,62 @@ public final class LocationProvider: NSObject, CLLocationManagerDelegate {
 
 /// Delivers band-crossing alerts computed by `BandAlerts` (hysteresis, caps, quiet hours, all-clear).
 public enum HazeNotifier {
+    public static let category = "hazenow.band"
+    public static let shareAction = "hazenow.share"
+
+    /// Band notifications carry a "Share" action that opens the share sheet.
+    public static func registerCategories() {
+        let share = UNNotificationAction(identifier: shareAction, title: "Share", options: [.foreground])
+        let cat = UNNotificationCategory(identifier: category, actions: [share], intentIdentifiers: [])
+        UNUserNotificationCenter.current().setNotificationCategories([cat])
+    }
+
     public static func requestAuthorization() async -> Bool {
         (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])) ?? false
+    }
+
+    /// Request permission and report exactly what happened (the error is kept, not swallowed).
+    public static func requestAuthorizationResult() async -> NotifyStatus {
+        do {
+            let ok = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])
+            return ok ? .granted : .denied
+        } catch {
+            return .error(error.localizedDescription)
+        }
+    }
+
+    /// Current system setting.
+    public static func currentStatus() async -> NotifyStatus {
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        switch settings.authorizationStatus {
+        case .authorized, .provisional, .ephemeral: return .granted
+        case .denied: return .denied
+        case .notDetermined: return .notDetermined
+        @unknown default: return .notDetermined
+        }
+    }
+
+    /// One confirmation notification after the user opts in.
+    public static func sendConfirmation() {
+        let content = UNMutableNotificationContent()
+        content.title = "HazeNow notifications are on"
+        content.body = "We'll message when the band changes near you, and when it's clear. Never at night."
+        content.threadIdentifier = "hazenow.band"
+        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "hazenow.confirm", content: content, trigger: nil))
+    }
+
+    /// Deep link to this app's notification settings.
+    @MainActor
+    public static func openSystemSettings() {
+        #if os(macOS)
+        if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") {
+            NSWorkspace.shared.open(url)
+        }
+        #elseif os(iOS)
+        if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
+            UIApplication.shared.open(url)
+        }
+        #endif
     }
 
     @MainActor
@@ -96,9 +155,15 @@ public enum HazeNotifier {
         content.title = alert.title
         content.body = alert.body
         content.threadIdentifier = "hazenow.band"
+        content.categoryIdentifier = category
         let id = "hazenow.\(alert.kind.rawValue).\(Int(snapshot.observedAt.timeIntervalSince1970))"
         UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: content, trigger: nil))
     }
+}
+
+public enum NotifyStatus: Equatable, Sendable {
+    case notDetermined, requesting, granted, denied
+    case error(String)
 }
 
 // MARK: - Store
@@ -154,9 +219,40 @@ public final class HazeStore {
     public var notifyOnRise: Bool {
         didSet {
             settings.notifyOnRise = notifyOnRise
-            if notifyOnRise { Task { _ = await HazeNotifier.requestAuthorization() } }
+            // Turning it on from Settings also asks (and reflects the real result).
+            if notifyOnRise, !oldValue, notifyStatus != .granted { Task { await requestNotifications(confirm: false) } }
         }
     }
+
+    /// Whether the in-app ask has been answered (observed so the card disappears immediately).
+    public var notifyAsked: Bool {
+        didSet { settings.notifyAsked = notifyAsked }
+    }
+
+    /// Real system permission state (checked at launch, updated after asking).
+    public private(set) var notifyStatus: NotifyStatus = .notDetermined
+
+    /// Result of the in-app ask, shown inline in place of the card until dismissed.
+    public private(set) var notifyAskResult: NotifyStatus?
+
+    public func refreshNotifyStatus() async {
+        notifyStatus = await HazeNotifier.currentStatus()
+    }
+
+    /// Ask the system. On macOS the (LSUIElement) app is activated first so the prompt comes to the front.
+    public func requestNotifications(confirm: Bool) async {
+        notifyStatus = .requesting
+        #if os(macOS)
+        NSApp.activate(ignoringOtherApps: true)
+        #endif
+        var result = await HazeNotifier.requestAuthorizationResult()
+        // If the prompt was answered earlier, requestAuthorization returns the stored answer; re-read to be sure.
+        if case .denied = result, await HazeNotifier.currentStatus() == .granted { result = .granted }
+        notifyStatus = result
+        if result == .granted, confirm { HazeNotifier.sendConfirmation() }
+    }
+
+    public func dismissNotifyResult() { notifyAskResult = nil }
 
     public var elevatedForGeneral: Bool {
         didSet { settings.elevatedForGeneral = elevatedForGeneral }
@@ -164,13 +260,22 @@ public final class HazeStore {
 
     /// Show the notification ask after the first Elevated+ view, not on first launch (COPY §11).
     public var shouldAskNotify: Bool {
-        guard let snapshot, !settings.notifyAsked else { return false }
+        guard let snapshot, !notifyAsked, notifyStatus != .granted else { return false }
         return snapshot.band >= .elevated
     }
 
-    public func answerNotifyAsk(_ yes: Bool) {
-        settings.notifyAsked = true
-        notifyOnRise = yes
+    /// Answer the in-app ask. "Yes" awaits the real authorization and shows the result inline.
+    public func answerNotifyAsk(_ yes: Bool) async {
+        notifyAsked = true
+        guard yes else {
+            notifyOnRise = false
+            return
+        }
+        notifyAskResult = .requesting
+        settings.notifyOnRise = true
+        await requestNotifications(confirm: true)
+        notifyOnRise = notifyStatus == .granted
+        notifyAskResult = notifyStatus
     }
 
     /// Called whenever a *new* snapshot is produced (for widget reloads, Live Activities, etc).
@@ -194,6 +299,7 @@ public final class HazeStore {
         onboarded = settings.onboarded || settings.mockScenario != nil
         profiles = settings.profiles
         notifyOnRise = settings.notifyOnRise
+        notifyAsked = settings.notifyAsked
         elevatedForGeneral = settings.elevatedForGeneral
         if mockScenario == nil { snapshot = settings.lastSnapshot } // instant paint from cache
         if let c = settings.lastCoordinate { coordinate = CLLocationCoordinate2D(latitude: c.lat, longitude: c.lon) }
@@ -272,6 +378,7 @@ public final class HazeStore {
     public func start() {
         guard pollTask == nil else { return }
         if isMyLocation { location.start() }
+        Task { await refreshNotifyStatus() }
         pollTask = Task { [weak self] in
             var includeV2 = true
             while !Task.isCancelled {

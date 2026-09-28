@@ -65,12 +65,17 @@ data class Insight(
     val actions: List<String>,
     /** Normal-band calm line in place of actions. */
     val calmLine: String?,
-    /** "105" or "~105" when blended. */
+    /** Always a clean integer, "108" (SPEC v1.5: no "~"). */
     val display: String,
+    /** True when the value is estimated from several stations rather than read at one. */
+    val estimate: Boolean,
     /** Two nearest stations when uncertain. */
     val range: IntRange?,
-    /** "Nearby stations read 83–117." */
-    val rangeLine: String?,
+    /**
+     * Small line under the number (SPEC v1.5): "Estimate for Tampines · range 83–117",
+     * or "Measured at East station" for a direct station reading.
+     */
+    val sourceLine: String,
     /** "Rising: up 14 in the last hour" */
     val trendWords: String,
     /** "rising" / "steady" / …; null when there's no previous hour. */
@@ -131,6 +136,7 @@ object Chart {
 object Experience {
     const val UNCERTAIN_KM = 5.0
     const val DISAGREE_UG = 30
+    const val NEAR_FACTOR = 1.5
     const val FAST = 20
 
     fun isSensitive(profiles: Set<Profile>) = profiles.any { it.sensitive }
@@ -379,6 +385,8 @@ object Experience {
         selectedRegion: String? = null,
         /** Named place for GPS-mode maths on a picked area / saved place ("Tampines", "Home (Tampines)"). */
         placeName: String? = null,
+        /** Newest hour present in NEA's feed, valid or not ([HazeCore.latestHour]); detects "all stations offline". */
+        latestHourAt: String? = null,
     ): Insight {
         val observed = HazeCore.parseInstant(s.observedAt) ?: now
         val obs = Format.clock(s.observedAt)
@@ -431,14 +439,19 @@ object Experience {
 
         var range: IntRange? = null
         if (blended && byDist.size >= 2) {
-            val a = byDist[0].first.value.pm25!!
-            val b = byDist[1].first.value.pm25!!
-            if (nearestD > UNCERTAIN_KM || abs(a - b) > DISAGREE_UG) range = minOf(a, b)..maxOf(a, b)
+            // Stations that meaningfully shape the estimate: the two nearest plus any within 1.5× the nearest
+            // distance. The range is widened to always contain the estimate, so it never looks contradictory.
+            val near = byDist.filterIndexed { i, (_, d) -> i < 2 || d <= nearestD * NEAR_FACTOR }.map { it.first.value.pm25!! }
+            val lo = minOf(near.min(), s.pm25)
+            val hi = maxOf(near.max(), s.pm25)
+            if (nearestD > UNCERTAIN_KM || hi - lo > DISAGREE_UG) range = lo..hi
         }
 
         val ageMin = Duration.between(observed, now).toMinutes()
         if (s.stale) {
-            note = if (ageMin <= HazeCore.STALE_AFTER.toMinutes()) {
+            // COPY §10: if NEA published newer hours with every station offline, say so; otherwise the feed is late.
+            val newer = latestHourAt?.let { HazeCore.parseInstant(it) }?.let { it > observed } ?: false
+            note = if (newer || ageMin <= HazeCore.STALE_AFTER.toMinutes()) {
                 "NEA's stations haven't reported since $obs."
             } else {
                 "Newer readings from NEA are late. We'll keep checking."
@@ -449,7 +462,17 @@ object Experience {
 
         val v = verdict(s.band, profiles)
         val t = trend(s.history, s.trend.delta)
-        val display = (if (blended) "~" else "") + s.pm25
+        val display = s.pm25.toString()
+        val estimateFor = when {
+            s.locationMode == LocationMode.GPS -> placeName ?: "your spot"
+            selectedRegion != null -> Format.regionName(selectedRegion)
+            else -> "Singapore"
+        }
+        val sourceLine = if (!blended) {
+            "Measured at $region station"
+        } else {
+            "Estimate for $estimateFor" + (range?.let { " · range ${it.first}–${it.last}" } ?: "")
+        }
         val numberA11y = buildString {
             append("PM2.5 ")
             if (blended) append("about ")
@@ -464,8 +487,9 @@ object Experience {
             actions = actions(s.band, profiles),
             calmLine = calmLine(s),
             display = display,
+            estimate = blended,
             range = range,
-            rangeLine = range?.let { "Nearby stations read ${it.first}–${it.last}." },
+            sourceLine = sourceLine,
             trendWords = t.words,
             trendWord = t.a11y,
             anchor = anchor(s.band),

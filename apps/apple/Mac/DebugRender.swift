@@ -2,6 +2,7 @@ import AppKit
 import HazeKit
 import HazeUI
 import SwiftUI
+import UserNotifications
 
 /// Dev aid: with HAZENOW_DEBUG_DIR set, each new snapshot is written as JSON and the menu bar label,
 /// popover content and notch pill are rendered to PNGs (useful where screen recording isn't permitted).
@@ -66,6 +67,30 @@ enum DebugRender {
         if let b = v as? NSStatusBarButton { return b }
         for sub in v.subviews { if let b = findButton(sub) { return b } }
         return nil
+    }
+
+    /// Exercises the exact "Yes, notify me" path (HAZENOW_DEBUG_NOTIFY_YES=<dir>) and logs every state.
+    static func tapNotifyYes(store: HazeStore, notch: NotchController, dir: URL) {
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        func log(_ line: String) {
+            FileHandle.standardOutput.write(Data("notify: \(line)\n".utf8))
+            let url = dir.appendingPathComponent("notify.log")
+            let old = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+            try? (old + line + "\n").write(to: url, atomically: true, encoding: .utf8)
+        }
+        Task { @MainActor in
+            while store.snapshot == nil { try? await Task.sleep(for: .milliseconds(300)) }
+            await store.refreshNotifyStatus()
+            log("before: band=\(store.snapshot!.band.rawValue) shouldAsk=\(store.shouldAskNotify) status=\(store.notifyStatus) asked=\(store.notifyAsked)")
+            png(HazeDetailContent(store: store).padding(16).frame(width: 380).background(Color(nsColor: .windowBackgroundColor)),
+                dir.appendingPathComponent("before.png"))
+            await store.answerNotifyAsk(true)
+            log("after: result=\(String(describing: store.notifyAskResult)) status=\(store.notifyStatus) notifyOnRise=\(store.notifyOnRise) shouldAsk=\(store.shouldAskNotify) asked=\(store.notifyAsked)")
+            png(HazeDetailContent(store: store).padding(16).frame(width: 380).background(Color(nsColor: .windowBackgroundColor)),
+                dir.appendingPathComponent("after.png"))
+            let pending = await UNUserNotificationCenter.current().deliveredNotifications()
+            log("delivered notifications: \(pending.map(\.request.identifier))")
+        }
     }
 
     private static func png(_ view: some View, _ url: URL) {

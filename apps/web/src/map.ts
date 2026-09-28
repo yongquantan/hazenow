@@ -32,7 +32,8 @@ export function mapSvg(s: Snapshot, opts: { selected?: string; point?: LatLon | 
       const sel = opts.selected === n;
       const v = r.pm25;
       const info = v === null ? null : bandInfo(v);
-      const label = v === null ? `${regionLabel(n)}: offline` : `${regionLabel(n)}: PM2.5 ${v}, ${info!.label}`;
+      // Accessible name starts with the visible text ("117 West") so voice control matches it.
+      const label = v === null ? `off ${regionLabel(n)}, station offline` : `${v} ${regionLabel(n)}, PM2.5, ${info!.label}`;
       const left = n === "west";
       const tx = left ? cx - 19 : cx + 19;
       const anchor = left ? "end" : "start";

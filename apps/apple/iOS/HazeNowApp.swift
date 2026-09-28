@@ -2,13 +2,41 @@ import ActivityKit
 import HazeKit
 import HazeUI
 import SwiftUI
+import UserNotifications
 import WidgetKit
+
+extension Notification.Name {
+    static let hazeNowOpenShare = Notification.Name("HazeNowOpenShare")
+}
+
+/// Handles the notification "Share" action (SPEC v1.6).
+final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    func application(_ application: UIApplication,
+                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        HazeNotifier.registerCategories()
+        UNUserNotificationCenter.current().delegate = self
+        return true
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        if response.actionIdentifier == HazeNotifier.shareAction || response.actionIdentifier == UNNotificationDefaultActionIdentifier {
+            await MainActor.run { NotificationCenter.default.post(name: .hazeNowOpenShare, object: nil) }
+        }
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+        [.banner, .list]
+    }
+}
 
 @main
 struct HazeNowApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var store = HazeStore()
     @State private var watch = HazeWatch()
     @Environment(\.scenePhase) private var phase
+
+    init() { HazeFonts.register() }
 
     var body: some Scene {
         WindowGroup {

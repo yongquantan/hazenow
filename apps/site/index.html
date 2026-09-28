@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en-SG">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>HazeNow · Singapore's air, right now</title>
+    <meta name="description" content="HazeNow shows NEA's latest 1-hr PM2.5 for your area, in plain words, alongside NEA's 24-hr PSI. Free and open source. No ads, no tracking, no account. Not an official NEA app." />
+    <link rel="canonical" href="%SITE_URL%/" />
+    <meta name="theme-color" content="#F3F1EC" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#14232B" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="preload" href="/fonts/apfel-grotezk-mittel.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/apfel-grotezk-fett.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preconnect" href="https://api.data.gov.sg" crossorigin />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="HazeNow" />
+    <meta property="og:title" content="HazeNow · Your air, right now" />
+    <meta property="og:description" content="NEA's latest hourly PM2.5 for your area, in plain words. Both numbers are from NEA: the PSI averages 24 hours, PM2.5 shows the last hour." />
+    <meta property="og:url" content="%SITE_URL%/" />
+    <meta property="og:image" content="%SITE_URL%/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="HazeNow: air right now, near you. NEA's hourly PM2.5 reading, by area." />
+    <meta property="og:locale" content="en_SG" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "HazeNow",
+        "url": "%SITE_URL%/",
+        "description": "A free, open-source app that shows the National Environment Agency's latest 1-hr PM2.5 reading for an area of Singapore, with NEA's band and advice in plain words, next to NEA's 24-hr PSI. It uses only NEA data from data.gov.sg. It is not an official NEA app and not medical advice.",
+        "applicationCategory": "WeatherApplication",
+        "operatingSystem": "Web browser. Android and macOS in beta.",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "SGD" },
+        "license": "https://opensource.org/licenses/MIT",
+        "codeRepository": "%REPO_URL%",
+        "author": { "@type": "Person", "name": "Yong Quan Tan", "url": "https://www.linkedin.com/in/yongquantan" },
+        "areaServed": { "@type": "Country", "name": "Singapore" },
+        "image": "%SITE_URL%/og.png"
+      }
+    </script>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+      <defs>
+        <symbol id="i-web" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="2.5"/><path d="M3 9h18M6.5 6.8h.01M9 6.8h.01"/></symbol>
+        <symbol id="i-phone" viewBox="0 0 24 24"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></symbol>
+        <symbol id="i-mac" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="11.5" rx="1.8"/><path d="M2 19.5h20M10 7h4"/></symbol>
+        <symbol id="i-android" viewBox="0 0 24 24"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M6.5 6h11M6.5 18h11"/></symbol>
+        <symbol id="i-term" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="2.5"/><path d="m7 10 3 2.5L7 15M12.5 15H17"/></symbol>
+        <symbol id="i-cmd" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 12h8M12 8v8"/></symbol>
+        <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8.5a1 1 0 0 1-1 1h-4.5V15h-5v5.5H5a1 1 0 0 1-1-1Z"/></symbol>
+        <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5Z"/></symbol>
+        <symbol id="i-widget" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7.5" height="7.5" rx="2"/><rect x="13" y="3.5" width="7.5" height="7.5" rx="2"/><rect x="3.5" y="13" width="17" height="7.5" rx="2"/></symbol>
+        <symbol id="i-bar" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="4.5" rx="1.2"/><circle cx="15" cy="7.25" r=".9"/><path d="M4.5 14h9M4.5 17.5h6"/></symbol>
+        <symbol id="i-prompt" viewBox="0 0 24 24"><path d="m5 8 4 4-4 4M11 16h8"/></symbol>
+      </defs>
+    </svg>
+
+    <header class="site-header">
+      <div class="wrap header-row">
+        <a class="brand" href="#top" aria-label="HazeNow, back to top">
+          <svg class="mark" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+            <circle class="mark-dot" cx="50" cy="38" r="17" />
+            <rect x="17" y="61" width="66" height="7.5" rx="3.75" />
+            <rect x="27" y="73.5" width="46" height="7.5" rx="3.75" fill-opacity="0.7" />
+            <rect x="38" y="86" width="24" height="7.5" rx="3.75" fill-opacity="0.45" />
+          </svg>
+          <span class="wordmark">HazeNow</span>
+        </a>
+        <nav class="nav" aria-label="Sections">
+          <a href="#everywhere">Get it</a>
+          <a href="#two-clocks">Two clocks</a>
+          <a href="#open-source">Open source</a>
+          <a href="#about">About</a>
+        </nav>
+        <a class="btn btn-primary btn-sm" href="%APP_BASE%" data-app-link>Open HazeNow</a>
+      </div>
+    </header>
+
+    <main id="main">
+      <!-- 1. Hero -->
+      <section class="hero" id="top" aria-labelledby="hero-title">
+        <div class="wrap hero-grid">
+          <div class="hero-copy">
+            <p class="eyebrow">Singapore · NEA's hourly reading, by area</p>
+            <h1 id="hero-title">Your air, right now.</h1>
+            <p class="lede">Both are from NEA: the PSI averages 24 hours, PM2.5 shows the last hour.</p>
+            <p class="lede-2">HazeNow puts NEA's last-hour reading first, with NEA's advice in plain words, so you can decide what to do right now. The 24-hr PSI stays alongside, for planning tomorrow.</p>
+            <div class="ctas">
+              <a class="btn btn-primary" href="%APP_BASE%" data-app-link>Open HazeNow</a>
+              <a class="btn btn-ghost" href="%REPO_URL%" rel="noopener">
+                <svg class="gh" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 0a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.65-.89-3.65-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 8 0Z"/></svg>
+                View on GitHub
+              </a>
+            </div>
+            <ul class="trust" aria-label="What HazeNow promises">
+              <li>Data: NEA via data.gov.sg</li>
+              <li>Free &amp; open source (MIT)</li>
+              <li>No ads, no tracking, no account</li>
+            </ul>
+          </div>
+
+          <div class="live-col">
+          <p class="shared" id="shared-line" hidden></p>
+          <div class="live" id="live" aria-labelledby="live-title">
+            <div class="live-head">
+              <h2 id="live-title" class="live-title"><span class="live-pip" aria-hidden="true"></span>NEA's latest reading</h2>
+              <label class="place">
+                <span class="sr-only">Show the reading for</span>
+                <select id="place" disabled>
+                  <option value="island">Singapore (island average)</option>
+                </select>
+              </label>
+            </div>
+            <div id="live-body" class="live-body" aria-busy="true">
+              <p class="live-loading">Getting NEA's latest reading…</p>
+              <noscript><p class="live-loading">The live reading needs JavaScript. <a href="%APP_BASE%">Open HazeNow</a> for NEA's latest reading.</p></noscript>
+            </div>
+            <p class="live-foot">For you, generally healthy. <a href="%APP_BASE%" id="live-open" data-app-link>Advice for kids, older adults and more in the app</a>.</p>
+          </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Product demo -->
+      <section class="section demo" aria-labelledby="demo-title">
+        <div class="wrap">
+          <div class="section-head">
+            <p class="kicker">How it looks</p>
+            <h2 id="demo-title">The verdict first. The number second.</h2>
+            <p class="sub">Every HazeNow screen follows the same order: plain advice, NEA's 1-hr PM2.5 and band, where it was measured, then NEA's 24-hr PSI. People act on a sentence, not on a number alone.</p>
+          </div>
+          <div class="demo-grid">
+            <figure class="demo-phone">
+              <div class="phone-frame">
+                <img src="/img/android-main.webp" width="540" height="900" loading="lazy" decoding="async"
+                  alt="HazeNow on Android for Clementi: 'OK to be out. Go easy on hard exercise.' Big number 120 µg/m³ PM2.5, last hour. Estimate for Clementi, range 107 to 140. Elevated, rising fast: up 29 in 2 hours. NEA 24-hr PSI: 85 (Moderate)." />
+              </div>
+              <figcaption>The Android app, on a real Elevated afternoon (28 Sep 2026).</figcaption>
+            </figure>
+            <div class="demo-side">
+              <figure class="demo-panel">
+                <div class="menubar" aria-hidden="true">
+                  <span class="menubar-l"><span class="mb-dot"></span><span class="mb-dot"></span><span class="mb-dot"></span></span>
+                  <span class="menubar-r"><span class="mb-item mb-live" data-live="compact">–</span></span>
+                </div>
+                <figcaption><strong>Mac menu bar.</strong> Band dot, PM2.5 and trend, at a glance. Illustration, using the live reading above.</figcaption>
+              </figure>
+              <figure class="demo-panel">
+                <pre class="terminal" aria-label="Terminal output"><span class="t-dim">$</span> npx hazenow --oneline<span data-live-flags></span>
+<span data-live="oneline">…</span>
+<span class="t-dim">$</span> npx hazenow --json<span data-live-flags></span> | jq -r .band
+<span data-live="json-band">…</span></pre>
+                <figcaption><strong>Command line.</strong> For status bars, scripts and prompts. Output shown is live.</figcaption>
+              </figure>
+              <ul class="demo-points">
+                <li><strong>Where it was measured, on the main screen.</strong> Station, distance and how long ago.</li>
+                <li><strong>Honest ranges.</strong> When your spot is between stations, we show what nearby stations read.</li>
+                <li><strong>Calm by design.</strong> NEA's band names and colours, a shape for every band, no alarm red for Elevated.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Get it everywhere -->
+      <section class="section" id="everywhere" aria-labelledby="everywhere-title">
+        <div class="wrap">
+          <div class="section-head">
+            <p class="kicker">Get it everywhere</p>
+            <h2 id="everywhere-title">One number, wherever you look.</h2>
+            <p class="sub">Every version uses the same rules and the same words, so the answer matches on your phone, your desk and your home. Nothing is on an app store yet, so you won't see store badges here. "Available" means you can install it today.</p>
+          </div>
+          <p class="legend" aria-label="Status key">
+            <span class="status s-live"><i aria-hidden="true"></i>Live</span>
+            <span class="status s-ready"><i aria-hidden="true"></i>Available</span>
+            <span class="status s-beta"><i aria-hidden="true"></i>Beta</span>
+            <span class="status s-soon"><i aria-hidden="true"></i>Coming soon</span>
+          </p>
+          <ul class="platforms">
+            <li class="plat plat-wide">
+              <div class="plat-top"><svg class="ic" aria-hidden="true"><use href="#i-web"/></svg><span class="status s-live"><i aria-hidden="true"></i>Live</span></div>
+              <h3>Web</h3>
+              <p>The full HazeNow in any browser: verdict, 24-hour chart, your area, share cards. Add it to your home screen.</p>
+              <p class="plat-actions"><a class="btn btn-primary btn-sm" href="%APP_BASE%">Open HazeNow</a></p>
+            </li>
+            <li class="plat">
+              <div class="plat-top"><svg class="ic" aria-hidden="true"><use href="#i-phone"/></svg><span class="status s-soon"><i aria-hidden="true"></i>Coming soon</span></div>
+              <h3>iPhone and widgets</h3>
+              <p>Home and lock-screen widgets, a Live Activity and Apple Watch. TestFlight first.</p>
+              <p class="plat-actions"><a href="%REPO_URL%/tree/main/apps/apple" rel="noopener">Follow on GitHub</a></p>
+            </li>
+            <li class="plat">
+              <div class="plat-top"><svg class="ic" aria-hidden="true"><use href="#i-mac"/></svg><span class="status s-beta"><i aria-hidden="true"></i>Beta</span></div>
+              <h3>Mac menu bar and notch</h3>
+              <p><span class="mono" data-live="compact">● 105 ▲</span> in your menu bar, with an optional pill by the notch.</p>
+              <p class="plat-actions"><a href="%REPO_URL%/releases/latest" rel="noopener">Download the DMG from GitHub Releases</a></p>
+            </li>
+            <li class="plat">
+              <div class="plat-top"><svg class="ic" aria-hidden="true"><use href="#i-android"/></svg><span class="status s-beta"><i aria-hidden="true"></i>Beta</span></div>
+              <h3>Android</h3>
+              <p>Widgets, a Quick Settings tile and rare, calm band alerts. F-Droid soon.</p>
+              <p class="plat-actions"><a href="%REPO_URL%/releases/latest" rel="noopener">Get the APK from GitHub Releases</a></p>
+            </li>
+            <li class="plat">
+              <div class="plat-top"><svg class="ic" aria-hidden="true"><use href="#i-term"/></svg><span class="status s-soon"><i aria-hidden="true"></i>Coming soon</span></div>
+              <h3>Command line</h3>
+              <p><code>npx hazenow</code> once it's on npm. Until then, run it from the source.</p>
+              <p class="plat-actions"><a href="%REPO_URL%/tree/main/packages/core" rel="noopener">Source and usage</a></p>
+            </li>
+            <li class="plat">
+              <div class="plat-top"><svg class="ic" aria-hidden="true"><use href="#i-cmd"/></svg><span class="status s-soon"><i aria-hidden="true"></i>Coming soon</span></div>
+              <h3>Raycast</h3>
+              <p>The reading in your menu bar, plus every area in one list. Store submission next.</p>
+              <p class="plat-actions"><a href="%REPO_URL%/tree/main/integrations/raycast" rel="noopener">Build from source</a></p>
+            </li>
+            <li class="plat">
+              <div class="plat-top"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg><span class="status s-ready"><i aria-hidden="true"></i>Available</span></div>
+              <h3>Home Assistant</h3>
+              <p>Sensors for PM2.5, band, verdict and NEA's 24-hr PSI. Install as a HACS custom repository.</p>
+              <p class="plat-actions"><a href="%REPO_URL%/tree/main/integrations/home-assistant" rel="noopener">Install guide</a></p>
+            </li>
+            <li class="plat">
+              <div class="plat-top"><svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg><span class="status s-soon"><i aria-hidden="true"></i>Coming soon</span></div>
+              <h3>Telegram bot</h3>
+              <p><code>/now</code> for your area, and band-change alerts that always send the all-clear.</p>
+              <p class="plat-actions"><a href="%REPO_URL%/tree/main/integrations/telegram-bot" rel="noopener">See how it works</a></p>
+            </li>
+            <li class="plat">
+              <div class="plat-top"><svg class="ic" aria-hidden="true"><use href="#i-widget"/></svg><span class="status s-ready"><i aria-hidden="true"></i>Available</span></div>
+              <h3>Scriptable iPhone widget</h3>
+              <p>A home and lock-screen widget today, with no App Store wait. Paste one script into the free Scriptable app.</p>
+              <p class="plat-actions">
+                <button class="btn btn-ghost btn-sm" type="button" data-copy="/get/HazeNow.js">Copy script</button>
+                <a href="%REPO_URL%/tree/main/integrations/scriptable" rel="noopener">How to install</a>
+              </p>
+              <p class="copy-status" role="status" aria-live="polite"></p>
+            </li>
+            <li class="plat">
+              <div class="plat-top"><svg class="ic" aria-hidden="true"><use href="#i-bar"/></svg><span class="status s-ready"><i aria-hidden="true"></i>Available</span></div>
+              <h3>SwiftBar and xbar</h3>
+              <p>The zero-build Mac option: one Python file, standard library only.</p>
+              <p class="plat-actions"><a href="/get/hazenow.2m.py" download>Download plugin</a></p>
+            </li>
+            <li class="plat">
+              <div class="plat-top"><svg class="ic" aria-hidden="true"><use href="#i-prompt"/></svg><span class="status s-ready"><i aria-hidden="true"></i>Available</span></div>
+              <h3>tmux and starship</h3>
+              <p>A status-line reading for your prompt. Needs only <code>curl</code> and <code>jq</code>.</p>
+              <p class="plat-actions"><a href="/get/hazenow-status.sh" download>Download script</a></p>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 3. Two clocks -->
+      <section class="section section-tint" id="two-clocks" aria-labelledby="clocks-title">
+        <div class="wrap clocks-grid">
+          <div class="clocks-copy">
+            <p class="kicker">Why two numbers?</p>
+            <h2 id="clocks-title">Same NEA data. Two clocks.</h2>
+            <p class="clocks-lead">NEA's 24-hr PSI is an average of the last 24 hours, so it changes slowly and is best for planning tomorrow. The 1-hr PM2.5 shows the last hour, and NEA recommends it for deciding what to do right now.</p>
+            <p>The chart shows it instead of saying it: hourly bars for the 1-hr PM2.5, and NEA's own 24-hour average as a line, both in µg/m³. No invented index.</p>
+            <dl class="clocks-dl">
+              <div><dt>For right now</dt><dd>NEA's 1-hr PM2.5 and its band.</dd></div>
+              <div><dt>For planning tomorrow</dt><dd><a href="https://www.haze.gov.sg/" rel="noopener">NEA's 24-hr PSI forecast</a>. Schools and events plan with it.</dd></div>
+            </dl>
+          </div>
+          <div class="clocks-figs">
+            <figure>
+              <img src="/img/clocks-rising.webp" width="720" height="900" loading="lazy" decoding="async"
+                alt="Two clocks card for Jurong East, Mon 28 Sep, 4pm. The last hour: 186 µg/m³ PM2.5, High. The last 24 hours: 37 µg/m³ averaged, 24-hr PSI 80. Bars rise sharply in the last few hours while the 24-hr average line stays low." />
+              <figcaption><strong>When haze rolls in,</strong> the hourly bars jump while the daily average takes hours to follow.</figcaption>
+            </figure>
+            <figure>
+              <img src="/img/clocks-cleared.webp" width="720" height="900" loading="lazy" decoding="async"
+                alt="Two clocks card for the West, Mon 28 Sep, 4pm. The last hour: 26 µg/m³ PM2.5, Normal. The last 24 hours: 38 µg/m³ averaged, 24-hr PSI 81. The air has cleared but the 24-hr average stays high for a while." />
+              <figcaption><strong>When it clears,</strong> the gap runs the other way: the daily number stays high for a while.</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. Built to be shared -->
+      <section class="section" id="shared" aria-labelledby="shared-title">
+        <div class="wrap">
+          <div class="section-head">
+            <p class="kicker">Built to be shared</p>
+            <h2 id="shared-title">Made for the group chat.</h2>
+            <p class="sub">Haze news travels through family, class and running chats. One tap picks the right card. Each one prints the date, time, area and "Data: NEA via data.gov.sg", so a forwarded image stays honest.</p>
+          </div>
+          <ul class="cards">
+            <li>
+              <img src="/img/card-now.webp" width="720" height="900" loading="lazy" decoding="async"
+                alt="Now card: Air near Tampines, Mon 28 Sep, 4pm. Elevated, and rising. 83 µg/m³ 1-hr PM2.5. NEA's advice for the next hour: most people reduce strenuous outdoor activity; vulnerable people avoid it." />
+              <h3>Now</h3>
+              <p>For family and neighbourhood chats: NEA's own advice for most people and for vulnerable groups.</p>
+            </li>
+            <li>
+              <img src="/img/card-clocks.webp" width="720" height="900" loading="lazy" decoding="async"
+                alt="Two clocks card: the last hour 83 µg/m³, Elevated; the last 24 hours 32 µg/m³ averaged, 24-hr PSI 73, with the hourly bar chart." />
+              <h3>Two clocks</h3>
+              <p>For anyone asking why the numbers differ. The chart explains it without taking sides.</p>
+            </li>
+            <li>
+              <img src="/img/card-kids.webp" width="720" height="900" loading="lazy" decoding="async"
+                alt="For the kids, recess check card: Tampines, Mon 28 Sep, 4pm. Calm play only, for now. PM2.5 83, Elevated, rising. Swap running games for calm play for now." />
+              <h3>For our group</h3>
+              <p>For a parent group, a run club or a caregiver chat. Advice for one group, said plainly.</p>
+            </li>
+            <li>
+              <img src="/img/card-clear.webp" width="720" height="900" loading="lazy" decoding="async"
+                alt="All clear card: West, Mon 28 Sep, 4pm. Air's back to Normal. PM2.5 26 µg/m³. Fine to be out. Open the windows." />
+              <h3>All clear</h3>
+              <p>For the same chats, when the air is back to Normal. Relief is worth sharing too.</p>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 5. Why open source -->
+      <section class="section section-ink" id="open-source" aria-labelledby="oss-title">
+        <div class="wrap">
+          <div class="section-head">
+            <p class="kicker">Why open source</p>
+            <h2 id="oss-title">A health tool you can check.</h2>
+            <p class="sub">Trust is the whole point of HazeNow, so everything it does is public.</p>
+          </div>
+          <ul class="oss">
+            <li><h3>Free, for good</h3><p>No price, no premium tier, no "pro" features held back during a haze.</p></li>
+            <li><h3>No ads, no tracking, no account</h3><p>No analytics, no sign-up, nothing sold. Profiles are saved on your device only.</p></li>
+            <li><h3>Your location stays on your phone</h3><p>We use it only to pick the nearest NEA stations, on the device. It's never sent anywhere.</p></li>
+            <li><h3>Only NEA's data, credited</h3><p>Every number comes from NEA via data.gov.sg. We don't change readings or invent an index.</p></li>
+            <li><h3>Audit every line</h3><p>MIT licensed. The maths, the wording and the advice rules are all in the repository.</p></li>
+            <li><h3>One set of rules, every app</h3><p>Web, phone, Mac and integrations share one written spec and test cases, so they agree.</p></li>
+          </ul>
+          <p class="oss-cta"><a class="btn btn-light" href="%REPO_URL%" rel="noopener">Read the code on GitHub</a> <a class="link-light" href="%APP_BASE%how.html">How we calculate this</a></p>
+        </div>
+      </section>
+
+      <!-- 6. Southeast Asia -->
+      <section class="section" id="sea" aria-labelledby="sea-title">
+        <div class="wrap sea-grid">
+          <div>
+            <p class="kicker">Coming next</p>
+            <h2 id="sea-title">Southeast Asia.</h2>
+            <p>Haze doesn't stop at borders. Thailand is next: its Pollution Control Department publishes an hourly PM2.5 reading for each of its stations. We're confirming permission to use that data first.</p>
+            <p>Other countries will follow as data permission allows. Each one will use its own authority's numbers and its own words, the way HazeNow uses NEA's in Singapore.</p>
+          </div>
+          <ol class="sea-list" aria-label="Country status">
+            <li><span class="sea-name">Singapore</span><span class="status s-live"><i aria-hidden="true"></i>Live</span></li>
+            <li><span class="sea-name">Thailand</span><span class="status s-soon"><i aria-hidden="true"></i>Next · checking data licence</span></li>
+            <li><span class="sea-name">Malaysia, Indonesia, the Philippines, Vietnam and others</span><span class="status s-soon"><i aria-hidden="true"></i>Researching</span></li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- Updates -->
+      <section class="section section-tint" id="updates" aria-labelledby="updates-title">
+        <div class="wrap">
+          <div class="section-head section-head-row">
+            <div>
+              <p class="kicker">Updates</p>
+              <h2 id="updates-title">What's new.</h2>
+            </div>
+            <a class="more" href="%REPO_URL%/releases" rel="noopener">All releases on GitHub</a>
+          </div>
+          <ul class="updates">
+            <li><time datetime="2026-09-28">28 Sep 2026</time><h3>Share cards</h3><p>Now, Two clocks, For our group and All clear. The web app picks the right one in one tap; the Android and Apple apps have them too.</p></li>
+            <li><time datetime="2026-09-28">28 Sep 2026</time><h3>Pick your area, offline</h3><p>All 55 planning areas, searchable on the device, so typing your area sends nothing anywhere.</p></li>
+            <li><time datetime="2026-09-28">28 Sep 2026</time><h3>Fresher readings</h3><p>HazeNow now checks for NEA's new hourly reading from just after the hour, when NEA posts it, instead of waiting half an hour.</p></li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 7. About (COPY.md §18, verbatim) -->
+      <section class="section" id="about" aria-labelledby="about-title">
+        <div class="wrap about">
+          <h2 id="about-title">About HazeNow</h2>
+          <div class="about-body">
+            <p>I built HazeNow because the number most of us check during a haze, the 24-hr PSI, moves slowly. NEA also publishes the last hour's PM2.5, and recommends it for deciding what to do right now. HazeNow puts that number first, in plain words, using only NEA's data.</p>
+            <p>It's free and open source (MIT). No ads, no tracking, no account. Your location stays on your phone.</p>
+            <p class="sig">— Yong Quan Tan</p>
+            <ul class="about-links">
+              <li><a href="https://www.linkedin.com/in/yongquantan" rel="noopener me">LinkedIn</a></li>
+              <li><a href="https://kairoslabs.sg" rel="noopener">Kairos Labs · kairoslabs.sg</a><span>I run Kairos Labs, an applied AI studio.</span></li>
+              <li><a href="%REPO_URL%" rel="noopener">Source code on GitHub</a></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- 8. Footer -->
+    <footer class="site-footer">
+      <div class="wrap footer-grid">
+        <div class="footer-brand">
+          <p class="footer-name">
+            <svg class="mark mark-static" viewBox="0 0 100 100" aria-hidden="true" focusable="false"><circle cx="50" cy="38" r="17"/><rect x="17" y="61" width="66" height="7.5" rx="3.75"/><rect x="27" y="73.5" width="46" height="7.5" rx="3.75" fill-opacity="0.7"/><rect x="38" y="86" width="24" height="7.5" rx="3.75" fill-opacity="0.45"/></svg>
+            HazeNow
+          </p>
+          <p>Data: NEA via data.gov.sg</p>
+          <p>Your location stays on your device. We never send it anywhere. This site uses no cookies and no analytics.</p>
+          <p>Not an official NEA app. Not medical advice. In an emergency, call 995.</p>
+        </div>
+        <nav class="footer-links" aria-label="Footer">
+          <a href="%APP_BASE%">Open HazeNow</a>
+          <a href="%APP_BASE%how.html">How we calculate this</a>
+          <a href="%REPO_URL%" rel="noopener">GitHub</a>
+          <a href="%REPO_URL%/blob/main/LICENSE" rel="noopener">MIT licence</a>
+          <a href="https://data.gov.sg/" rel="noopener">data.gov.sg</a>
+        </nav>
+        <p class="footer-made">Made by <a href="#about">Yong Quan Tan</a></p>
+      </div>
+    </footer>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

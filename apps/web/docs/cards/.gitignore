@@ -1,0 +1,8 @@
+# Regenerate everything with `npm run cards -w hazenow-web`; only these representative cards are committed.
+*.png
+!elevated-now-picked.png
+!very_high-group-kids.png
+!elevated-clocks.png
+!all_clear-clear-picked.png
+!elevated-linkpreview.png
+!og-generic.png

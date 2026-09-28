@@ -11,7 +11,11 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import sg.hazenow.R
 import androidx.compose.ui.unit.sp
 import sg.hazenow.core.Band
 
@@ -46,14 +50,47 @@ fun HazeTheme(content: @Composable () -> Unit) {
         dark -> Dark
         else -> Light
     }
-    val base = Typography()
     MaterialTheme(
         colorScheme = scheme,
-        typography = base.copy(
-            displayLarge = base.displayLarge.copy(fontSize = 96.sp, lineHeight = 100.sp, fontWeight = FontWeight.Bold, letterSpacing = (-3).sp),
-            headlineSmall = base.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
-        ),
+        typography = HazeTypography,
         content = content,
+    )
+}
+
+/**
+ * Apfel Grotezk (SIL OFL 1.1, brand/fonts): Regular for body, Mittel (Medium) for headlines with tight
+ * tracking, Fett (Bold) for the big numbers. Glance widgets keep the system font (custom fonts aren't
+ * reliable in older launchers).
+ */
+val ApfelGrotezk = FontFamily(
+    Font(R.font.apfel_grotezk_regular, FontWeight.Normal),
+    Font(R.font.apfel_grotezk_mittel, FontWeight.Medium),
+    Font(R.font.apfel_grotezk_mittel, FontWeight.SemiBold),
+    Font(R.font.apfel_grotezk_fett, FontWeight.Bold),
+)
+
+private val HazeTypography: Typography = Typography().let { t ->
+    fun TextStyle.body() = copy(fontFamily = ApfelGrotezk, fontWeight = FontWeight.Normal)
+    fun TextStyle.head(tracking: Float) = copy(fontFamily = ApfelGrotezk, fontWeight = FontWeight.Medium, letterSpacing = (fontSize.value * tracking).sp)
+    t.copy(
+        displayLarge = t.displayLarge.copy(
+            fontFamily = ApfelGrotezk, fontWeight = FontWeight.Bold,
+            fontSize = 96.sp, lineHeight = 100.sp, letterSpacing = (-3).sp,
+        ),
+        displayMedium = t.displayMedium.copy(fontFamily = ApfelGrotezk, fontWeight = FontWeight.Bold, letterSpacing = (-1.5).sp),
+        displaySmall = t.displaySmall.copy(fontFamily = ApfelGrotezk, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp),
+        headlineLarge = t.headlineLarge.head(-0.02f),
+        headlineMedium = t.headlineMedium.head(-0.02f),
+        headlineSmall = t.headlineSmall.head(-0.02f),
+        titleLarge = t.titleLarge.head(-0.015f),
+        titleMedium = t.titleMedium.head(-0.01f),
+        titleSmall = t.titleSmall.head(-0.005f),
+        bodyLarge = t.bodyLarge.body(),
+        bodyMedium = t.bodyMedium.body(),
+        bodySmall = t.bodySmall.body(),
+        labelLarge = t.labelLarge.copy(fontFamily = ApfelGrotezk, fontWeight = FontWeight.Medium),
+        labelMedium = t.labelMedium.copy(fontFamily = ApfelGrotezk, fontWeight = FontWeight.Medium),
+        labelSmall = t.labelSmall.copy(fontFamily = ApfelGrotezk, fontWeight = FontWeight.Medium),
     )
 }
 

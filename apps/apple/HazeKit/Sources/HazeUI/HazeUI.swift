@@ -68,7 +68,10 @@ public struct BandChip: View {
 
     public var body: some View {
         Label(stale ? "\(band.label) \(HazeCopy.oldSuffix)" : band.label, systemImage: band.symbolName)
-            .font(compact ? .caption.weight(.semibold) : .subheadline.weight(.semibold))
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
+            .fixedSize(horizontal: false, vertical: true)
+            .font(compact ? .haze(.caption, weight: .semibold) : .haze(.subheadline, weight: .semibold))
             .foregroundStyle(band.textColor)
             .padding(.horizontal, compact ? 6 : 10)
             .padding(.vertical, compact ? 2 : 4)
@@ -148,24 +151,39 @@ public struct RegionGrid: View {
     public var snapshot: Snapshot
     public var highlight: String?
     public var compact: Bool
+    /// Tap a region to show that NEA station (nil = not selectable, e.g. widgets).
+    public var onSelect: ((String) -> Void)?
+    @Environment(\.dynamicTypeSize) private var typeSize
 
-    public init(snapshot: Snapshot, highlight: String? = nil, compact: Bool = false) {
+    public init(snapshot: Snapshot, highlight: String? = nil, compact: Bool = false, onSelect: ((String) -> Void)? = nil) {
         self.snapshot = snapshot
         self.highlight = highlight
         self.compact = compact
+        self.onSelect = onSelect
     }
 
     public var body: some View {
-        HStack(spacing: compact ? 4 : 6) {
-            ForEach(snapshot.orderedRegions, id: \.name) { item in
-                RegionCell(name: item.name, reading: item.reading, highlighted: item.name == highlight,
-                           mark: item.name == highlight ? (snapshot.locationMode == .gps ? "(nearest)" : "(your area)") : nil,
-                           compact: compact)
+        let cells = ForEach(snapshot.orderedRegions, id: \.name) { item in
+            let mark: String? = item.name == highlight ? (snapshot.locationMode == .gps ? "(nearest)" : "(your area)") : nil
+            let cell = RegionCell(name: item.name, reading: item.reading, highlighted: item.name == highlight, mark: mark, compact: compact)
+            if let onSelect {
+                Button { onSelect(item.name) } label: { cell }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Shows NEA's \(HazeFormat.regionName(item.name)) station")
+            } else {
+                cell
             }
+        }
+        // At accessibility text sizes, stack the regions so nothing breaks mid-word.
+        if !compact && typeSize.isAccessibilitySize {
+            VStack(spacing: 6) { cells }
+        } else {
+            HStack(spacing: compact ? 4 : 6) { cells }
         }
     }
 }
 
+/// COPY §14: "{Region} · {pm25} · {bandLabel}" (plus the band icon), "{Region} · offline", and "(nearest)"/"(your area)".
 public struct RegionCell: View {
     var name: String
     var reading: RegionReading
@@ -177,22 +195,33 @@ public struct RegionCell: View {
         let band = reading.pm25.map(HazeCompute.band(pm25:))
         VStack(spacing: 2) {
             Text(HazeFormat.regionName(name))
-                .font(compact ? .caption2 : .caption)
+                .font(compact ? .haze(.caption2) : .haze(.caption))
                 .foregroundStyle(.secondary)
                 .lineLimit(1).minimumScaleFactor(0.7)
             Text(reading.pm25.map(String.init) ?? "offline")
-                .font((reading.pm25 == nil ? Font.caption : (compact ? .callout : .title3)).monospacedDigit().weight(.semibold))
+                .font((reading.pm25 == nil ? Font.haze(.caption) : (compact ? .haze(.callout, weight: .bold) : .haze(.title3, weight: .bold))).monospacedDigit())
                 .foregroundStyle(band?.textColor ?? .secondary)
+                .lineLimit(1).minimumScaleFactor(0.6)
             if !compact, let band {
-                Image(systemName: band.symbolName).font(.system(size: 9)).foregroundStyle(band.textColor)
+                HStack(spacing: 3) {
+                    Image(systemName: band.symbolName).font(.system(size: 9))
+                    Text(band.label).font(.haze(.caption2, weight: .semibold))
+                }
+                .foregroundStyle(band.textColor)
+                .lineLimit(1).minimumScaleFactor(0.6)
+            }
+            if !compact, let mark {
+                Text(mark).font(.haze(.caption2)).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.6)
             }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, compact ? 4 : 8)
+        .padding(.horizontal, 2)
         .background(RoundedRectangle(cornerRadius: 8, style: .continuous)
             .fill((band?.color ?? .gray).opacity(highlighted ? 0.2 : 0.08)))
         .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous)
             .strokeBorder(highlighted ? (band?.textColor ?? .gray).opacity(0.7) : .clear, lineWidth: 1))
+        .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(reading.pm25.map { "\(HazeFormat.regionName(name)) · \($0) · \(HazeCompute.band(pm25: $0).label)\(mark.map { " \($0)" } ?? "")" }
             ?? "\(HazeFormat.regionName(name)) · offline")
@@ -240,5 +269,17 @@ public struct HazeMark: View {
         }
         .frame(width: size, height: size)
         .accessibilityHidden(true)
+    }
+}
+
+// MARK: - Trend arrow (Apfel Grotezk has no ▲▼ glyphs: always a vector symbol)
+
+public struct TrendArrow: View {
+    public var direction: TrendDirection
+    public init(_ direction: TrendDirection) { self.direction = direction }
+    public var body: some View {
+        Image(systemName: direction.symbolName)
+            .fontWeight(.bold)
+            .accessibilityLabel(direction == .up ? "rising" : direction == .down ? "easing" : "steady")
     }
 }

@@ -42,6 +42,8 @@ data class UiState(
     /** Location permission was refused; show the COPY §10 hint. */
     val locationDenied: Boolean = false,
     val locationFailed: Boolean = false,
+    /** Set by deep links (notification "Share" action) to open the share sheet. */
+    val shareRequested: Boolean = false,
 )
 
 class HazeViewModel(app: Application) : AndroidViewModel(app) {
@@ -64,7 +66,8 @@ class HazeViewModel(app: Application) : AndroidViewModel(app) {
         val s = _state.value.settings
         val data = withContext(Dispatchers.Default) { repo.compute(s) }
         // StateFlow equality means an unchanged publish (same updatedTimestamp) doesn't re-render.
-        _state.update { it.copy(data = if (s.mock != null) data else data ?: it.data) }
+        // Keep the last snapshot when a fetch fails or nothing usable came back (COPY §10, QA S9).
+        _state.update { it.copy(data = data ?: it.data) }
         data?.let { withContext(Dispatchers.IO) { Refresher.publish(getApplication(), it) } }
     }
 
@@ -108,6 +111,9 @@ class HazeViewModel(app: Application) : AndroidViewModel(app) {
         }
         _state.update { it.copy(loading = false, problem = problem) }
     }
+
+    fun requestShare() = _state.update { it.copy(shareRequested = true) }
+    fun consumeShareRequest() = _state.update { it.copy(shareRequested = false) }
 
     fun refresh() = viewModelScope.launch { refreshNow(force = true) }
 

@@ -247,3 +247,202 @@ We only use location to pick the right area. We never need precise GPS and never
 4. **Provenance reflects the mode:** "Near you · West station 3.2 km" vs "Tampines · East station 1.1 km" vs "Singapore (island average)".
 5. **Precision hygiene:** round any stored coordinate to 2 decimals (~1 km) before persisting; never log it; no analytics.
 6. Data file (shared by all clients): `packages/core/data/sg-areas.json` — `[{ "name": "Tampines", "aliases": ["Tampines East","Tampines West"], "lat": 1.354, "lon": 103.944 }]`, the 55 URA planning areas (centroids from the URA Master Plan 2019 planning-area boundary dataset on data.gov.sg) plus common estate names as aliases. Must be valid for every name listed.
+
+---
+
+# v1.5 amendments — hero number & brand type
+
+1. **No "~" on the hero number.** The big number is always a clean integer (`108`). Uncertainty lives in the small line under it: "Estimate for Tampines · range 83–117" (or "Measured at East station" when it's a direct station reading). Compact surfaces (`● 108 ▲`) never show "~" either. This supersedes principle 5's "prefixed ~".
+2. **Brand typeface: Apfel Grotezk** (SIL OFL, `brand/fonts`). Headlines Mittel 500 (−0.04em at display sizes), big numbers Fett 700 (−0.045em), body Regular 400. Menu bar/notch/Glance widgets keep the system font. Apfel has no ▲▼ glyphs: draw trend arrows as SVG/vector icons, not text.
+
+---
+
+# v1.6 — share system (see docs/SHARING.md for evidence, docs/share-cards/ for designs)
+
+**One tap, no choosing.** A prominent primary **Share** button (main screen, near the verdict; also in widgets' deep link and the notification action) opens a preview of the auto-picked card with a swipeable row of the other eligible cards beneath. Sending needs no choice.
+
+**Auto-pick (first match wins):**
+1. All-clear: band is Normal now and was ≥ Elevated within the last 12 h → **All clear** (with worst hour + hours above Normal for this episode).
+2. Profile has a sensitive/activity persona and band ≥ Elevated → **For our group**, persona variant by priority kids > elderly > heart_lung > pregnant > exercising > outdoor_worker:
+   - kids "For the kids · Recess check" · elderly "For Mum and Dad" · heart_lung "For heart and lung health" · pregnant "For mums-to-be" · exercising "Run check" · outdoor_worker "Site check". Verdict/actions from COPY.md for the strictest profile.
+3. Band ≥ Elevated → **Now card**.
+4. |1-hr PM2.5 − 24-hr avg PM2.5| ≥ 40 in either direction, or opened from "Why two numbers?" → **Two clocks**.
+5. Otherwise → **Now card**.
+Eligible alternates in the row: Now, Two clocks, For our group (current persona), All clear (only if rule 1 applies).
+
+**Every share payload = image + text + link.** Text per COPY.md §15 (update it to match each card's headline), ending with `hazenow.sg`. Link carries `?area=` so the link preview (card 6, server/OG) matches.
+**Every card image must print:** exact date and time, area, "Data: NEA via data.gov.sg", "Free and open source · Made by Yong Quan Tan", `hazenow.sg`. No Instant PSI, no "~", no "real number"/anti-NEA framing.
+**Quality:** render at exactly 1080×1350 (and 1200×630) pixels, independent of screen DPR; embed Apfel Grotezk; PNG; check text never clips at the largest numbers (e.g. 3-digit PM2.5, long area names like "Choa Chu Kang" — shrink-to-fit the headline).
+**Credit link:** in-app "Made by Yong Quan Tan" opens an About section (who, why, free/open source) linking LinkedIn first, then Kairos Labs, then GitHub. Cards show the name as text only.
+Haze receipt (card 5) is **not** in this build.
+
+---
+
+# v1.7 — parity fixes
+1. **Uncertainty range** (found on Android): the range must always contain the estimate. Range = min/max over valid stations within 1.5× the nearest station's distance (at least the two nearest), then widened to include the estimate. Test: Clementi estimate 120 must not show "range 137–140".
+2. About copy and stale-share behaviour: COPY.md §18–19.
+
+---
+
+# v2.0 — Southeast Asia
+
+Scope: HazeNow expands from Singapore to ASEAN + Timor-Leste. **Nothing above changes for Singapore**: the SG v1
+`Snapshot`, copy and behaviour stay exactly as specified (the SG adapter wraps the v1 code; tests prove the SPEC §7 fields
+are identical). Research: `docs/sea/*.md`. City-by-city status and the unblock list: `docs/sea/COVERAGE.md`.
+Reference implementation: `packages/core/src/countries/` (exported as `sea` from `hazenow`) and `services/proxy/`.
+
+## 1. The model
+
+```
+adapter (per source) → Observation[] → ObservationSet (per country) → buildCountrySnapshot(set, place) → CountrySnapshot
+```
+- **Observation**: one station or sensor, normalised: `stationId`, `name`, `country`, `lat/lon`, `grade`
+  (`reference`|`lowcost`), `pm25_1h`, `pm25_now` (crowd), `pm25_24h`, `official` (the authority's own index,
+  verbatim), `periodEnd` (end of the averaging window, ISO with the station's offset), `history`, `k`, `qc`, `attributionId`.
+- **CountrySnapshot** = every SPEC §7 field with the same name and meaning, plus: `country`, `status`, `level` (0–3),
+  `localBand {scaleId, key, labelEn, labelLocal, lang, color, shape, level, agency}`, `bandBasis`
+  (`pm25_1h`|`official_index`|`none`), `official {scaleId, name, value, category, averaging, param, agency}`,
+  `pm25Kind` (`official_1h`|`crowd_estimate`|null), `pm25_24h`, `nearest`, `stations`, `range`, `whoMultiple`,
+  `hotspots`, `attribution[]`, `notes[]`. `pm25` and `band` become **nullable** outside SG. `instantPsi` exists only for SG.
+- Coverage today: SG and TH are direct (clients call the authority). MY, ID, VN (Hanoi), PH and LA go through the proxy.
+  KH, MM, BN and TL are not covered.
+
+## 2. Transport and privacy
+
+- One client constant: `HAZENOW_EDGE` (the Railway proxy URL). Direct countries never depend on it.
+- Clients call **`GET {edge}/v1/{cc}/observations`** (no location) and build the snapshot **on the device** with the
+  shared builder. The location never leaves the device, as before.
+- `GET {edge}/v1/{cc|auto}/snapshot?lat&lon[&profile=]` exists only for clients that can't run the builder (SwiftBar,
+  Telegram, Home Assistant). The proxy rounds coordinates to 2 dp and never logs query strings. Apps and the web must not use it.
+- If the proxy is down: SG and TH keep working, and proxied countries show their last snapshot with its real age (stale rules
+  below). Never substitute another country's data.
+- Every proxy response has `attribution[]`, CORS `*`, and is served within a fixed upstream budget (`/health`).
+
+## 3. Jurisdiction (the reading decides, not the person)
+
+1. `locateCountry(lat, lon)` (point-in-polygon, Natural Earth, coastal snap 0.1°) picks the country. The **scale, words,
+   agency, advice, language default and time zone all follow that country**.
+2. **Never interpolate official values across a border.** The builder drops observations whose `country` differs from the
+   set's (`notes: "other_country_dropped"`). A Johor Bahru user gets DOE Malaysia even if an NEA station is closer. The proxy
+   answers 409 if asked for `sg` at a Johor point.
+3. On the first switch into another country, show once: "You're in Johor. Bands and advice now follow Malaysia's DOE."
+   Saved places keep their own country. Notifications use each place's own scale. Crossing a border never fires an alert.
+4. Times: relative age first ("12 min ago"). Clock times are in the **station's local time with its zone when it differs
+   from the device's** ("4pm ICT"). Offsets: TH/VN/LA/KH/WIB +7, SG/MY/PH/BN/WITA +8, WIT/TL +9, MM +6:30.
+
+## 4. The big number (always µg/m³ PM2.5, always an integer, never "~")
+
+Order (builder rule 2):
+1. Official 1-hr PM2.5 when the nearest fresh official station is **≤ 25 km** away.
+2. Else a **community-sensor estimate** from usable sensors **≤ 10 km** away (`pm25Kind: "crowd_estimate"`).
+3. Else official 1-hr up to **60 km** away (`notes: "nearest_far"`, always with a range).
+4. Else **no number** (`pm25: null`). Show the official index row and its band, not an empty or zero number.
+
+IDW (power 2, haversine) uses the nearest station plus any within 1.5× its distance (max 5), all at the same hour.
+Within 0.5 km it snaps. The range follows v1.7 and is always present for crowd estimates. Labels:
+- official: "Measured at {station} · {km} km · {time} {zone}" (or "Estimate for {place} · range a–b").
+- crowd: "Estimate from {n} community sensors · not a government reading", with `range`. Never present a crowd
+  estimate as the authority's number.
+
+## 5. The chip: local words for the number they describe (REGIONAL option E)
+
+| country | scale id | chip classifies | words (local / English) | level map (by the authority's advice) |
+|---|---|---|---|---|
+| SG | `sg_nea_1h` | 1-hr number | Normal · Elevated · High · Very High | 0 · 1 · 2 · 3 |
+| TH | `th_aqi` | **published 24-hr Thai AQI** (never the 1-hr number) | ดีมาก · ดี · ปานกลาง · เริ่มมีผลกระทบต่อสุขภาพ · มีผลกระทบต่อสุขภาพ (Excellent · Satisfactory · Moderate · Starting to affect health · Affects health) | 0 · 0 · 1 · 2 · 3 |
+| MY | `my_api` | published DOE API (24-hr based) | Baik · Sederhana · Tidak Sihat · Sangat Tidak Sihat · Merbahaya · Kecemasan | 0 · 0 · 1 · 2 · 3 · 3 |
+| ID | `id_ispu` | 1-hr number with ISPU breakpoints (BMKG's own practice); falls back to the published ISPU | Baik · Sedang · Tidak Sehat · Sangat Tidak Sehat · Berbahaya | 0 · 0 · 1 · 2 · 3 |
+| VN | `vn_aqi` | published hourly VN_AQI (NowCast) | Tốt · Trung bình · Kém · Xấu · Rất xấu · Nguy hại | 0 · 0 · 1 · 2 · 3 · 3 |
+| PH | `ph_dao_2020_14` | 1-hr number (DAO categories) | Good · Fair · Unhealthy for sensitive groups · Very Unhealthy · Acutely unhealthy · Emergency | 0 · 0 · 1 · 2 · 2 · 3 |
+| LA, KH, MM, TL | none | nothing | no chip: show the number + "{x}× the WHO daily guideline." | none |
+
+Rules:
+- Use the scale registry (`BAND_SCALES`, also served at `/v1/scales`) verbatim. Show `labelLocal` in the local
+  language UI and `labelEn` in English, and always say whose words they are ("PCD", "DOE", "BMKG").
+- `band` (`normal`…`very_high`) is **derived from `level`** and only drives COPY.md's verdict matrix, actions,
+  notifications and hysteresis. **It is never shown as a word outside SG.** The chip shows `localBand`.
+- Colours: `localBand.color` is the authority's hue. Clients may mute it (v1.2 §11), but must keep the hue family
+  (ID "Sedang" is blue, not amber). Keep the shape cue (`circle`/`half`/`triangle`/`octagon`).
+- **Never compute an index number** (no "Instant API/ISPU/AQI"). Classify only concentrations the scale defines, or index
+  values the authority published.
+- Cross-country surfaces (map, compare list, cross-border share) use one neutral µg/m³ ramp with WHO 2021 marks
+  (15 / 37.5 / 75) and no band words.
+
+## 6. Official row (always visible when present, smaller)
+
+`officialLine()`: "{agency} {name} ({24-hr|hourly}): {value} · {labelLocal} ({labelEn})", e.g. "PCD Thai AQI (24-hr): 19 ·
+ดีมาก (Excellent)", "DOE Malaysia API (24-hr): 96 · Sederhana (Moderate)", "KLH ISPU (24-hr): 168 · Tidak Sehat". The
+neutral explainer: "The 24-hr index averages the last 24 hours. The number above is the latest hour." Never write "lagging".
+If `official` is null (PH, LA, Makassar, Batam), hide the row. The chart plots hourly bars + `history[].pm25Avg24h`
+where the authority publishes a 24-h concentration (TH, MY inverted from a PM2.5-driven API, ID ISPU). Otherwise it plots bars only.
+
+## 7. Verdicts and actions
+
+- `countryVerdict(snapshot, profile)` returns `{headline, short, secondLine, forWhom, headlineLocal, shortLocal,
+  secondLineLocal}`.
+- **SG:** COPY.md, unchanged.
+- **TH:** its own table (`THAI_VERDICTS`, English + Thai, derived from PCD's advice per Thai AQI category, split into
+  general / at-risk as PCD does), because the verdict follows the 24-hr Thai AQI while the big number is the last hour.
+  The now-signal is the second line, in order: stale → rising ≥ 20 → **"The last hour is higher than the 24-hour
+  average. Check again in an hour."** (1-hr ≥ 1.5× and ≥ +15 over the 24-h mean) → easing ≤ −20. Thai strings are drafts
+  and need native review.
+- **MY, ID, VN, PH:** COPY.md matrix via the level-mapped `band`, until `COPY.<cc>.md` exists. When the chip is an index
+  and the hour is well above the 24-h mean, the second line says so ("Nearby sensors read higher than the 24-hour average…"
+  for crowd). Stale uses the station-local time.
+- **No chip:** LA/KH/MM/TL show "There's no official air-quality scale here." + the WHO line. A country with a scale but
+  nothing official nearby (e.g. HCMC today) shows "No official reading near here."
+- Actions: `actions(band, profile)` from v1.2 (masks never first; never N95 for kids). No actions when `band` is null.
+- Words stay calm: "for now", no banned words. "Berbahaya"/"Merbahaya" appear only as the authority's band name, never
+  in a headline.
+
+## 8. Freshness and polling
+
+- `stale` = `observedAt` older than 2 h 15 min (same as SG). Stations older than that are dropped while fresher ones exist.
+  Crowd sensors older than 15 min are dropped.
+- **TH direct** (clients): `getAQI_JSON` once per hour at ~hh:30, and `getHistoryData` for the 6 nearest stations from
+  hh:02 ICT every 2 min until the newest row is non-null (stop at hh:30), else idle. A `null` in the newest row means "not
+  yet", not "offline". Never more than 1 req/min.
+- **Proxied countries:** poll `/v1/{cc}/observations` every 5 min in the foreground, and once at hh:10 and hh:20 local in the
+  background. The proxy's per-source TTLs follow each publication cycle (DOE settles by ~hh:08–13, BMKG ~hh:17, ISPU ~hh:01,
+  Hanoi 5-min data, AirGradient 5 min). Honour 429 `Retry-After`, and on 503 keep the last snapshot with its real age.
+
+## 9. Attribution and sharing
+
+- Render every entry of `snapshot.attribution` (text + link) on the main screen footer and in share images. Crowd data is
+  CC BY-SA 4.0 ("AirGradient contributors").
+- Share text names the scale and the authority: "PM2.5 142 µg/m³ in Palangka Raya · Sangat Tidak Sehat (ISPU category, BMKG
+  hourly) · via HazeNow". Never mix scales in one line.
+
+## 10. Platform notes
+
+- **Android:** `air4thai.pcd.go.th` serves an incomplete certificate chain. OkHttp fails without the Let's Encrypt `YR1`
+  intermediate and `Root YR` (X1 cross-sign). Bundle both for that host only (PEMs + SHA-256 in `services/proxy/src/certs.ts`)
+  or fetch TH through the proxy. Chrome and Apple platforms complete the chain themselves (verified in Chrome).
+- **Web:** TH is direct (CORS `*` on `/forweb/`). Everything else needs `HAZENOW_EDGE`.
+- **Swift/Kotlin ports:** port `countries/` 1:1 (scales, borders, builder, verdicts). The fixtures in
+  `packages/core/fixtures/sea/` and the vectors below must give identical results.
+
+## 11. Test vectors (v2.0)
+
+- Scales: `id_ispu(55.4)` → Sedang (0), `id_ispu(55.5)` → Tidak Sehat (1). `th_aqi` pm25 15.0 → ดีมาก, 15.1 → ดี, 37.6 →
+  เริ่มมีผลกระทบต่อสุขภาพ (2). Index: `th_aqi(101)` → level 2, `my_api(100)` → Sederhana (0), `my_api(101)` → Tidak Sihat (1),
+  `vn_aqi(151)` → Xấu (2). `ph_dao(35.1)` → USG (1).
+- MY inversion: `myApiToPm25(95)` = 46.5, `(96)` = 47.3, `(71)` = 27.7, `(84)` = 37.9.
+- Crowd: EPA(140, 58) = 110.8, EPA(25, 80) = 11.95, EPA(300, ·) ≈ 289.5. k: anchor [100,110,90] vs sensor [80,88,72] → 1.25.
+- Borders: (1.436, 103.786) → SG, (1.4655, 103.7578) → MY, (1.13, 104.05) → ID, (17.88, 102.74) → TH, (17.97, 102.63) → LA,
+  (20.45, 99.88) → MM, (5, 90) → none.
+- Live fixture (2026-09-28 17:00 ICT): Bangkok (13.7563, 100.5018) → pm25 14, `official_1h`, Thai AQI 19 ดีมาก, 24 hourly
+  points, 24-h line 11.5. Palangka Raya (−2.2161, 113.9135) → 166, Sangat Tidak Sehat, band `high`, official ISPU 168 Tidak
+  Sehat. Kuching → pm25 null, DOE API 96. Vientiane → no chip, WHO line.
+
+## 12. What the client UIs must change
+
+1. Country resolution (§3) and per-place country for saved places. The area picker gains other countries' cities.
+2. Nullable `pm25` / `band` and every empty state that follows (number hidden, official row + band only; no-scale state).
+3. The chip renders `localBand` (local word + English + agency), not the SG band names, outside SG.
+4. Provenance lines for `official_1h` vs `crowd_estimate`, with the range.
+5. The official row generalised (§6), plus the 24-h line in the chart only where published.
+6. Thai (and later other) verdict strings, `headlineLocal` in local-language UIs, Thai numerals/Buddhist-era dates optional.
+7. The attribution footer from `snapshot.attribution`, and share text naming the scale.
+8. The `HAZENOW_EDGE` setting, fallback when it is down, 429/503 handling.
+9. Android: the Air4Thai certificate fix (§10).

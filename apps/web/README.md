@@ -36,6 +36,7 @@ service worker, and shows a small "MOCK DATA" ribbon.
 | `south_offline` | `&region=south` shows ~89, the average of the other stations, with an offline note |
 | `all_offline_stale` | latest hour all −1: falls back to 3pm, marked old/stale |
 | `rising_fast` | every region +25 on the previous hour: "Getting worse. Check again in an hour." |
+| `all_clear` | back to Normal after an Elevated afternoon: the share sheet suggests the All clear card |
 | `network_error` | every request fails: the error state with "Try again" |
 
 Example: `http://localhost:4173/?mock=south_offline&region=south`.
@@ -50,6 +51,22 @@ the 55 planning areas plus estate aliases). If location is denied we never ask a
 the area list opens and a quiet "Use my location" button stays in the place sheet. Home, Work/School and
 one more place can be saved and switched with one tap. Coordinates are rounded to 2 decimals (~1 km)
 before use or storage and never leave the device.
+
+## Sharing (SPEC v1.6)
+
+The Share button (under the number) opens a sheet with the auto-picked card from `pickShareCard()` in
+`packages/core/src/share.ts`, a row of the other eligible cards, and **Send** (Web Share with the PNG,
+the card's text and a link carrying `?area=`/`?region=` and `?s=<card>`). Fallbacks: download the image,
+copy the text, copy the link. Cards are drawn on a canvas at exactly 1080×1350 (link preview 1200×630),
+independent of screen density, after the Apfel Grotezk fonts have loaded (`src/cards.ts`).
+
+- Designs: `docs/share-cards/*.html` (repo root). Exported examples for every scenario and persona:
+  `apps/web/docs/cards/*.png`.
+- QA page (dev server only, not in the production build): `npm run dev -w hazenow-web`, then open
+  `/cards.html` (all scenarios) or `/cards.html?sample=1` (the designs' own sample data).
+- **Link previews:** `public/og.png` is the generic card 6 ("Air right now, near you"). A static site
+  can't render a per-area OG image; the planned Railway service will render live per-area previews
+  for `?area=` links later.
 
 ## Data and polling
 

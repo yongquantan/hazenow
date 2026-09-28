@@ -8,6 +8,8 @@ import {
   calmLine,
   CHART_COPY,
   findArea,
+  nearestArea,
+  type ShareCardId,
   FOOTER_LINE,
   formatSgtTime,
   getSnapshot,
@@ -34,7 +36,7 @@ import {
   SCENARIOS,
   searchAreas,
   shareText,
-  TREND_ARROWS,
+  uncertaintyLine,
   trendWord,
   trendWords,
   uncertainty,
@@ -49,12 +51,12 @@ import {
 } from "hazenow";
 import { chartSvg } from "./chart";
 import { mapSvg } from "./map";
-import { shareCardPng } from "./sharecard";
-import { bandShape, esc, store } from "./util";
+import { bandShape, esc, store, trendIcon } from "./util";
 
 const SITE = "hazenow.sg";
 const SITE_URL = "https://hazenow.sg/";
-const REPO_URL = "https://github.com/hazenow/hazenow";
+const REPO_URL = "https://github.com/yongquantan/hazenow";
+const LINKEDIN_URL = "https://www.linkedin.com/in/yongquantan";
 
 /* ---------------------------------------------------------------- places (SPEC v1.4) */
 
@@ -102,6 +104,7 @@ interface State {
   nextCheck: number | null;
   online: boolean;
   toast: string | null;
+  aboutOpen: boolean;
 }
 
 const params = new URLSearchParams(location.search);
@@ -156,6 +159,7 @@ const state: State = {
   nextCheck: null,
   online: navigator.onLine,
   toast: null,
+  aboutOpen: false,
 };
 
 const app = document.getElementById("app")!;
@@ -343,43 +347,45 @@ async function copy(text: string, done: string) {
   }
 }
 
-const sharePlaceName = () => (state.where.kind === "area" ? state.where.name : undefined);
-
-async function shareTextAction() {
-  const s = state.snap;
-  if (!s) return;
-  const text = shareText(s, SITE, { placeName: sharePlaceName() });
-  if (navigator.share) {
-    try {
-      await navigator.share({ title: "HazeNow", text });
-      return;
-    } catch (e) {
-      if ((e as Error).name === "AbortError") return;
-    }
-  }
-  copy(text, "Copied. Paste it into WhatsApp or Telegram.");
+/** Place name printed on share cards: the picked area, the nearest area to a GPS point, or the region. */
+function sharePlaceName(): string | undefined {
+  const w = state.where;
+  if (w.kind === "area") return w.name;
+  if (w.kind === "gps") return nearestArea(w.point).name;
+  return undefined; // regions and the island view use the core's own wording ("Air in the West")
 }
 
-async function shareImageAction() {
+/** Share link: carries the place (so the link preview can match) and the card. */
+function shareLink(card: ShareCardId): string {
+  const w = state.where;
+  const q =
+    w.kind === "area"
+      ? `area=${encodeURIComponent(w.name)}`
+      : w.kind === "gps"
+        ? `area=${encodeURIComponent(nearestArea(w.point).name)}`
+        : w.kind === "region"
+          ? `region=${w.region}`
+          : "region=island";
+  return `${SITE_URL}?${q}&s=${card}`;
+}
+
+function openShare(opts: { initial?: ShareCardId; fromWhy?: boolean } = {}) {
   const s = state.snap;
   if (!s) return;
-  try {
-    const blob = await shareCardPng(s, placeLabelOf(state.where));
-    const file = new File([blob], `hazenow-${formatSgtTime(s.observedAt)}.png`, { type: "image/png" });
-    if (navigator.canShare?.({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], text: shareText(s, SITE, { placeName: sharePlaceName() }) });
-        return;
-      } catch (e) {
-        if ((e as Error).name === "AbortError") return;
-      }
-    }
-    download(blob, file.name);
-    toast("Image saved.");
-  } catch (e) {
+  const placeName = sharePlaceName();
+  // The card renderer loads on first use, keeping the main bundle small.
+  import("./sharesheet").then(({ openShareSheet }) => openShareSheet({
+    snap: s,
+    profile: state.profile,
+    ctx: { placeName, point: point(), fromWhyTwoNumbers: opts.fromWhy },
+    placeName: placeName ?? (state.where.kind === "region" ? regionLabel(state.where.region) : "singapore"),
+    linkFor: shareLink,
+    initial: opts.initial,
+    toast,
+  })).catch((e) => {
     console.warn(e);
-    toast("Couldn't make the image.");
-  }
+    toast("Couldn't make the picture.");
+  });
 }
 
 function download(blob: Blob, name: string) {
@@ -409,6 +415,7 @@ const target = `<svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="tru
 function header() {
   const open = !!state.sheet;
   return `<header class="top">
+  ${ribbon()}
   <a class="brand" href="/" aria-label="HazeNow home">${logo()}<span>HazeNow</span></a>
   ${
     state.firstRun
@@ -536,7 +543,7 @@ function statusDetail(s: Snapshot): string | null {
   return null;
 }
 
-function nowSection(s: Snapshot) {
+function nowSection(s: Snapshot, afterShare = "") {
   const info = bandInfo(s.band);
   const v = verdict(s.band, state.profile, s.trend, { stale: s.stale, observedAt: s.observedAt, history: s.history });
   const u = uncertainty(s, point());
@@ -557,15 +564,18 @@ function nowSection(s: Snapshot) {
   ${v.secondLine ? `<p class="second">${esc(v.secondLine)}</p>` : ""}
 
   <div class="reading" role="group" aria-label="${esc(`PM2.5 ${u.a11y}, ${info.label}${tw ? `, ${tw}` : ""}`)}">
-    <p class="num" aria-hidden="true">${u.approx ? `<span class="tilde">~</span>` : ""}${s.pm25}</p>
+    <p class="num" aria-hidden="true">${s.pm25}</p>
     <div class="num-side" aria-hidden="true">
       <span class="unit">µg/m³</span>
       <span class="unit-sub">PM2.5 · last hour</span>
       ${chip}
     </div>
   </div>
-  ${u.text ? `<p class="range">${esc(u.text)}</p>` : ""}
-  <p class="trend"><span class="arrow" aria-hidden="true">${tw ? TREND_ARROWS[s.trend.direction] : ""}</span>${esc(words)}</p>
+  <p class="range">${esc(uncertaintyLine(s, point(), provOpts()))}</p>
+  <p class="official"><span class="official-label">${esc(officialPsiLabel(s.officialPsi24h, psiLabel))}</span> <span class="official-cap">${esc(OFFICIAL_CAPTION)}</span></p>
+  <div class="share-primary"><button class="btn btn-solid" data-action="share-open" data-key="share-open">${iconShare()} Share</button></div>
+  ${afterShare}
+  <p class="trend">${tw ? trendIcon(s.trend.direction, "arrow") : ""}${esc(words)}</p>
   <p class="anchor">${esc(bandAnchor(s.band))}</p>
 
   <p class="prov">${esc(prov.text)} · <span data-age>${esc(prov.age)}</span></p>
@@ -573,10 +583,7 @@ function nowSection(s: Snapshot) {
   ${state.locNote ? `<p class="flag">${esc(state.locNote)}</p>` : ""}
   ${detail ? `<p class="flag" role="status">${esc(detail)}</p>` : ""}
 
-  <div class="official">
-    <p><span class="official-label">${esc(officialPsiLabel(s.officialPsi24h, psiLabel))}</span> <span class="official-cap">${esc(OFFICIAL_CAPTION)}</span></p>
-    <details class="why"><summary>${esc(WHY_TWO_NUMBERS_LINK)}</summary><p>${esc(WHY_TWO_NUMBERS)}</p></details>
-  </div>
+  <details class="why"><summary>${esc(WHY_TWO_NUMBERS_LINK)}</summary><p>${esc(WHY_TWO_NUMBERS)}</p><p><button class="link" data-action="share-why" data-key="share-why">Share the two numbers</button></p></details>
 
   ${
     acts.length
@@ -604,7 +611,7 @@ function chartSection(s: Snapshot) {
     </figcaption>
   </figure>
   <div class="row-actions">
-    <button class="btn" data-action="share-image" data-key="share-image">${iconShare()} Share this chart</button>
+    <button class="btn" data-action="share-clocks" data-key="share-clocks">${iconShare()} Share this chart</button>
     <a class="link" href="/how.html">How we calculate this</a>
   </div>
 </section>`;
@@ -639,7 +646,7 @@ function appsSection() {
   const w = state.where;
   const cliArg = w.kind === "area" ? `--area "${w.name}"` : w.kind === "region" ? `--region ${w.region}` : "--region central";
   const embedQ = w.kind === "area" ? `area=${encodeURIComponent(w.name)}` : w.kind === "region" ? `region=${w.region}` : "region=central";
-  const embed = `<iframe src="${SITE_URL}?embed=1&${embedQ}" title="HazeNow: air right now" width="320" height="190" style="border:0;border-radius:14px" loading="lazy"></iframe>`;
+  const embed = `<iframe src="${SITE_URL}?embed=1&${embedQ}" title="HazeNow: air right now" width="320" height="190" style="border:0;border-radius:14px;overflow:hidden" loading="lazy"></iframe>`;
   const s = state.snap;
   const badge = s ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(badgeSvg(s))}` : "";
   const item = (name: string, sub: string, status: string, extra = "") =>
@@ -656,13 +663,13 @@ function appsSection() {
       "Terminal",
       "For status bars, tmux and scripts.",
       `<button class="btn-quiet" data-action="copy" data-copy="${esc(`npx hazenow ${cliArg}`)}" data-key="copy-cli">Copy</button>`,
-      `<pre class="snip"><code>npx hazenow ${esc(cliArg)}</code></pre>`,
+      `<pre class="snip" aria-label="Terminal command"><code>npx hazenow ${esc(cliArg)}</code></pre>`,
     )}
     ${item(
       "Embed on your site",
       "A small live card for community pages and condo portals.",
       `<button class="btn-quiet" data-action="copy" data-copy="${esc(embed)}" data-key="copy-embed">Copy</button>`,
-      `<pre class="snip"><code>${esc(embed)}</code></pre>`,
+      `<pre class="snip" aria-label="Embed code"><code>${esc(embed)}</code></pre>`,
     )}
     ${
       badge
@@ -680,9 +687,25 @@ function footer() {
   ${s ? `<p>${esc(provenance(s, point(), nowMs()).detail)}</p>` : ""}
   <p>${esc(FOOTER_LINE)}</p>
   <p>${esc(PRIVACY_LINE)}</p>
-  <p><a href="/how.html">How we calculate this</a> · <a href="${REPO_URL}" rel="noopener">View the code (MIT)</a> · <button class="link" data-action="share-text" data-key="share-text-foot">Share</button></p>
+  <p><a href="/how.html">How we calculate this</a> · <a href="${REPO_URL}" rel="noopener">View the code (MIT)</a> · <button class="link" data-action="share-open" data-key="share-foot">Share</button> · <button class="link" data-action="about" data-key="about" aria-expanded="${state.aboutOpen}" aria-controls="about">Made by Yong Quan Tan</button></p>
+  ${state.aboutOpen ? aboutSection() : ""}
   <p class="fine">Not medical advice, and not an official NEA app. If you feel unwell, see a doctor. In an emergency, call 995.</p>
 </footer>`;
+}
+
+/** COPY §18, verbatim. */
+function aboutSection() {
+  return `<section class="about" id="about" aria-labelledby="about-h">
+  <h2 id="about-h">About HazeNow</h2>
+  <p>I built HazeNow because the number most of us check during a haze, the 24-hr PSI, moves slowly. NEA also publishes the last hour's PM2.5, and recommends it for deciding what to do right now. HazeNow puts that number first, in plain words, using only NEA's data.</p>
+  <p>It's free and open source (MIT). No ads, no tracking, no account. Your location stays on your phone.</p>
+  <p class="about-sig">— Yong Quan Tan</p>
+  <ul class="about-links">
+    <li><a href="${LINKEDIN_URL}" rel="noopener" target="_blank">LinkedIn</a></li>
+    <li><a href="https://kairoslabs.sg" rel="noopener" target="_blank">Kairos Labs · kairoslabs.sg</a><br><span class="about-sub">I run Kairos Labs, an applied AI studio.</span></li>
+    <li><a href="${REPO_URL}" rel="noopener" target="_blank">Source code on GitHub</a></li>
+  </ul>
+</section>`;
 }
 
 function statusText() {
@@ -713,19 +736,17 @@ function emptyState(): string {
 }
 
 function ribbon() {
-  return MOCK ? `<div class="mock-ribbon" role="note">MOCK DATA · ${esc(MOCK)}</div>` : "";
+  return MOCK ? `<p class="mock-ribbon">MOCK DATA · ${esc(MOCK)}</p>` : "";
 }
 
 function mainView(): string {
   const s = state.snap;
   const fr = state.firstRun && !state.sheet ? firstRunCard() : "";
-  if (!s) return `${ribbon()}${header()}<main class="page"><div class="col-a">${fr}${emptyState()}</div></main>${footer()}${toastEl()}`;
-  return `${ribbon()}<div class="veil" aria-hidden="true"></div>
+  if (!s) return `${header()}<main class="page"><div class="col-a">${emptyState()}${fr}</div></main>${footer()}${toastEl()}`;
+  return `<div class="veil" aria-hidden="true"></div>
 ${header()}
 <main class="page">
-  <div class="col-a">${fr}${nowSection(s)}
-    <div class="share-cta"><button class="btn btn-solid" data-action="share-text" data-key="share-text">${iconShare()} Share the reading</button></div>
-  </div>
+  <div class="col-a">${nowSection(s, fr)}</div>
   <div class="col-b">${chartSection(s)}${regionsSection(s)}</div>
   <div class="col-full">${appsSection()}</div>
 </main>
@@ -739,7 +760,7 @@ function toastEl() {
 function embedView(): string {
   const s = state.snap;
   if (!s) {
-    return `${ribbon()}<div class="embed"><p class="e-verdict">${state.error ? "Can't reach NEA's data right now" : "Getting NEA's latest reading…"}</p><p class="e-meta">HazeNow</p></div>`;
+    return `<main>${ribbon()}<div class="embed"><h1 class="e-verdict">${state.error ? "Can't reach NEA's data right now" : "Getting NEA's latest reading…"}</h1><p class="e-meta">HazeNow</p></div></main>`;
   }
   const info = bandInfo(s.band);
   const v = verdict(s.band, ["general"], s.trend);
@@ -747,13 +768,13 @@ function embedView(): string {
   const tw = trendWord(s.history);
   const w = state.where;
   const href = `${SITE_URL}?${w.kind === "area" ? `area=${encodeURIComponent(w.name)}` : `region=${w.kind === "region" ? w.region : s.nearestRegion || "central"}`}`;
-  return `${ribbon()}<a class="embed" href="${href}" target="_blank" rel="noopener" aria-label="${esc(`${v.short}. PM2.5 ${u.a11y}, ${info.label}${tw ? `, ${tw}` : ""}, measured ${formatSgtTime(s.observedAt)}. Open HazeNow`)}">
-  <p class="e-verdict">${esc(v.short)}</p>
-  <p class="e-num">${u.approx ? "~" : ""}${s.pm25}<span>µg/m³ PM2.5</span></p>
-  <p class="e-chip"><span class="chip${s.stale ? " is-old" : ""}">${bandShape(info.shape, info.color, 12, { outline: s.stale })}${esc(info.label)}${s.stale ? " (old)" : ""}</span> <span aria-hidden="true">${tw ? TREND_ARROWS[s.trend.direction] : ""}</span></p>
+  return `<main>${ribbon()}<a class="embed" href="${href}" target="_blank" rel="noopener" aria-label="${esc(`${v.short}. PM2.5 ${u.a11y}, ${info.label}${tw ? `, ${tw}` : ""}, measured ${formatSgtTime(s.observedAt)}. Open HazeNow`)}">
+  <h1 class="e-verdict">${esc(v.short)}</h1>
+  <p class="e-num">${s.pm25}<span>µg/m³ PM2.5</span></p>
+  <p class="e-chip"><span class="chip${s.stale ? " is-old" : ""}">${bandShape(info.shape, info.color, 12, { outline: s.stale })}${esc(info.label)}${s.stale ? " (old)" : ""}</span> ${tw ? trendIcon(s.trend.direction, "e-arrow") : ""}</p>
   <p class="e-psi">NEA 24-hr PSI ${s.officialPsi24h ?? "not available"}</p>
   <p class="e-meta">${esc(placeLabelOf(state.where))} · ${esc(formatSgtTime(s.observedAt))} · NEA<span>HazeNow ↗</span></p>
-</a>`;
+</a></main>`;
 }
 
 /* ---------------------------------------------------------------- render */
@@ -781,7 +802,7 @@ function applyTheme() {
 
 function render() {
   const s = state.snap;
-  const key = JSON.stringify([s?.publishedAt, s?.pm25, s?.nearestRegion, s?.locationMode, s?.stale, s?.officialPsi24h, s?.history.length, state.where, state.firstRun, state.places, state.sheet, state.geoExplain, state.geoBlocked, state.profile, state.profileOpen, state.locating, state.locNote, state.error, state.fromCache, state.online]);
+  const key = JSON.stringify([s?.publishedAt, s?.pm25, s?.nearestRegion, s?.locationMode, s?.stale, s?.officialPsi24h, s?.history.length, state.where, state.firstRun, state.places, state.sheet, state.geoExplain, state.geoBlocked, state.profile, state.profileOpen, state.locating, state.locNote, state.error, state.fromCache, state.online, state.aboutOpen]);
   applyTheme();
   if (key === lastRenderKey) {
     renderStatus();
@@ -893,11 +914,19 @@ app.addEventListener("click", (e) => {
       state.profile = ["general"];
       saveProfile(true);
       break;
-    case "share-text":
-      shareTextAction();
+    case "share-open":
+      openShare();
       break;
-    case "share-image":
-      shareImageAction();
+    case "share-clocks":
+      openShare({ initial: "clocks" });
+      break;
+    case "share-why":
+      openShare({ fromWhy: true });
+      break;
+    case "about":
+      state.aboutOpen = !state.aboutOpen;
+      render();
+      if (state.aboutOpen) document.getElementById("about")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
       break;
     case "copy":
       copy(el.dataset.copy ?? "", "Copied.");
@@ -983,6 +1012,7 @@ setInterval(() => {
   refreshGrantedLocation();
 }
 
+// Register right away (not on "load") so the precache is in place as early as possible.
 if (import.meta.env.PROD && "serviceWorker" in navigator && !EMBED && !MOCK) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
+  navigator.serviceWorker.register("/sw.js").catch(() => {});
 }

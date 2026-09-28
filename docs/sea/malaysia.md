@@ -1,6 +1,6 @@
 # Malaysia: air quality data for HazeNow
 
-Research captured live on **2026-09-28, 17:11–18:25 SGT (= MYT, UTC+8)**, during the haze episode.
+Research captured live on **2026-09-28, 17:11–18:30 SGT (= MYT, UTC+8)**, during the haze episode.
 Every `curl` below was actually run and outputs are trimmed. Anything I could not confirm with a
 live call is marked **unverified**.
 
@@ -14,7 +14,7 @@ Cheras (KL) 84. 61 stations were "Moderate" and 6 "Good". At the same time, EPA-
 - **Best authoritative source: DOE APIMS (eQMS portal).** It has undocumented but clean **JSON** (ArcGIS
   REST + `publicportalapims/*`), 68 stations, hourly, no key, and no rate limit observed. **It publishes the API index only, not
   a PM2.5 concentration, and the index is built on the 24-hr PM2.5 average.** Malaysia has **no public 1-hr PM2.5**
-  (verified: no concentration field in any APIMS endpoint or the data.gov.my catalogue).
+  (checked: no concentration field in any APIMS endpoint or the data.gov.my catalogue).
 - **The index lags, as SG's 24-hr PSI does.** With PM2.5 dominant (67 of 68 stations today), the API can be inverted exactly to the
   **24-hr PM2.5 average** (DOE publishes the breakpoints). That gives a "24-hr line" for the chart, but not the "now" number.
 - **Best crowd source: AirGradient.** It has **8 live outdoor sensors in Malaysia** (6 Klang Valley, 1 Johor, 1 Perlis) plus 1 Sabah
@@ -32,7 +32,7 @@ Cheras (KL) 84. 61 stations were "Moderate" and 6 "Good". At the same time, EPA-
 
 | source | agency | what (PM2.5 1-hr? index?) | stations (count verified today) | cadence & latency (verified) | API/endpoint | key? | CORS | licence / ToS for redistribution in a free MIT app | reliability notes |
 |---|---|---|---|---|---|---|---|---|---|
-| **APIMS current readings (ArcGIS REST)** | Jabatan Alam Sekitar (DOE), NRES | **API only** (per-station max sub-index) + dominant pollutant (`PARAM_SELECTED`: `PM2.5` at 67/68 today, `O3` at 1). **No concentration, no 1-hr PM2.5** | **68** (65 fixed `CA…` + 3 mobile `MCAQM…`), all 16 states/FTs: Sarawak 13, Johor 8, Selangor 6, Sabah 6, … | hourly; 17:00 value already served at 17:12:30; 18:00 first seen at **18:0x** (see §Evidence 4) | `https://eqms.doe.gov.my/api3/publicmapproxy/PUBLIC_DISPLAY/CAQM_MCAQM_Current_Reading/MapServer/0/query?where=1%3D1&outFields=*&returnGeometry=false&f=json` | no | **No for third parties.** `Access-Control-Allow-Origin: https://eqmp.doe.gov.my` (fixed, not echoed). Native OK, web needs proxy | **None stated.** DOE site has only a disclaimer ("Kerajaan Malaysia tidak bertanggungjawab…"). Undocumented endpoint. Treat as "permission unverified". Attribute "DOE Malaysia (APIMS)" | ArcGIS 11.3 behind DOE's own proxy. Frontend bundle hard-codes it (`restapi = https://eqms.doe.gov.my/api3/publicmapproxy`). URL has changed before (`apims.doe.gov.my` now 404) |
+| **APIMS current readings (ArcGIS REST)** | Jabatan Alam Sekitar (DOE), NRES | **API only** (per-station max sub-index) + dominant pollutant (`PARAM_SELECTED`: `PM2.5` at 67/68 today, `O3` at 1). **No concentration, no 1-hr PM2.5** | **68** (65 fixed `CA…` + 3 mobile `MCAQM…`), all 16 states/FTs: Sarawak 13, Johor 8, Selangor 6, Sabah 6, … | hourly. **18:00 hour: first stations at 18:01:59, 65/68 by 18:08:00, 68/68 at 18:13** (partial/null in between, see §Evidence 4) | `https://eqms.doe.gov.my/api3/publicmapproxy/PUBLIC_DISPLAY/CAQM_MCAQM_Current_Reading/MapServer/0/query?where=1%3D1&outFields=*&returnGeometry=false&f=json` | no | **No for third parties.** `Access-Control-Allow-Origin: https://eqmp.doe.gov.my` (fixed, not echoed). Native OK, web needs proxy | **None stated.** DOE site has only a disclaimer ("Kerajaan Malaysia tidak bertanggungjawab…"). Undocumented endpoint. Treat as "permission unverified". Attribute "DOE Malaysia (APIMS)" | ArcGIS 11.3 behind DOE's own proxy. Frontend bundle hard-codes it (`restapi = https://eqms.doe.gov.my/api3/publicmapproxy`). URL has changed before (`apims.doe.gov.my` now 404) |
 | **APIMS portal JSON** | DOE | API per station per hour (history), state lists, rankings | same stations | hourly; `apitablehourly` served 17:00 at 17:13 | `https://eqms.doe.gov.my/api3/publicportalapims/{statelist, apiranking, apitablehourly?stateid=N&datetime=YYYY-MM-DDTHH:00:00&, datatrendchart?stateid=N&datetime=…&}` | no | same fixed `eqmp` origin | same | `datatrendchart` = 25 hourly points per station (24 h history in one call, good for the chart). `apiranking` returned values that differ from the map layer (Langkawi 24 vs 44). Don't use it |
 | data.gov.my `air_pollution` | DOSM / DOE | **monthly national mean** concentration per pollutant | national | **last row 2022-12-01** (verified) | `https://api.data.gov.my/data-catalogue/?id=air_pollution` | no | `*` | **CC BY 4.0** (stated on dataset page) | Useless for "now". Proves the open-data portal has no hourly AQ dataset |
 | data.gov.my weather (MET Malaysia) | MET Malaysia via data.gov.my | forecasts and warnings, **no PM / haze** | n/a | issued 17:00 today | `https://api.data.gov.my/weather/{forecast,warning}/` | no | `*` | CC BY 4.0 (portal) | Not an AQ source. `api.met.gov.my/v2.1` returns 401 (`METToken`) |
@@ -84,8 +84,22 @@ Be polite anyway: 1 req/min max, and cache in the Worker.
 
 **4. Publication latency (1-min polling of both endpoints from 17:13 to 18:30)**
 ```
-(filled from my_apims_poll.log; see §Evidence 4 note below)
+time      | ArcGIS layer: stations by DATETIME (of 68)     | sample API                          | portal apitablehourly (Johor) latest
+17:59:58  | {17:00: 68}                                    | CA34J 95  CA65Q 96  CA16W 84        | 17:00 (76)
+18:00:59  | {17:00: 68}                                    |                                     | 17:00
+18:01:59  | {18:00: 42}   26 stations DATETIME+API = null  | CA34J 100 CA65Q null CA16W null     | 17:00
+18:03:59  | {18:00: 47}                                    |                                     | 17:00
+18:06:00  | {18:00: 42}   (went backwards)                 |                                     | 17:00
+18:08:00  | {18:00: 65}   3 still null                     | CA34J 100 CA65Q 96 CA16W 87 MCAQM002 158 | 17:00
+18:10:02  | {18:00: 65}                                    |                                     | 18:00 (78)
+18:13:02  | {18:00: 68}   all complete, stable to 18:30    | CA34J 100 CA65Q 96 CA16W 87 MCAQM002 158 | 18:00 (78)
+(17:55:06: one non-JSON response from both endpoints, OK again at 17:56)
 ```
+**Result:** the ArcGIS layer starts serving the new hour **~1–2 min after the hour**, but it is **rewritten in place station
+by station**. For about 7 minutes, a third of the stations have `DATETIME: null, API: null`, and the count even went backwards (47 → 42).
+Most stations are complete by **~hh:08**. The portal `apitablehourly` switches over later (~hh:10). **Gotcha:** a reader that
+polls at hh:02 sees many "offline" stations that are only mid-update. Treat a null `API` in the first 10 min of the hour as "keep
+the previous hour's value", not "offline". The poll plan: first fetch at hh:08, then retry at hh:10/hh:15 for stragglers.
 
 **5. DOE methodology PDF** (`https://eqms.doe.gov.my/Documents/APIMS/API_Calculation.pdf`, HTTP 200, fetched 17:14):
 the averaging period is "PM2.5: **24 Jam / 24 hours**" (PM2.5 was added in 2017), "API = MAX(SI SO2, SI PM10, SI PM2.5, SI O3(8h), SI O3(1h), SI NO2, SI CO)".
@@ -248,8 +262,8 @@ is usable in MY. It also shows **the lag problem in numbers**: in Johor Bahru th
    - `instantPsi`: **do not compute**. SG's PSI formula is meaningless in MY.
 3. **Nulls:** `API` null/"NA"/"N/A" means offline (the APIMS JS checks all three). Stations drop to "N/A" (grey `#b3b3b3`). Mobile
    stations (`MCAQM…`, `STATION_CATEGORY: "Mobile "`, trailing space!) move over time. Re-read lat/lon every fetch.
-4. **Polling:** from hh:05, poll every 2 min until the new `DATETIME` appears (see §Evidence 4 for the measured lag), then
-   idle until the next hour. ≤1 req/min. No rate limit was observed, but it is a government ArcGIS box, so cache in the Worker and fan out.
+4. **Polling:** first fetch at **hh:08** (65/68 stations done by then today), then hh:10 and hh:15 for stragglers, then idle
+   until the next hour. Merge per station: during hh:00–hh:10, a null `API`/`DATETIME` means "mid-update, keep the previous hour". ≤1 req/min. No rate limit was observed, but it is a government ArcGIS box, so cache in the Worker and fan out.
 5. **Gotchas:** fixed `eqmp` CORS origin (a typo of `eqms`?), so it may be "fixed" to lock down further. The host moved from
    `apims.doe.gov.my` (now 404) to `eqms.doe.gov.my` without notice. `apiranking` disagrees with the map layer. Wrap everything in
    one adapter with schema checks. All three countries share UTC+8. Sabah/Sarawak are the same timezone.

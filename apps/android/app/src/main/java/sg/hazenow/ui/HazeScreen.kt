@@ -101,6 +101,7 @@ import sg.hazenow.core.HazeCore
 import sg.hazenow.core.Insight
 import sg.hazenow.core.LocationMode
 import sg.hazenow.core.Profile
+import sg.hazenow.core.TrendDirection
 import sg.hazenow.data.HazeData
 import sg.hazenow.data.LocationHelper
 import sg.hazenow.data.Settings
@@ -114,6 +115,23 @@ private const val NEA_HAZE_URL = "https://www.haze.gov.sg/"
 /** Band colour adjusted to meet [target] contrast on [bg] (SPEC v1.2 §11). Never mixes hues. */
 private fun Band.on(bg: Color, target: Double): Color =
     Color(Contrast.ensure(argb, bg.toArgb().toLong() and 0xFFFFFFFFL, target))
+
+/** Trend arrow as a vector (Apfel Grotezk has no ▲▼ glyphs; SPEC v1.5). Decorative: the words carry the meaning. */
+@Composable
+fun TrendArrow(direction: TrendDirection, tint: Color, size: Dp = 12.dp) {
+    Canvas(Modifier.size(size)) {
+        val w = this.size.width
+        val p = Path().apply {
+            when (direction) {
+                TrendDirection.UP -> { moveTo(w / 2, w * 0.08f); lineTo(w * 0.95f, w * 0.88f); lineTo(w * 0.05f, w * 0.88f) }
+                TrendDirection.DOWN -> { moveTo(w * 0.05f, w * 0.12f); lineTo(w * 0.95f, w * 0.12f); lineTo(w / 2, w * 0.92f) }
+                TrendDirection.STEADY -> { moveTo(w * 0.12f, w * 0.05f); lineTo(w * 0.92f, w / 2); lineTo(w * 0.12f, w * 0.95f) }
+            }
+            close()
+        }
+        drawPath(p, tint)
+    }
+}
 
 /** COPY §3: shape carries meaning: circle, half-gauge circle, triangle, octagon. */
 @Composable
@@ -165,6 +183,14 @@ fun HazeScreen(vm: HazeViewModel) {
     var areaPicker by rememberSaveable { mutableStateOf<String?>(null) }
     var showPlaces by rememberSaveable { mutableStateOf(false) }
     var showNotifAsk by rememberSaveable { mutableStateOf(false) }
+    var showLicences by rememberSaveable { mutableStateOf(false) }
+    var showAbout by rememberSaveable { mutableStateOf(false) }
+    var showShare by rememberSaveable { mutableStateOf(false) }
+    var shareFromWhy by rememberSaveable { mutableStateOf(false) }
+    // Deep links (band-change notification "Share" action, widgets): open the share sheet once data is in.
+    LaunchedEffect(state.shareRequested, state.data != null) {
+        if (state.shareRequested && state.data != null) { shareFromWhy = false; showShare = true; vm.consumeShareRequest() }
+    }
     val firstRun = state.settingsLoaded && !state.settings.firstRunDone
 
     val locationPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
@@ -218,34 +244,15 @@ fun HazeScreen(vm: HazeViewModel) {
         modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
         topBar = {
             LargeTopAppBar(
-                title = {
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("HazeNow", fontWeight = FontWeight.SemiBold)
-                            if (state.settings.mock != null) {
-                                Spacer(Modifier.width(10.dp))
-                                Surface(color = MaterialTheme.colorScheme.errorContainer, shape = RoundedCornerShape(6.dp)) {
-                                    Text(
-                                        "MOCK DATA · ${state.settings.mock}",
-                                        Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onErrorContainer,
-                                    )
-                                }
-                            }
-                        }
-                        if (!firstRun) state.data?.let {
-                            Text(state.settings.placeName ?: Format.place(it.snapshot), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                },
+                // Title only: the place and the mock badge live in the content, so large text can't clip them (QA S14).
+                title = { Text("HazeNow", fontWeight = FontWeight.SemiBold, maxLines = 1) },
                 actions = {
                     if (state.loading) {
                         CircularProgressIndicator(Modifier.size(20.dp).padding(end = 4.dp), strokeWidth = 2.dp)
                     } else {
                         IconButton(onClick = { vm.refresh() }) { Icon(Icons.Filled.Refresh, "Refresh") }
                     }
-                    IconButton(onClick = { state.data?.let { Share.share(ctx, it, dark) } }, enabled = state.data != null) {
+                    IconButton(onClick = { shareFromWhy = false; showShare = true }, enabled = state.data != null) {
                         Icon(Icons.Filled.Share, "Share")
                     }
                     IconButton(onClick = { showInfo = true }) { Icon(Icons.Outlined.Info, "How we calculate this") }
@@ -271,9 +278,33 @@ fun HazeScreen(vm: HazeViewModel) {
                 verticalArrangement = Arrangement.spacedBy(14.dp),
                 modifier = Modifier.fillMaxSize().navigationBarsPadding(),
             ) {
+                item {
+                    Column {
+                        state.settings.mock?.let { m ->
+                            Surface(color = MaterialTheme.colorScheme.errorContainer, shape = RoundedCornerShape(6.dp)) {
+                                Text(
+                                    "MOCK DATA · $m",
+                                    Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                )
+                            }
+                            Spacer(Modifier.height(6.dp))
+                        }
+                        Text(
+                            state.settings.placeName ?: Format.place(data.snapshot),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.semantics { heading() },
+                        )
+                    }
+                }
                 when (state.problem) {
                     LoadProblem.OFFLINE -> item { Notice("You're offline. Showing the reading from ${Format.clock(data.snapshot.observedAt)}.") }
-                    LoadProblem.API_ERROR -> item { Notice("Can't reach NEA's data right now. We'll try again in a few minutes.") }
+                    // COPY §10: keep the last snapshot and say which reading it is.
+                    LoadProblem.API_ERROR -> item {
+                        Notice("Can't reach NEA's data right now. Showing the reading from ${Format.clock(data.snapshot.observedAt)}. We'll try again in a few minutes.")
+                    }
                     else -> {}
                 }
                 item {
@@ -287,7 +318,7 @@ fun HazeScreen(vm: HazeViewModel) {
                         onEditPlaces = { showPlaces = true },
                     )
                 }
-                item { VerdictCard(data, offline, onWho = { showProfiles = true }, onWhy = { showWhy = true }) }
+                item { VerdictCard(data, offline, onWho = { showProfiles = true }, onWhy = { showWhy = true }, onShare = { shareFromWhy = false; showShare = true }) }
                 item { Provenance(data.insight, state, data) }
                 item { ActionsCard(data.insight, onMore = { showTips = true }) }
                 item { ChartCard(data, onWhy = { showWhy = true }) }
@@ -302,7 +333,7 @@ fun HazeScreen(vm: HazeViewModel) {
                         onElevated = vm::setElevatedAlerts,
                     )
                 }
-                item { Footer(onInfo = { showInfo = true }, onNea = ::openNea) }
+                item { Footer(onInfo = { showInfo = true }, onNea = ::openNea, onLicences = { showLicences = true }, onAbout = { showAbout = true }) }
             }
         }
     }
@@ -311,6 +342,9 @@ fun HazeScreen(vm: HazeViewModel) {
         ProfileSheet(state.settings.profiles, onDone = { vm.setProfiles(it); showProfiles = false })
     }
     if (showInfo) InfoSheet(onDismiss = { showInfo = false })
+    if (showLicences) LicencesSheet(onDismiss = { showLicences = false })
+    if (showAbout) AboutSheet(onDismiss = { showAbout = false })
+    if (showShare) state.data?.let { ShareSheet(it, state.settings, shareFromWhy, onDismiss = { showShare = false }) }
     if (showTips) state.data?.let { TipsSheet(it.insight, onNea = ::openNea, onDismiss = { showTips = false }) }
     if (showWhy) {
         AlertDialog(
@@ -318,6 +352,9 @@ fun HazeScreen(vm: HazeViewModel) {
             title = { Text(Insight.WHY_TWO_NUMBERS_LINK) },
             text = { Text(Insight.WHY_TWO_NUMBERS) },
             confirmButton = { TextButton(onClick = { showWhy = false }) { Text("OK") } },
+            dismissButton = {
+                TextButton(onClick = { showWhy = false; shareFromWhy = true; showShare = state.data != null }) { Text("Share this") }
+            },
         )
     }
     locationAsk?.let { purpose ->
@@ -416,7 +453,7 @@ private fun Notice(text: String) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun VerdictCard(d: HazeData, offline: Boolean, onWho: () -> Unit, onWhy: () -> Unit) {
+private fun VerdictCard(d: HazeData, offline: Boolean, onWho: () -> Unit, onWhy: () -> Unit, onShare: () -> Unit) {
     val s = d.snapshot
     val i = d.insight
     val surface = MaterialTheme.colorScheme.surfaceContainer
@@ -446,6 +483,13 @@ private fun VerdictCard(d: HazeData, offline: Boolean, onWho: () -> Unit, onWhy:
                         style = MaterialTheme.typography.labelMedium, color = muted,
                     )
                 }
+                Spacer(Modifier.weight(1f))
+                // SPEC v1.6: prominent primary Share, next to the verdict.
+                Button(onClick = onShare, contentPadding = PaddingValues(horizontal = 18.dp, vertical = 8.dp)) {
+                    Icon(Icons.Filled.Share, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Share")
+                }
             }
             Spacer(Modifier.height(12.dp))
             // 1. Verdict. Live region only here, so TalkBack announces when the verdict (band) changes.
@@ -474,18 +518,17 @@ private fun VerdictCard(d: HazeData, offline: Boolean, onWho: () -> Unit, onWhy:
                     Text("PM2.5 · last hour", style = MaterialTheme.typography.bodySmall, color = muted)
                 }
             }
-            i.rangeLine?.let {
-                Text(it, style = MaterialTheme.typography.bodyMedium, color = muted)
-                Spacer(Modifier.height(6.dp))
-            }
+            // SPEC v1.5: uncertainty lives here, never as "~" on the number.
+            Text(i.sourceLine, style = MaterialTheme.typography.bodyMedium, color = muted)
+            Spacer(Modifier.height(10.dp))
             FlowRow {
                 BandChip(s.band, cardBg, stale = i.stale)
                 Spacer(Modifier.width(10.dp))
-                Text(
-                    "${s.trend.direction.arrow} ${i.trendWords}",
-                    style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium,
-                    modifier = Modifier.padding(vertical = 6.dp),
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 6.dp)) {
+                    TrendArrow(s.trend.direction, MaterialTheme.colorScheme.onSurface, 12.dp)
+                    Spacer(Modifier.width(6.dp))
+                    Text(i.trendWords, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                }
             }
             Spacer(Modifier.height(6.dp))
             Text(i.anchor, style = MaterialTheme.typography.bodyMedium, color = muted)
@@ -493,12 +536,11 @@ private fun VerdictCard(d: HazeData, offline: Boolean, onWho: () -> Unit, onWhy:
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Spacer(Modifier.height(10.dp))
             // Official figure: always visible, smaller, no "lagging" (COPY §6).
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(i.officialPsiLabel, style = MaterialTheme.typography.titleSmall)
-                    Text(Insight.PSI_CAPTION, style = MaterialTheme.typography.bodySmall, color = muted)
-                }
-                TextButton(onClick = onWhy) { Text(Insight.WHY_TWO_NUMBERS_LINK) }
+            // Stacked (not side by side) so large text never squeezes the label (QA S14).
+            Text(i.officialPsiLabel, style = MaterialTheme.typography.titleSmall)
+            Text(Insight.PSI_CAPTION, style = MaterialTheme.typography.bodySmall, color = muted)
+            TextButton(onClick = onWhy, contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp)) {
+                Text(Insight.WHY_TWO_NUMBERS_LINK)
             }
         }
     }
@@ -680,10 +722,12 @@ private fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChang
 }
 
 @Composable
-private fun Footer(onInfo: () -> Unit, onNea: () -> Unit) {
+private fun Footer(onInfo: () -> Unit, onNea: () -> Unit, onLicences: () -> Unit, onAbout: () -> Unit) {
     Column(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         TextButton(onClick = onInfo) { Text("How we calculate this") }
         TextButton(onClick = onNea) { Text("Planning for tomorrow? NEA's 24-hr PSI forecast") }
+        TextButton(onClick = onAbout) { Text("Made by Yong Quan Tan") }
+        TextButton(onClick = onLicences) { Text("Open-source licences") }
         Text(
             Insight.FOOTER,
             style = MaterialTheme.typography.bodySmall,

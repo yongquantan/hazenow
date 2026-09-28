@@ -121,9 +121,9 @@ public enum TrendDirection: String, Codable, Sendable {
     /// SF Symbol equivalent.
     public var symbolName: String {
         switch self {
-        case .up: "arrowtriangle.up.fill"
-        case .down: "arrowtriangle.down.fill"
-        case .steady: "arrowtriangle.right.fill"
+        case .up: "arrow.up"
+        case .down: "arrow.down"
+        case .steady: "arrow.right"
         }
     }
 }

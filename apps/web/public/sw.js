@@ -1,21 +1,16 @@
 /* HazeNow service worker: app shell offline. Air-quality data is NOT cached here;
    the page keeps the last snapshot on-device and marks it stale, so offline is always honest. */
-const VERSION = "hazenow-v3";
-const SHELL = ["/", "/how.html", "/manifest.webmanifest", "/icons/favicon.svg", "/icons/icon-192.png", "/fonts/instrument-sans.woff2", "/fonts/instrument-serif.woff2"];
+// Both values are filled in at build time (vite.config.ts → precacheManifest): every emitted file,
+// including the hashed JS/CSS, so the very first offline launch has everything it needs.
+const VERSION = "hazenow-__BUILD__";
+const PRECACHE = /*__PRECACHE__*/ ["/", "/how.html"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
       const cache = await caches.open(VERSION);
-      await cache.addAll(SHELL);
-      // Also precache the hashed JS/CSS referenced by the pages.
-      for (const page of ["/", "/how.html"]) {
-        try {
-          const html = await (await fetch(page, { cache: "no-cache" })).text();
-          const assets = [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map((m) => m[1]);
-          await cache.addAll([...new Set(assets)]);
-        } catch {}
-      }
+      // cache: "reload" bypasses the HTTP cache so we never precache a stale index.html.
+      await cache.addAll(PRECACHE.map((u) => new Request(u, { cache: "reload" })));
       await self.skipWaiting();
     })(),
   );
@@ -44,11 +39,14 @@ self.addEventListener("fetch", (event) => {
       (async () => {
         try {
           const res = await fetch(req);
-          const cache = await caches.open(VERSION);
-          cache.put(url.pathname === "/how.html" ? "/how.html" : "/", res.clone());
+          if (res.ok) {
+            const cache = await caches.open(VERSION);
+            cache.put(url.pathname.startsWith("/how") ? "/how.html" : "/", res.clone());
+          }
           return res;
         } catch {
-          return (await caches.match(url.pathname.startsWith("/how") ? "/how.html" : "/")) || Response.error();
+          const cache = await caches.open(VERSION);
+          return (await cache.match(url.pathname.startsWith("/how") ? "/how.html" : "/")) || Response.error();
         }
       })(),
     );

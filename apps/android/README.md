@@ -26,7 +26,7 @@ Instant PSI is **not shown anywhere**, per SPEC v1.2 §1. The core module still 
 
 **Everything else:**
 - **Profiles:** General, Kids, Older adults, Pregnant, Asthma/COPD/heart, Exercising outdoors and Works outdoors. They are multi-select, and the strictest verdict wins. They are stored in DataStore on the device.
-- **Share:** the COPY §15 text (no verdict) plus a PNG card of the chart.
+- **Share:** see "Share system" below.
 - **Widgets (Glance):**
   - The small widget shows `● 105 ▲` and the band word.
   - The medium widget is resizable. It shows the short verdict, `105 Elevated ▲`, "5pm · NEA", the place, the NEA 24-hr PSI and the chart.
@@ -48,7 +48,34 @@ Instant PSI is **not shown anywhere**, per SPEC v1.2 §1. The core module still 
   - A `<monochrome>` layer supports Android 13+ themed icons.
 - **Notification and QS tile icon:** `brand/svg/mark-small-template.svg` as a white vector (`ic_stat_haze.xml`). Haze watch keeps the live number as its status-bar icon.
 - **Medium widget header:** the mark, with its dot in the band colour. On dark backgrounds Very High uses `#B06BC4`. The haze lines never change (`ChartPainter.markBitmap`).
-- Screenshot: `docs/screenshots/icon.png`.
+- **Typeface:** Apfel Grotezk (SIL OFL 1.1), from `brand/fonts`, bundled in `res/font`.
+  - Compose Typography: headlines and titles use Mittel (Medium) with tight letter spacing; the big numbers use Fett (Bold); body text uses Regular.
+  - Glance widgets keep the system font, because older launchers don't load custom fonts reliably.
+  - The full OFL text (`res/raw/ofl_apfel_grotezk.txt`) is shown in **Open-source licences** in the app's footer.
+- Screenshots: `docs/screenshots/icon.png`, `14-main-apfel-grotezk.png`, `15-licences.png`.
+
+## Share system (SPEC v1.6)
+
+- **One tap, no choosing.** A primary **Share** button sits next to the verdict. Share is also on the top bar, in the "Why two numbers?" dialog ("Share this") and as an action on band-change notifications (`--ez share true`).
+- The sheet shows a large preview of the auto-picked card, with the other eligible cards in a `HorizontalPager` underneath. **Send** shares the PNG through a FileProvider, plus `EXTRA_TEXT` with the text and a link like `https://hazenow.sg/?area=tampines`.
+- **Core (`core/.../Share.kt`):** a port of `packages/core/src/share.ts` with the same names, ids (`now|clocks|group|clear`), rules, persona chips and strings.
+  - `pickShareCard` implements rules 1–5 and the alternates.
+  - Also included: `episodeStats`, `shareCardContent`, `shareCardText`, `shareFileName` and `formatCardWhen`.
+  - `ShareTest` mirrors the TS test vectors one for one.
+- **Rendering (`render/ShareCardRenderer.kt`):**
+  - Cards are drawn with Android `Canvas` and `StaticLayout` in Apfel Grotezk, at exactly **1080×1350** px, plus the **1200×630** link preview. They don't depend on screen density.
+  - Layout, spacing and colours follow the HTML designs in `docs/share-cards`.
+  - Headlines shrink until they fit without clipping. This was tested with "Choa Chu Kang" and 3-digit PM2.5.
+  - Trend arrows are vectors.
+  - Every card prints the date and time, the area, "Data: NEA via data.gov.sg", "Free and open source · Made by Yong Quan Tan" and `hazenow.sg`.
+- **Stale readings (COPY §19):** cards still share, but the place/time line reads "{Area} · reading from {time} (latest available)" and the headline becomes "Latest NEA reading is delayed." The trend is hidden on stale cards and in stale share text (an old trend could mislead). Stale wording avoids "now": "NEA’s advice for that hour", "This reading is for the 3pm hour.", "The 3pm hour" on Two clocks, and "Check hazenow.sg for NEA’s next update." instead of "Next check at …" on group cards. The Two clocks chart ends at the reading's hour, not "Now". On stale Two clocks cards the long place/time line moves to its own row under the header, and the headline and chart shrink slightly so the card keeps normal spacing (parity with Apple).
+- **About (COPY §18):** "Made by Yong Quan Tan" in the footer opens "About HazeNow", with the signature "— Yong Quan Tan" and links to LinkedIn, then Kairos Labs, then GitHub.
+- **Card exports:** only 6 representative PNGs are committed in `docs/cards/`; everything else there is git-ignored. To regenerate the full set (about 40 cards: every mock scenario, every persona, and a long-name stress case) on a debug build:
+  ```sh
+  adb shell am broadcast -a sg.hazenow.DEBUG_EXPORT_CARDS -p sg.hazenow
+  adb logcat -s HazeNowCards                       # picked card + share text per case
+  adb pull /sdcard/Android/data/sg.hazenow/files/cards/. docs/cards/
+  ```
 
 ## Data and refresh (SPEC v1.3)
 
@@ -115,7 +142,7 @@ adb shell am start -n sg.hazenow/.MainActivity --es place home           # switc
 **Deterministic mock data (debug builds only).** The scenario is saved to DataStore, so the widgets, tile and notifications use it too. A red **MOCK DATA** badge is shown whenever it is active.
 ```sh
 adb shell am start -n sg.hazenow/.MainActivity --es mock <scenario>   # or: --es mock off
-#   normal | elevated | high | very_high | south_offline | all_offline_stale | rising_fast | network_error
+#   normal | elevated | high | very_high | south_offline | all_offline_stale | rising_fast | all_clear | network_error
 adb shell am broadcast -a sg.hazenow.DEBUG_MOCK -p sg.hazenow --es mock high   # same, without opening the app
 ```
 - The fixtures are in raw NEA response shape, in `app/src/debug/assets/mock/<scenario>/{pm25,psi}.json`. They are generated by `tools/gen_mock_fixtures.py`, which copies `packages/core/fixtures/scenarios/<scenario>/` instead if that folder exists.
@@ -174,7 +201,7 @@ keyPassword=...
 Bump `versionCode` and `versionName` in `app/build.gradle.kts` for every release.
 
 ### F-Droid
-- The app has no proprietary dependencies: no Play Services, Firebase, analytics or crash reporting. It uses only AndroidX, Kotlin, kotlinx and OkHttp from Google Maven and Maven Central, all under Apache-2.0.
+- The app has no proprietary dependencies: no Play Services, Firebase, analytics or crash reporting. It uses only AndroidX, Kotlin, kotlinx and OkHttp from Google Maven and Maven Central, all under Apache-2.0. The bundled Apfel Grotezk font is under the SIL OFL 1.1.
 - `dependenciesInfo { includeInApk = false; includeInBundle = false }` removes the Google-encrypted dependency blob.
 - **Mock data and the debug receiver are debug-only.** They live in `src/debug/` and are not in release APKs.
 - **Reproducible builds:**

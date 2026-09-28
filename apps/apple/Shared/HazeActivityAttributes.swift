@@ -9,6 +9,7 @@ struct HazeActivityAttributes: ActivityAttributes {
         var pm25: Int
         var band: Band
         var arrow: String
+        var direction: TrendDirection
         var verdictShort: String
         var officialPsi24h: Int?
         var observedAt: Date
@@ -20,6 +21,7 @@ struct HazeActivityAttributes: ActivityAttributes {
             pm25 = s.pm25
             band = s.band
             arrow = s.trend.direction.arrow
+            direction = s.trend.direction
             verdictShort = HazeCompute.verdict(for: s, profiles: profiles).short
             officialPsi24h = s.officialPsi24h
             observedAt = s.observedAt
@@ -28,7 +30,8 @@ struct HazeActivityAttributes: ActivityAttributes {
             accessibility = HazeCompute.accessibleLabel(s)
         }
 
-        var numberText: String { (estimate ? "~" : "") + "\(pm25)" }
+        /// Always a clean integer (SPEC v1.5).
+        var numberText: String { "\(pm25)" }
     }
 
     /// "Central" / "Your location"

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Share card: all clear</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@font-face{font-family:'Apfel Grotezk';src:url(/_blob/7bbf2d2961f8f71175d54522f4495026) format('woff2');font-weight:400}@font-face{font-family:'Apfel Grotezk';src:url(/_blob/9904fa6eee09b2961b48fce95531de93) format('woff2');font-weight:500}@font-face{font-family:'Apfel Grotezk';src:url(/_blob/07d4a5f18b60be5df28dec511c3309d5) format('woff2');font-weight:700}
+body{margin:0;font-family:'Apfel Grotezk',system-ui,sans-serif;background:#EEF3EC;color:#14232B}
+</style>
+</helmet>
+<div style="width: 1080px; height: 1350px; box-sizing: border-box; padding: 80px 84px 72px; display: flex; flex-direction: column; justify-content: space-between; background: #EEF3EC">
+
+<div style="display: flex; justify-content: space-between; align-items: center">
+<div style="display: flex; align-items: center; gap: 14px">
+<svg width="52" height="52" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="38" r="17" fill="#2E9E5B"></circle><rect x="17" y="61" width="66" height="7.5" rx="3.75" fill="#14232B"></rect><rect x="27" y="73.5" width="46" height="7.5" rx="3.75" fill="#14232B" opacity="0.7"></rect><rect x="38" y="86" width="24" height="7.5" rx="3.75" fill="#14232B" opacity="0.45"></rect></svg>
+<div style="font-size: 34px; font-weight: 700; letter-spacing: -0.02em">HazeNow</div>
+</div>
+<div style="font-size: 30px; font-weight: 500">hazenow.sg</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 32px">
+<div style="width: 160px; height: 160px; border-radius: 80px; background: #2E9E5B"></div>
+<div style="font-size: 34px; font-weight: 500; color: #3D4F57">{{place}} · {{when}}</div>
+<h1 style="margin: 0; font-size: 150px; font-weight: 500; line-height: 0.92; letter-spacing: -0.05em">Air’s back to Normal.</h1>
+<div style="font-size: 40px; line-height: 1.3; color: #24363E">PM2.5 {{pm}} µg/m³. Fine to be out.<br>Open the windows.</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 24px">
+<div style="font-size: 28px; color: #3D4F57">Worst hour this episode: 162 at 7pm Sun. {{hours}} hours above Normal.</div>
+<div style="display: flex; justify-content: space-between; align-items: flex-end; border-top: 2px solid #C9D6C8; padding-top: 28px; font-size: 24px; color: #3D4F57; line-height: 1.45">
+<div>Data: NEA via data.gov.sg</div>
+<div style="text-align: right">Free and open source<br>Made by {{credit}}</div>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"place":{"editor":"text","default":"West"},"when":{"editor":"text","default":"Tue 29 Sep, 7am"},"credit":{"editor":"text","default":"Yong Quan Tan"},"$preview":{"width":1080,"height":1350}}'>
+class Component extends DCLogic {
+renderVals() {
+return { place: this.props.place ?? 'West', when: this.props.when ?? 'Tue 29 Sep, 7am', credit: this.props.credit ?? 'Yong Quan Tan', pm: 22, hours: 38 };
+}
+}
+</script>
+</body>
+</html>

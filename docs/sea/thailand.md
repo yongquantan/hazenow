@@ -12,7 +12,7 @@ behaviour. Burning-season context is in §Chiang Mai.
 
 - **Best authoritative source: PCD Air4Thai. It is the best government feed in the region after NEA.** It has **173 stations** (104 PCD
   ground stations, **68 Bangkok BMA stations** and 1 mobile), **real 1-hr PM2.5 in µg/m³ per station**, no key, JSON, and
-  **CORS `*` on the `/forweb/` and `/webV2/history/` paths**. The new hour is live about **10–25 min after the hour** (§Latency).
+  **CORS `*` on the `/forweb/` and `/webV2/history/` paths**. The new hour is live **~3 min after the hour for BMA stations and ~9 min for most PCD stations**, and 137/173 are in by ~hh:21 (§Latency).
 - **Watch out:** the famous `services/getNewAQI_JSON.php` `AQILast.PM25.value` is the **24-hr rolling mean, not the 1-hr value**
   (proved exactly on 4 stations below). The 1-hr series is in `getHistoryData.php`. The `services/` path also has **no CORS**.
 - **BMA's network is inside Air4Thai** (`stationType:"BKK"`, IDs `bkp*t`). BMA's old public site `bangkokairquality.com` now
@@ -33,7 +33,7 @@ behaviour. Burning-season context is in §Chiang Mai.
 
 | source | agency | what | stations (verified today) | cadence & latency (verified) | API/endpoint | key? | CORS | licence / ToS | reliability notes |
 |---|---|---|---|---|---|---|---|---|---|
-| **Air4Thai hourly history** | Pollution Control Dept (PCD) | **1-hr PM2.5 µg/m³** (also PM10, O3, CO, NO2, SO2), hour-ending label, 1 decimal | 173 IDs. At 17:23 SGT, **141 had the 15–16 ICT hour**, 20 were one hour behind and 10 had no data today | hourly. Most stations by **hh:10–hh:25 ICT** (§Latency) | `https://air4thai.pcd.go.th/forweb/getHistoryData.php?stationID=<id,id,…>&param=PM25&type=hr&sdate=YYYY-MM-DD&edate=YYYY-MM-DD&stime=HH&etime=HH` (same on `air4thai.com`, same IP) | no | **`*`** | **unverified**: Envilink/data.go.th catalogue pages returned 403 from SG. The dataset is listed on Envilink (Thai govt open-data catalogue) per search results | Undocumented web-app endpoint. PHP 5.3.29 / Apache. History window starts **2026-07-01** (earlier dates return empty). All 173 stations in **one 174 KB call, 1.8 s** |
+| **Air4Thai hourly history** | Pollution Control Dept (PCD) | **1-hr PM2.5 µg/m³** (also PM10, O3, CO, NO2, SO2), hour-ending label, 1 decimal | 173 IDs. At 17:23 SGT, **141 had the 15–16 ICT hour**, 20 were one hour behind and 10 had no data today | hourly. BMA by **hh:03**, most PCD by **hh:09**, tail by ~hh:20 ICT (§Latency) | `https://air4thai.pcd.go.th/forweb/getHistoryData.php?stationID=<id,id,…>&param=PM25&type=hr&sdate=YYYY-MM-DD&edate=YYYY-MM-DD&stime=HH&etime=HH` (same on `air4thai.com`, same IP) | no | **`*`** | **unverified**: Envilink/data.go.th catalogue pages returned 403 from SG. The dataset is listed on Envilink (Thai govt open-data catalogue) per search results | Undocumented web-app endpoint. PHP 5.3.29 / Apache. History window starts **2026-07-01** (earlier dates return empty). All 173 stations in **one 174 KB call, 1.8 s** |
 | **Air4Thai latest AQI** | PCD | per-station Thai AQI + **24-hr rolling PM2.5** (`AQILast`) + coordinates, names TH/EN | 173 (167 with valid PM2.5, **9 stale** by ≥1 day) | hourly, same as above | `https://air4thai.pcd.go.th/forweb/getAQI_JSON.php[?region=1..]` (CORS) or `/services/getNewAQI_JSON.php` (no CORS) | no | `forweb`: **`*`**. `services`: **none** | unverified (as above) | Both return an identical 134 KB payload. `http://` 301s to `https://`. 13 rapid calls: all 200, no rate limit seen |
 | Air4Thai legacy history | PCD | same 1-hr data, **hour-beginning labels, integer-rounded** | same | same | `https://air4thai.pcd.go.th/webV2/history/api/data.php?…` (same params) | no | `*` | unverified | **Labels are shifted one hour vs `forweb`** (proved below). Prefer `forweb` |
 | Air4Thai 7-day daily | PCD | daily 24-hr means + AQI | per station | daily | `/forweb/getStationData.php?stationID=35t` | no | `*` | unverified | For a "past week" strip only |
@@ -95,9 +95,24 @@ cannot be a 16:00–17:00 average. `webV2` is hour-beginning and rounds to integ
 
 ### Latency (polled every 2 min, 17:18–18:25 SGT, `forweb` endpoints)
 
+This tracks the hour that ends at 17:00 ICT (= 18:00 SGT). It counts stations with a non-null `17:00` value in one all-station history call:
+
 ```
-(filled in below from th_a4t_poll.log)
+18:01:04 SGT (17:01 ICT)    0 / 173   <- the 17:00 row already EXISTS with PM25:null (placeholder)
+18:03:04 SGT (17:03 ICT)   24 / 173   <- BMA stations first (bkp100t 10.5; AQILast 17:00 for 42 stations)
+18:07:06 SGT (17:07 ICT)   24 / 173
+18:09:08 SGT (17:09 ICT)  124 / 173   <- PCD bulk upload (35t 11.9)
+18:15:10 SGT (17:15 ICT)  136 / 173
+18:19:12 SGT (17:19 ICT)  136 / 173   <- 02t (PCD, Thon Buri) arrived between 17:17 and 17:19 ICT: 11.4
+18:21:12 SGT (17:21 ICT)  137 / 173   (the rest are offline or stale stations)
 ```
+
+So the **new hour is live ~3 min after the hour for BMA stations, ~9 min for most PCD stations, and ~20 min for the tail**.
+`AQILast` (24-hr) moves in the same waves (42 → 130 → 142 stations stamped 17:00). The earlier run at 16:00 ICT matched: 141/173 had the
+16:00 value by 16:23 ICT. **Gotcha:** the new hour's row appears **with `null` before the value arrives**, so treat null in the newest row as
+"not yet", not "offline", until ~hh:30.
+
+(The hourly values also show the 1-hr vs 24-hr gap: 35t went 6.2 → **11.9** while its 24-hr moved 8.8 → 8.9.)
 
 ### Chiang Mai and the burning season (context)
 
@@ -226,8 +241,8 @@ Unlike NEA, **PCD publishes no 1-hr PM2.5 bands** (none found in the Air4Thai ap
 | `stale` | observedAt > 2h15m old. **9 stations were 2–18 days stale today**, so drop them from nearest-station selection |
 | `source` | "PCD Air4Thai" (+ "BMA" for `stationType:"BKK"`) |
 
-**Polling:** from hh:05 ICT (= hh+1:05 SGT), poll the history endpoint for the user's 1–3 stations every 2 min until the new hour appears,
-stop at hh:35, then idle. Refresh `getAQI_JSON` once per hour at ~hh:30. Never more than 1 req/min per endpoint. The server is PHP 5.3 on a
+**Polling:** from hh:02 ICT (= hh+1:02 SGT), poll the history endpoint for the user's 1–3 stations every 2 min until the newest row is
+non-null. Stop at hh:30, then idle. Refresh `getAQI_JSON` once per hour at ~hh:30. Never more than 1 req/min per endpoint. The server is PHP 5.3 on a
 single IP, so be a polite client and use a Worker cache for the web app.
 
 **Gotchas:**
@@ -246,7 +261,7 @@ single IP, so be a polite client and use a Worker cache for the web app.
 ## Verdict
 
 **Ship in v1.x (Thailand = the easiest SEA expansion).** The data is authoritative, per-station, real 1-hr PM2.5, CORS-open and keyless,
-with sub-30-min latency. Blockers:
+with ~3–20 min latency. Blockers:
 1. **Licence**: confirm PCD's terms for redistribution (Envilink/data.go.th were geo-blocked from SG, **unverified**). Email PCD's Air Quality Data division.
 2. **Banding decision**: there are no official 1-hr bands, so the verdict must follow the 24-hr Thai AQI (recommended) and the 1-hr number is shown as trend/context.
 3. Undocumented endpoints on an old PHP stack: wrap them behind one adapter and add a Worker cache.

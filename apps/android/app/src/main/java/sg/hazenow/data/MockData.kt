@@ -18,7 +18,7 @@ import java.time.temporal.ChronoUnit
  */
 object MockData {
     val SCENARIOS = listOf(
-        "normal", "elevated", "high", "very_high", "south_offline", "all_offline_stale", "rising_fast", "network_error",
+        "normal", "elevated", "high", "very_high", "south_offline", "all_offline_stale", "rising_fast", "all_clear", "network_error",
     )
     const val NETWORK_ERROR = "network_error"
     private val ANCHOR: Instant = OffsetDateTime.parse("2026-09-28T16:00:00+08:00").toInstant()
