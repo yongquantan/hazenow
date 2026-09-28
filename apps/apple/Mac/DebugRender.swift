@@ -1,3 +1,4 @@
+#if DEBUG
 import AppKit
 import HazeKit
 import HazeUI
@@ -13,7 +14,7 @@ enum DebugRender {
         if let json = try? Snapshot.jsonEncoder(pretty: true).encode(snapshot) {
             try? json.write(to: dir.appendingPathComponent("snapshot.json"))
         }
-        let line = "\(snapshot.compactText)  [\(snapshot.band.label)] \(snapshot.placeText) \(snapshot.asOfText)\n"
+        let line = "\(snapshot.compactText)\(store.mockScenario != nil ? " · MOCK" : "")  [\(snapshot.band.label)] \(snapshot.placeText) \(snapshot.asOfText)\n"
         try? line.write(to: dir.appendingPathComponent("menubar.txt"), atomically: true, encoding: .utf8)
         FileHandle.standardOutput.write(Data(("HazeNow menu bar: " + line).utf8))
 
@@ -101,3 +102,4 @@ enum DebugRender {
         try? rep.representation(using: .png, properties: [:])?.write(to: url)
     }
 }
+#endif

@@ -1856,6 +1856,20 @@ figcaption .legend {
 .city-list .area-row.is-sel {
   font-weight: 650;
 }
+.city-name {
+  min-width: 0;
+}
+.city-group {
+  margin: 14px 0 2px;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.na-fix {
+  color: var(--ink-2);
+}
 .city-tag {
   flex: none;
   font-size: 0.72rem;

@@ -100,7 +100,9 @@ export interface CountryLoad {
 export async function loadCountry(w: CityWhere, signal?: AbortSignal): Promise<CountryLoad> {
   const mode = modeOf(w);
   if (mode === "unavailable") throw new CountryUnavailable();
-  const q = { lat: w.point.lat, lon: w.point.lon };
+  // A picked destination gets its hard radius (sea.placeQuery): a far station is never stretched to cover it.
+  const picked = !w.gps && w.id ? sea.findCity(w.id, w.country) : null;
+  const q = picked ? { ...sea.placeQuery(picked), lat: w.point.lat, lon: w.point.lon } : { lat: w.point.lat, lon: w.point.lon };
   if (mode === "preview") {
     const load = previewFiles[`../../../packages/core/fixtures/sea/preview/${w.country.toLowerCase()}.json`];
     if (!load) throw new CountryUnavailable();
@@ -109,7 +111,7 @@ export async function loadCountry(w: CityWhere, signal?: AbortSignal): Promise<C
   }
   const adapter = sea.getAdapter(w.country);
   if (!adapter) throw new CountryUnavailable();
-  const snap = await adapter.getSnapshot(q, { signal, near: q, proxyBase: PROXY_URL ?? undefined });
+  const snap = await adapter.getSnapshot(q, { signal, near: { lat: q.lat, lon: q.lon }, proxyBase: PROXY_URL ?? undefined });
   return { snap, mode };
 }
 
@@ -322,12 +324,20 @@ export function attributionHtml(s: CountrySnapshot): string {
 export function unavailableHtml(w: CityWhere): string {
   const c = cityOf(w);
   const na = sea.notAvailable(c);
-  const others = sea.citiesOf(c.country).filter((x) => x.id !== c.id && sea.cityMode(x, !!PROXY_URL) !== "unavailable");
+  // The nearest few places in the same country that do have data (never across a border).
+  const d2 = (x: CityPlace) => (x.lat - c.lat) ** 2 + ((x.lon - c.lon) * Math.cos((c.lat * Math.PI) / 180)) ** 2;
+  const others = sea
+    .citiesOf(c.country)
+    .filter((x) => x.id !== c.id && sea.cityMode(x, !!PROXY_URL) !== "unavailable")
+    .filter((x) => d2(x) <= 1.35 ** 2) // within ~150 km: a nearby alternative, not the other end of the country
+    .sort((a, b) => d2(a) - d2(b))
+    .slice(0, 4);
   return `<section class="now sea-na" aria-labelledby="verdict">
   <p class="for">${esc(w.gps ? `Near ${c.name}` : c.name)}, ${esc(COUNTRY_NAME(c.country))}</p>
   <h1 id="verdict" class="verdict">${esc(na.headline)}</h1>
   <p class="na-reason">${esc(na.reason)}</p>
   ${c.reason ? "" : `<p class="na-detail">${esc(na.detail)}</p>`}
+  ${na.fix ? `<p class="na-detail na-fix">What would fix it: ${esc(na.fix)}</p>` : ""}
   ${
     others.length
       ? `<p class="na-alt">Nearby with data: ${others
@@ -368,8 +378,19 @@ export function countryTabsHtml(selected: CountryCode): string {
   ).join("")}</div>`;
 }
 
-export function cityListHtml(cc: CountryCode, current: CityWhere | null): string {
-  const list = sea.citiesOf(cc);
+/** Region shown beside a name, unless the name already says it ("Penang", "Kuta (Lombok)"). */
+const regionOf = (c: CityPlace) => (c.region && !c.name.includes(c.region) ? c.region : "");
+
+function cityRow(c: CityPlace, current: CityWhere | null, extra = ""): string {
+  const m = sea.cityMode(c, !!PROXY_URL);
+  const on = current && !current.gps && current.country === c.country && current.id === c.id;
+  const sub = extra || regionOf(c);
+  return `<li><button class="area-row${on ? " is-sel" : ""}" data-action="pick-city" data-cc="${c.country}" data-city="${esc(c.id)}" data-key="city-${c.country}-${esc(c.id)}"><span class="city-name">${esc(c.name)}${
+    sub ? `<span class="area-alias">${esc(sub)}</span>` : ""
+  }</span> <span class="city-tag tag-${m}">${esc(STATUS_TAG[m])}</span></button></li>`;
+}
+
+export function cityListHtml(cc: CountryCode, current: CityWhere | null, search = ""): string {
   const note =
     cc === "TH"
       ? "Live from PCD's Air4Thai."
@@ -378,13 +399,33 @@ export function cityListHtml(cc: CountryCode, current: CityWhere | null): string
           ? "Live through the HazeNow server."
           : "Preview: recorded data from 28 Sep. Live once our server is up."
         : "No reliable public source yet.";
-  return `<p class="fine city-note">${esc(note)}</p><ul class="area-list city-list" role="list">${list
-    .map((c) => {
-      const m = sea.cityMode(c, !!PROXY_URL);
-      const on = current && !current.gps && current.country === cc && current.id === c.id;
-      return `<li><button class="area-row${on ? " is-sel" : ""}" data-action="pick-city" data-cc="${cc}" data-city="${esc(c.id)}" data-key="city-${esc(c.id)}">${esc(c.name)} <span class="city-tag tag-${m}">${esc(STATUS_TAG[m])}</span></button></li>`;
+  const { popular, others } = sea.placeGroups(cc);
+  const group = (title: string, id: string, list: CityPlace[]) =>
+    list.length
+      ? `<h3 class="city-group" id="${id}">${esc(title)}</h3><ul class="area-list city-list" role="list" aria-labelledby="${id}">${list.map((c) => cityRow(c, current)).join("")}</ul>`
+      : "";
+  return `<label class="search-label" for="place-search">Search places</label>
+  <input id="place-search" class="area-search" type="search" inputmode="search" autocomplete="off" spellcheck="false" placeholder="Town or island, e.g. Bali, Penang, KL" value="${esc(search)}" data-action="place-search" data-key="place-search"/>
+  <div data-place-results>${search.trim() ? placeResultsHtml(search, current) : ""}</div>
+  <p class="fine city-note">${esc(note)}</p>${group("Popular", `pop-${cc}`, popular)}${group(popular.length ? "Other cities" : "Cities", `oth-${cc}`, others)}`;
+}
+
+/** Search results across every country (names, aliases like "Bali" or "KL", and islands). Empty query → "". */
+export function placeResultsHtml(query: string, current: CityWhere | null, limit = 10): string {
+  if (!query.trim()) return "";
+  const hits = sea.searchPlaces(query, limit);
+  if (!hits.length) return `<p class="fine">No match. Try a city or island like “Bali” or “Penang”.</p>`;
+  return `<ul class="area-list city-list" role="list" aria-label="Search results">${hits
+    .map((h) => {
+      const alias = h.matched && h.matched !== h.place.region && !h.place.name.includes(h.matched) ? h.matched : regionOf(h.place);
+      return cityRow(h.place, current, [alias, COUNTRY_NAME(h.place.country)].filter(Boolean).join(", "));
     })
     .join("")}</ul>`;
+}
+
+/** First search hit (Enter in the search box). */
+export function firstPlaceHit(query: string): CityPlace | null {
+  return sea.searchPlaces(query, 1)[0]?.place ?? null;
 }
 
 /** Share: the Now card only, live data only (preview/no-number disable the button). */

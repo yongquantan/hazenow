@@ -611,7 +611,21 @@ function switcher() {
 
 function areaResults() {
   const results = searchAreas(state.search, state.search ? 8 : 55);
-  if (!results.length) return `<p class="fine">No match. Try a town like “Tampines” or “Jurong East”.</p>`;
+  if (!results.length) {
+    // Not a Singapore area: offer places elsewhere in the region ("Bali", "Penang", "KL"), from the lazy catalogue.
+    const q = state.search.trim();
+    if (C && q) {
+      const where = state.where.kind === "city" ? state.where : null;
+      const hits = C.sea.searchPlaces(q, 6);
+      if (hits.length) return `<p class="fine">Not in Singapore. Elsewhere in the region:</p>${C.placeResultsHtml(q, where, 6)}`;
+    } else if (!C && q.length >= 2) {
+      loadC().then(() => {
+        const box = app.querySelector("[data-results]");
+        if (box && state.search.trim() === q) box.innerHTML = areaResults();
+      });
+    }
+    return `<p class="fine">No match. Try a town like “Tampines” or “Jurong East”.</p>`;
+  }
   return `<ul class="area-list" role="list">${results
     .map(
       (a) =>
@@ -665,8 +679,7 @@ function placesSheet() {
   <div class="area-results" data-results>${areaResults()}</div>
   <p class="fine">The area list is built into the app. Searching sends nothing anywhere.</p>
   ${assign ? "" : `<button class="link island-link" data-action="island" data-key="island">Show Singapore (island average)</button>`}`
-      : `<p class="search-label">Pick a city</p>
-  ${C ? C.cityListHtml(state.sheetCountry, state.where.kind === "city" ? state.where : null) : `<p class="fine">Loading cities…</p>`}
+      : `${C ? C.cityListHtml(state.sheetCountry, state.where.kind === "city" ? state.where : null, state.search) : `<p class="search-label">Pick a city</p><p class="fine">Loading cities…</p>`}
   <p class="fine">The city list is built into the app. Picking one sends nothing anywhere.</p>`
   }
 </section>`;
@@ -1238,6 +1251,15 @@ app.addEventListener("keydown", (e) => {
     e.preventDefault();
     const first = searchAreas(state.search, 1)[0];
     if (first) choose({ kind: "area", name: first.name, point: rounded(first) }, { assign: state.sheet?.assign ?? null });
+    else if (C && state.search.trim()) {
+      const c = C.firstPlaceHit(state.search);
+      if (c) choose(C.cityWhere(c), { assign: state.sheet?.assign ?? null });
+    }
+  }
+  if (input.dataset?.action === "place-search" && e.key === "Enter" && C) {
+    e.preventDefault();
+    const c = C.firstPlaceHit(state.search);
+    if (c) choose(C.cityWhere(c), { assign: state.sheet?.assign ?? null });
   }
   if (e.key === "Escape" && state.sheet) {
     state.sheet = null;
@@ -1248,6 +1270,12 @@ app.addEventListener("keydown", (e) => {
 
 app.addEventListener("input", (e) => {
   const el = e.target as HTMLInputElement;
+  if (el.dataset.action === "place-search") {
+    state.search = el.value;
+    const box = app.querySelector("[data-place-results]");
+    if (box && C) box.innerHTML = C.placeResultsHtml(state.search, state.where.kind === "city" ? state.where : null);
+    return;
+  }
   if (el.dataset.action !== "search") return;
   state.search = el.value;
   // Update only the results so typing never loses focus.

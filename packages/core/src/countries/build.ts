@@ -16,6 +16,8 @@
  *  4. Chip: the jurisdiction's scale (scales.ts). basis "pm25_1h" classifies the big number; "official_index"
  *     classifies the published index. No scale → no chip, no level.
  *  5. Stale: observedAt older than 2 h 15 min. Stations older than that are dropped while fresher ones exist.
+ *  6. query.withinKm (catalogue destinations): nothing beyond that radius is used for the number, the index row or the
+ *     stations list, and freshness is judged inside it (a stale station next door beats a fresh one 60 km away).
  */
 import { STALE_AFTER_MS } from "../constants.js";
 import { haversineKm, isValidReading, roundHalfUp, trend } from "../math.js";
@@ -144,8 +146,13 @@ export function buildCountrySnapshot(set: ObservationSet, query: CountryQuery = 
     return f.length ? f : list;
   };
 
-  const official1h = ranked(preferFresh(obs.filter((o) => o.grade === "reference" && isValidReading(o.pm25_1h))));
-  const crowd = ranked(obs.filter((o) => usableCrowd(o) && valueOf(o) !== null && fresh(o))).filter((r) => r.d <= CROWD_RADIUS_KM);
+  // Destination radius (query.withinKm): drop everything beyond it before judging freshness.
+  const within = typeof query.withinKm === "number" && query.withinKm > 0 ? query.withinKm : Infinity;
+  const near = (list: Observation[]) => (within === Infinity ? list : list.filter((o) => haversineKm(point, o) <= within));
+  if (within !== Infinity) notes.push("within_radius");
+
+  const official1h = ranked(preferFresh(near(obs.filter((o) => o.grade === "reference" && isValidReading(o.pm25_1h)))));
+  const crowd = ranked(obs.filter((o) => usableCrowd(o) && valueOf(o) !== null && fresh(o))).filter((r) => r.d <= Math.min(CROWD_RADIUS_KM, within));
 
   // 2. Big number source.
   let kind: CountrySnapshot["pm25Kind"] = null;
@@ -187,14 +194,14 @@ export function buildCountrySnapshot(set: ObservationSet, query: CountryQuery = 
     observedAt = newest.o.periodEnd;
     publishedAt = newest.o.publishedAt ?? observedAt;
   } else {
-    const any = ranked(preferFresh(obs))[0];
+    const any = ranked(preferFresh(near(obs)))[0] ?? ranked(preferFresh(obs))[0];
     if (!any) throw new NoCountryDataError(`No observations for ${cc}`);
     observedAt = any.o.periodEnd;
     publishedAt = any.o.publishedAt ?? observedAt;
   }
 
   // 3. Official index row: nearest station publishing one, verbatim.
-  const withIndex = ranked(preferFresh(obs.filter((o) => o.official && o.grade === "reference")));
+  const withIndex = ranked(preferFresh(near(obs.filter((o) => o.official && o.grade === "reference"))));
   let official: OfficialIndex | null = null;
   let officialStation: Ranked | undefined;
   if (pinned?.official) officialStation = { o: pinned, d: 0 };
@@ -261,7 +268,7 @@ export function buildCountrySnapshot(set: ObservationSet, query: CountryQuery = 
   }
 
   // Stations list (same country only), nearest first.
-  const stationsRanked = ranked(obs.filter((o) => o.grade === "reference" || usableCrowd(o))).slice(0, 10);
+  const stationsRanked = ranked(near(obs.filter((o) => o.grade === "reference" || usableCrowd(o)))).slice(0, 10);
   const regions: Record<string, RegionReading> = {};
   for (const r of stationsRanked) {
     regions[r.o.stationId] = {

@@ -25,6 +25,9 @@ const DEFAULT = {
   "ph-metro-manila": "?country=ph&area=metro-manila",
   "la-vientiane": "?country=la&area=vientiane",
   "kh-phnom-penh": "?country=kh&area=phnom-penh",
+  "id-bali": "?country=id&area=canggu",
+  "th-phuket": "?country=th&area=phuket",
+  "my-penang": "?country=my&area=penang",
 };
 const shots = pairs.length ? Object.fromEntries(pairs.map((p) => [p.slice(0, p.indexOf("=")), p.slice(p.indexOf("=") + 1)])) : DEFAULT;
 

@@ -156,3 +156,49 @@ struct PlacesTests {
         #expect(s.nearestRegion == "")
     }
 }
+
+@Suite("Mock mode is session-scoped")
+struct MockPersistenceTests {
+    static func fresh() -> (HazeSettings, UserDefaults, UserDefaults) {
+        let a = UserDefaults(suiteName: "hazenow.test.\(UUID().uuidString)")!
+        let b = UserDefaults(suiteName: "hazenow.test.\(UUID().uuidString)")!
+        return (HazeSettings(defaults: a), a, b)
+    }
+
+    @Test func launchWithoutFlagClearsPersistedMock() {
+        let (settings, group, standard) = Self.fresh()
+        settings.applyMock(launchValue: "south_offline", allowed: true)
+        #expect(settings.storedMockValue == "south_offline")
+        standard.set("south_offline", forKey: "hazenow.mock") // left behind in the app's own defaults too
+        settings.applyMock(launchValue: nil, allowed: true, alsoClear: [standard])
+        #expect(settings.storedMockValue == nil)
+        #expect(group.string(forKey: "hazenow.mock") == nil)
+        #expect(standard.string(forKey: "hazenow.mock") == nil)
+        #expect(settings.mockScenario == nil)
+    }
+
+    @Test func offClearsAndFlagSets() {
+        let (settings, _, _) = Self.fresh()
+        settings.applyMock(launchValue: "high", allowed: true)
+        #expect(settings.storedMockValue == "high")
+        #expect(settings.mockScenario == (HazeSettings.mockAllowed ? "high" : nil)) // release never reads it
+        settings.applyMock(launchValue: "", allowed: true)
+        #expect(settings.storedMockValue == nil)
+    }
+
+    @Test func releaseIgnoresFlagAndClearsKey() {
+        let (settings, group, _) = Self.fresh()
+        group.set("very_high", forKey: "hazenow.mock")
+        settings.applyMock(launchValue: "high", allowed: false)
+        #expect(settings.storedMockValue == nil)
+        #expect(settings.mockScenario == nil)
+    }
+
+    @Test func debugGateMatchesBuildConfiguration() {
+        #if DEBUG
+        #expect(HazeSettings.mockAllowed)
+        #else
+        #expect(!HazeSettings.mockAllowed)
+        #endif
+    }
+}

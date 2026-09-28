@@ -1,4 +1,4 @@
-# Southeast Asia: city coverage
+# Southeast Asia: city and destination coverage
 
 What HazeNow can show in each major SEA city today, and what unblocks the rest. Built from the country
 research in this folder ([REGIONAL.md](REGIONAL.md) and the per-country docs) and **re-verified live on
@@ -105,6 +105,240 @@ Bandar Seri Begawan, Dili).
 
 ---
 
+## Popular destinations
+
+Tourist, weekend-trip and expat places, on top of the city table above. **Verified live on 2026-09-29 at 02:06–02:10 SGT
+(2026-09-28 18:06–18:10 UTC; 01:06 WIB/ICT, 02:06 WITA/MYT)**. The payloads are recorded in `packages/core/fixtures/sea/`
+with those timestamps, and `packages/core/test/destinations.test.ts` re-derives every status below from them.
+
+**74 destinations** in the picker's "Popular" subgroup: **52 new places** plus 22 cities from the table above that are also
+destinations (Bangkok, Phuket, Penang, Denpasar, Batam, JB, …).
+
+| status | all 74 | the 52 new |
+|---|---|---|
+| Live now (direct) | 11 | 6 |
+| Needs proxy | 24 | 13 |
+| Community sensors only | 2 | 1 |
+| Not available yet | 37 | 32 |
+
+### Rules (the same ones the app applies)
+
+- **Same country only.** Every point was checked with `countryAt()`; no station or sensor from another country counts
+  (Bintan's nearest data is BMKG Batam, same country; JB never uses NEA; Desaru uses DOE Kota Tinggi, not Singapore).
+- **Live now (direct)**: Thailand, a PCD Air4Thai station **≤ 25 km** that reported PM2.5 in the last 24 h. HazeNow's Thai
+  feed is official stations only, so Thai community sensors don't count (see Pai).
+- **Needs proxy**: MY/ID, an official station ≤ 25 km (DOE API, BMKG 1-hr or KLH ISPU 24-hr). The "now number" column
+  says whether that gives a 1-hr number, a community estimate (sensors ≤ 10 km), or only the 24-hr index.
+- **Community sensors only**: no official station ≤ 25 km, but **at least two** live outdoor AirGradient sensors ≤ 10 km
+  (one sensor can't be cross-checked, so it isn't enough on its own), in a country the proxy serves (MY, ID, VN, PH, LA).
+- **Not available yet**: none of the above. The place shows a calm "Not available yet" with the reason and **what would
+  fix it**. Cambodia has no feed at all, so every KH place is here whatever its sensors.
+- **No stretching.** A picked destination is built with `withinKm: 25` (`placeQuery()`), so the snapshot builder can't
+  fall back to its 60 km "nearest_far" station, and freshness is judged inside that radius. Examples from this capture:
+  left to the default rules, Koh Phi Phi would borrow Krabi town's station 38 km away; with the radius it says "Not
+  available yet". Phuket's PCD station (0.5 km) had no PM2.5 since 17:00 ICT; the default rules drop it as stale and find
+  nothing fresh within 60 km, so Phuket would show no number. With the radius, Phuket shows its own 17:00 reading, marked
+  as delayed.
+- Distances are from the place's point in `places.ts`. DOE: 8 of 68 stations (incl. Minden, Kuching, Cheras) returned no
+  reading at 02:00 MYT, so their distance comes from the 28 Sep capture and they're marked as such.
+
+### Evidence (the calls, and a short sample)
+
+```
+$ UA="HazeNow-proxy/0.1 (+https://github.com/yongquantan/hazenow; free, open-source haze app)"
+$ curl -sS -A "$UA" "https://map-data-int.airgradient.com/map/api/v1/measurements/current/area?xmin=92&ymin=-11.2&xmax=141.2&ymax=28.6&zoom=12&measure=pm25"
+200, 136 KB, 392 AirGradient rows in SEA (388 live and outdoor)
+{"locationId":119810403,"locationName":"Jl. Abasan","longitude":115.14625,"latitude":-8.64585,"pm25":62.8,"rhum":59,"measuredAt":"2026-09-28T18:05:37.000Z","dataSource":"AirGradient"}   # Canggu, 0.9 km
+{"locationId":81051517,"locationName":"zest ubud","longitude":115.25379,"latitude":-8.50498,"pm25":28.4,...,"measuredAt":"2026-09-28T18:05:31.000Z"}                                    # Ubud, 1.0 km
+
+$ curl -sS -A "$UA" https://ispu.kemenlh.go.id/apimobile/v1/getStations
+200, 136 KB, 115 stations with a reading
+{"id_stasiun":"KABUPATEN_BADUNG","waktu":"2026-09-29 01:00:00","lat":"-8.6039","lon":"115.1780","a_pm25":"7.36","nama":"Kabupaten Badung Sempidi"}
+{"id_stasiun":"KABUPATEN_MANGGARAI_BARAT","waktu":"2026-09-29 01:00:00","lat":"-8.4952","lon":"119.8940","a_pm25":"11.95","nama":"Kabupaten Manggarai Barat Wae Kalamb"}
+
+$ curl -sS -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36" \
+    https://www.bmkg.go.id/kualitas-udara/pm25        # "-A Mozilla/5.0" alone → 403 (39 bytes), as indonesia.md warns
+200, 200 KB, 26 stations, JAM 00 WIB (hour ending 01:00)
+"Batam",130.7,"1.12400","104.12600"   … "Sleman" 35.1 (Yogyakarta, 7.4 km). No BMKG station on Bali, Lombok or Flores.
+
+$ curl -sS -A "$UA" -H "Referer: https://eqms.doe.gov.my/" "https://eqms.doe.gov.my/api3/publicmapproxy/PUBLIC_DISPLAY/CAQM_MCAQM_Current_Reading/MapServer/0/query?where=1%3D1&outFields=…&f=json"
+200, 21 KB, 68 features, 60 with a reading at 02:00 MYT
+{"STATION_ID":"CA02K","API":54,"CLASS":"Moderate","LATITUDE":6.331608,"LONGITUDE":99.858461,"STATION_LOCATION":"Langkawi, KEDAH"}
+{"STATION_ID":"CA36J","API":153,"CLASS":"Unhealthy","LATITUDE":1.564027,"LONGITUDE":104.22533,"PLACE":"Sek. Men. Agama Bandar Penawar Kota Tinggi Johor"}   # Desaru, 3.9 km
+{"STATION_ID":"CA08P","DATETIME":null,"API":null,"STATION_LOCATION":"Minden, PULAU PINANG"}                                                               # no reading this hour
+
+$ curl -sS https://air4thai.pcd.go.th/forweb/getAQI_JSON.php                     # + getHistoryData.php for all 173 stations
+200, 134 KB (history 252 KB), 173 stations, 141 with a 1-hr PM2.5 in the last 2 h 15 min
+43t  Municipal Health Center (Phuket)  7.884488,98.391283  last PM2.5 hour 17:00 ICT (22:00–01:00 null)
+119t Thara Public Park (Krabi)         8.0506237,98.9180489  00:00 ICT = 22.3 µg/m³
+```
+
+Distances: `haversineKm` from each place to every station/sensor in these payloads (`packages/core/test/destinations.test.ts`
+reproduces them).
+
+#### Indonesia (19)
+
+| place | status | nearest official station (29 Sep) | official ≤ 25 km | crowd ≤ 10 / ≤ 25 km | now number | what would fix it |
+|---|---|---|---|---|---|---|
+| **Bandung** | Needs proxy | ISPU Kabupaten Bandung Barat Saguling 15 km | 1 | 0 / 0 (nearest 106 km) | 24-hr only | — |
+| **Denpasar** (Bali) | Needs proxy | ISPU Kabupaten Badung Sempidi 8.3 km | 1 | 15 / 37 (nearest 3.5 km) | 1-hr est. | — |
+| **Canggu** (Bali) | Needs proxy | ISPU Kabupaten Badung Sempidi 6.5 km | 1 | 22 / 37 (nearest 0.9 km) | 1-hr est. | — |
+| **Seminyak** (Bali) | Needs proxy | ISPU Kabupaten Badung Sempidi 9.8 km | 1 | 15 / 37 (nearest 3.4 km) | 1-hr est. | — |
+| **Kuta** (Bali) | Needs proxy | ISPU Kabupaten Badung Sempidi 13 km | 1 | 10 / 36 (nearest 6.4 km) | 1-hr est. | — |
+| **Sanur** (Bali) | Needs proxy | ISPU Kabupaten Badung Sempidi 13 km | 1 | 3 / 37 (nearest 0.6 km) | 1-hr est. | — |
+| **Ubud** (Bali) | Needs proxy | ISPU Kabupaten Badung Sempidi 14 km | 1 | 8 / 34 (nearest 1.0 km) | 1-hr est. | — |
+| **Jimbaran** (Bali) | Needs proxy | ISPU Kabupaten Badung Sempidi 21 km | 1 | 3 / 28 (nearest 6.7 km) | 1-hr est. | — |
+| **Nusa Dua** (Bali) | Needs proxy | ISPU Kabupaten Badung Sempidi 23 km | 1 | 0 / 20 (nearest 10 km) | 24-hr only | One community sensor in Nusa Dua would add an hourly number (today it gets ISPU's 24-hr index only). |
+| **Uluwatu** (Bali) | Community sensors only | ISPU Kabupaten Badung Sempidi 27 km | 0 | 3 / 20 (nearest 1.5 km) | 1-hr est. | — |
+| **Batam** (Riau Islands) | Needs proxy | BMKG Batam 14 km | 1 | 0 / 0 (nearest 448 km) | 1-hr | — |
+| **Bintan** (Riau Islands) | Not available yet | BMKG Batam 26 km | 0 | 0 / 0 (nearest 458 km) | none | Two community sensors at Lagoi would cover the resorts. |
+| **Tanjung Pinang** (Riau Islands) | Not available yet | BMKG Batam 44 km | 0 | 0 / 0 (nearest 428 km) | none | Two community sensors in Tanjung Pinang. |
+| **Yogyakarta** | Needs proxy | BMKG Sleman 7.4 km | 1 | 0 / 0 (nearest 252 km) | 1-hr | — |
+| **Mataram** (Lombok) | Not available yet | ISPU Kabupaten Badung Sempidi 103 km | 0 | 0 / 0 (nearest 92 km) | none | Two community sensors in Mataram. |
+| **Senggigi** (Lombok) | Not available yet | ISPU Kabupaten Badung Sempidi 96 km | 0 | 0 / 0 (nearest 84 km) | none | Two community sensors in Senggigi. |
+| **Gili Trawangan** (Lombok) | Not available yet | ISPU Kabupaten Badung Sempidi 99 km | 0 | 0 / 0 (nearest 86 km) | none | Two community sensors on Gili Trawangan. |
+| **Kuta (Lombok)** | Not available yet | ISPU Kabupaten Badung Sempidi 125 km | 0 | 0 / 0 (nearest 114 km) | none | Two community sensors in Kuta or Mandalika. |
+| **Labuan Bajo** | Needs proxy | ISPU Kabupaten Manggarai Barat Wae Kalamb 0.7 km | 1 | 0 / 0 (nearest 507 km) | 24-hr only | One community sensor in town would add an hourly number (today it gets ISPU's 24-hr index only). |
+
+#### Malaysia (14)
+
+| place | status | nearest official station (29 Sep) | official ≤ 25 km | crowd ≤ 10 / ≤ 25 km | now number | what would fix it |
+|---|---|---|---|---|---|---|
+| **Kuala Lumpur** | Needs proxy | DOE Cheras 5.0 km (28 Sep; no reading at 02:00) | 5 | 4 / 6 (nearest 3.1 km) | 1-hr est. | — |
+| **Johor Bahru** | Needs proxy | DOE Larkin 0.6 km | 2 | 0 / 1 (nearest 15 km) | 24-hr only | — |
+| **Penang** | Needs proxy | DOE Minden 6.8 km (28 Sep; no reading at 02:00) | 4 | 0 / 0 (nearest 113 km) | 24-hr only | — |
+| **Batu Ferringhi** (Penang) | Needs proxy | DOE Minden 14 km (28 Sep; no reading at 02:00) | 3 | 0 / 0 (nearest 106 km) | 24-hr only | — |
+| **Ipoh** | Needs proxy | DOE Tasek Ipoh 4.6 km | 2 | 0 / 0 (nearest 171 km) | 24-hr only | — |
+| **Malacca** | Needs proxy | DOE Bandaraya Melaka 0.8 km | 3 | 0 / 0 (nearest 105 km) | 24-hr only | — |
+| **Kuching** (Sarawak) | Needs proxy | DOE Kuching 3.4 km (28 Sep; no reading at 02:00) | 2 | 0 / 0 (nearest 750 km) | 24-hr only | — |
+| **Kota Kinabalu** (Sabah) | Needs proxy | DOE Kota Kinabalu 11 km | 2 | 0 / 0 (nearest 50 km) | 24-hr only | — |
+| **Langkawi** | Needs proxy | DOE Langkawi 6.8 km | 1 | 0 / 0 (nearest 47 km) | 24-hr only | — |
+| **Cameron Highlands** | Not available yet | DOE Tasek Ipoh 34 km | 0 | 0 / 0 (nearest 147 km) | none | Two community sensors in Tanah Rata. |
+| **Genting Highlands** | Not available yet | DOE Batu Muda 27 km | 0 | 0 / 0 (nearest 27 km) | none | Two community sensors at Genting. |
+| **Desaru** | Needs proxy | DOE Kota Tinggi 3.9 km | 2 | 0 / 0 (nearest 73 km) | 24-hr only | — |
+| **Tioman** | Not available yet | DOE Rompin 83 km | 0 | 0 / 0 (nearest 165 km) | none | Two community sensors at Tekek or ABC. |
+| **Port Dickson** | Needs proxy | DOE Port Dickson 12 km | 1 | 0 / 0 (nearest 47 km) | 24-hr only | — |
+
+#### Thailand (18)
+
+| place | status | nearest official station (29 Sep) | official ≤ 25 km | crowd ≤ 10 / ≤ 25 km | now number | what would fix it |
+|---|---|---|---|---|---|---|
+| **Bangkok** | Live now (direct) | PCD Phra Nakhon District Office, Bangkok 0.9 km | 79 | 20 / 42 (nearest 2.8 km) | 1-hr | — |
+| **Chiang Mai** | Live now (direct) | PCD Yupparaj Wittayalai School 0.6 km | 2 | 4 / 21 (nearest 1.1 km) | 1-hr | — |
+| **Chiang Rai** | Live now (direct) | PCD Natural Resources and Environment Office, Chiangrai 1.8 km | 1 | 2 / 2 (nearest 3.9 km) | 1-hr | — |
+| **Phuket** | Live now (direct) | PCD Municipal Health Center 0.5 km | 1 | 1 / 2 (nearest 9.9 km) | 1-hr | — |
+| **Patong** (Phuket) | Live now (direct) | PCD Municipal Health Center 11 km | 1 | 0 / 2 (nearest 12 km) | 1-hr | — |
+| **Pattaya** | Live now (direct) | PCD Laem Chabang Municipal Stadium 22 km | 1 | 0 / 1 (nearest 17 km) | 1-hr | — |
+| **Krabi** | Live now (direct) | PCD Thara Public Park 4.2 km | 1 | 0 / 0 (nearest 60 km) | 1-hr | — |
+| **Ao Nang** (Krabi) | Live now (direct) | PCD Thara Public Park 11 km | 1 | 0 / 0 (nearest 49 km) | 1-hr | — |
+| **Koh Phi Phi** (Krabi) | Not available yet | PCD Thara Public Park 38 km | 0 | 0 / 0 (nearest 51 km) | none | A PCD station on Phi Phi Don (or community sensors, once HazeNow's Thai feed reads them). |
+| **Koh Lanta** (Krabi) | Not available yet | PCD Thara Public Park 51 km | 0 | 0 / 0 (nearest 86 km) | none | A PCD station on Koh Lanta (or community sensors, once HazeNow's Thai feed reads them). |
+| **Koh Samui** | Not available yet | PCD Environment Agency Section 14, Surat Thani 92 km | 0 | 0 / 0 (nearest 251 km) | none | A PCD station on Samui (or community sensors, once HazeNow's Thai feed reads them). |
+| **Koh Phangan** | Not available yet | PCD Environment Agency Section 14, Surat Thani 102 km | 0 | 0 / 0 (nearest 263 km) | none | A PCD station on Koh Phangan (or community sensors, once HazeNow's Thai feed reads them). |
+| **Koh Tao** | Not available yet | PCD Sports Stadium, Chumphon 84 km | 0 | 0 / 0 (nearest 249 km) | none | A PCD station on Koh Tao (or community sensors, once HazeNow's Thai feed reads them). |
+| **Hua Hin** | Live now (direct) | PCD Hua Hin Weather Station Prachuap Khiri Khan Meteorological Station 1.1 km | 1 | 0 / 0 (nearest 26 km) | 1-hr | — |
+| **Pai** | Not available yet | PCD Natural Resources and Environment Office, Mae Hongson 50 km | 0 | 21 / 22 (nearest 0.3 km) | none | Adding community sensors to HazeNow's Thai feed (through our server) would cover Pai. |
+| **Ayutthaya** | Live now (direct) | PCD Ayutthaya Witthayalai School 0.4 km | 1 | 0 / 2 (nearest 21 km) | 1-hr | — |
+| **Kanchanaburi** | Live now (direct) | PCD Kanchanaburi Meteorological Station 0.4 km | 1 | 0 / 0 (nearest 53 km) | 1-hr | — |
+| **Koh Chang** | Not available yet | PCD Trat Provincial Central Stadium 29 km | 0 | 0 / 0 (nearest 30 km) | none | A PCD station on Koh Chang (or community sensors, once HazeNow's Thai feed reads them). |
+
+#### Vietnam (10)
+
+| place | status | nearest official station (29 Sep) | official ≤ 25 km | crowd ≤ 10 / ≤ 25 km | now number | what would fix it |
+|---|---|---|---|---|---|---|
+| **Hanoi** | Needs proxy | moitruongthudo Nhân Chính 6.5 km (28 Sep; not re-fetched) | 1 | 0 / 1 (nearest 10 km) | 1-hr | — |
+| **Ho Chi Minh City** | Not available yet | none | 0 | 1 / 2 (nearest 6.1 km) | none | One more community sensor within 10 km (there's one 6 km out), or a CEM data agreement. |
+| **Da Nang** | Not available yet | none | 0 | 0 / 0 (nearest 599 km) | none | Two community sensors in Da Nang, or a CEM data agreement. |
+| **Hoi An** | Not available yet | none | 0 | 0 / 0 (nearest 595 km) | none | Two community sensors in Hoi An (or a CEM data agreement). |
+| **Hue** | Not available yet | none | 0 | 0 / 0 (nearest 533 km) | none | Two community sensors in Hue (or a CEM data agreement). |
+| **Nha Trang** | Not available yet | none | 0 | 0 / 0 (nearest 319 km) | none | Two community sensors in Nha Trang (or a CEM data agreement). |
+| **Da Lat** | Not available yet | none | 0 | 0 / 0 (nearest 233 km) | none | Two community sensors in Da Lat (or a CEM data agreement). |
+| **Ha Long** | Not available yet | none | 0 | 0 / 0 (nearest 118 km) | none | Two community sensors in Ha Long (or a CEM data agreement). |
+| **Sapa** | Not available yet | none | 0 | 0 / 0 (nearest 263 km) | none | Two community sensors in Sapa (or a CEM data agreement). |
+| **Phu Quoc** | Not available yet | none | 0 | 0 / 0 (nearest 303 km) | none | Two community sensors on Phu Quoc (or a CEM data agreement). |
+
+#### Philippines (8)
+
+| place | status | nearest official station (29 Sep) | official ≤ 25 km | crowd ≤ 10 / ≤ 25 km | now number | what would fix it |
+|---|---|---|---|---|---|---|
+| **Cebu** | Not available yet | none | 0 | 0 / 0 (nearest 110 km) | none | Two community sensors in Cebu City, or an EMB data feed. |
+| **Davao** | Not available yet | none | 0 | 0 / 1 (nearest 19 km) | none | Two community sensors in Davao City, or an EMB data feed. |
+| **Boracay** | Not available yet | none | 0 | 0 / 0 (nearest 124 km) | none | Two community sensors on Boracay. |
+| **El Nido** (Palawan) | Not available yet | none | 0 | 0 / 0 (nearest 319 km) | none | Two community sensors in El Nido. |
+| **Coron** (Palawan) | Not available yet | none | 0 | 0 / 0 (nearest 245 km) | none | Two community sensors in Coron. |
+| **Puerto Princesa** (Palawan) | Not available yet | none | 0 | 0 / 0 (nearest 146 km) | none | Two community sensors in Puerto Princesa. |
+| **Siargao** | Not available yet | none | 0 | 0 / 0 (nearest 299 km) | none | Two community sensors in General Luna. |
+| **Panglao** (Bohol) | Not available yet | none | 0 | 0 / 0 (nearest 149 km) | none | Two community sensors on Panglao. |
+
+#### Cambodia (3)
+
+| place | status | nearest official station (29 Sep) | official ≤ 25 km | crowd ≤ 10 / ≤ 25 km | now number | what would fix it |
+|---|---|---|---|---|---|---|
+| **Siem Reap** | Not available yet | none | 0 | 1 / 1 (nearest 1.6 km) | none | One more community sensor in Siem Reap, and a way to read Cambodia's sensors (HazeNow has no Cambodia feed yet). |
+| **Sihanoukville** | Not available yet | none | 0 | 0 / 0 (nearest 177 km) | none | A way to read Cambodia's sensors, plus two sensors in Sihanoukville. |
+| **Kampot** | Not available yet | none | 0 | 0 / 0 (nearest 129 km) | none | A way to read Cambodia's sensors, plus two sensors in Kampot. |
+
+#### Laos (2)
+
+| place | status | nearest official station (29 Sep) | official ≤ 25 km | crowd ≤ 10 / ≤ 25 km | now number | what would fix it |
+|---|---|---|---|---|---|---|
+| **Luang Prabang** | Community sensors only | none | 0 | 2 / 2 (nearest 0.8 km) | 1-hr est. | — |
+| **Vang Vieng** | Not available yet | none | 0 | 0 / 1 (nearest 11 km) | none | Two community sensors in Vang Vieng town. |
+
+### Bali
+
+**What drives Bali's air.** Short version: Bali is usually *not* where the Sumatra/Kalimantan haze goes, and on the night we
+checked its air was local.
+
+- **Transboundary haze rarely reaches it.** The fire belt (Riau, Jambi, South Sumatra, West/Central Kalimantan) sits 900–1,500 km
+  north-west of Bali. The regional haze "regularly" hits Indonesia's fire provinces, Malaysia, Singapore and Brunei, and only
+  reaches farther in severe years ([Wikipedia: Southeast Asian haze](https://en.wikipedia.org/wiki/Southeast_Asian_haze), which
+  doesn't list Bali or Nusa Tenggara). In our 28 Sep SiPongi capture, **0 of 350 high-confidence hotspots were within 100 km of
+  Denpasar**, and 1 within 300 km. On the same night BMKG read **172 µg/m³ in Kota Jambi**, while Bali's sensors read 15–74.
+- **Local sources are the usual suspects**: open burning of household and farm waste (common across Indonesia, including Bali),
+  traffic and scooters in the Denpasar–Kuta–Canggu belt, and dry-season dust (the dry season runs roughly May–October).
+  *Uncertain:* we couldn't pull a primary source apportionment study for Bali in this pass (search budget ran out), so treat
+  this as the typical picture, not a measured split.
+- **What the sensors showed (02:05 WITA, 29 Sep):** a clear local gradient. The Canggu, Pererenan and Tabanan rice-field side read
+  **46–74 µg/m³** (most of the 22 sensors within 10 km of Canggu), Ubud 28–46, and the Bukit/south coast (Uluwatu, Sanur, Nusa Dua
+  edge) **15–22**. A gradient that sharp over 10–20 km, at night, points to nearby burning or smoke trapped under a night-time
+  inversion, not regional haze. *Inference, not a measurement of sources.*
+- **Caveat on the number itself.** KLH's ISPU station at Sempidi (Badung) reported a **24-hr mean of 7.4 µg/m³**, while sensors
+  3–7 km away read 36–60 at night. Bali has no BMKG 1-hr station, so the sensors can't be calibrated against an official hourly
+  anchor (`k` stays null, "uncalibrated"), and the app shows the value as a community estimate with a range. The two can both be
+  right (a clean day and a smoky night average out), but we can't prove it from one capture.
+
+**What Bali gets today** (once the proxy is deployed; in Preview until then, from the recorded 28 Sep set, which already holds
+Bali's 37 sensors):
+
+| place | big number | chip / official line | status |
+|---|---|---|---|
+| Canggu, Seminyak, Kuta, Denpasar, Sanur, Ubud, Jimbaran | 1-hr community estimate (AirGradient, EPA-corrected), with a range | ISPU category on the estimate; KLH ISPU Badung Sempidi 24-hr as the official line | Needs proxy |
+| Nusa Dua | none (nearest sensor 10.4 km) | ISPU Badung Sempidi 24-hr only (23 km) | Needs proxy |
+| Uluwatu | 1-hr community estimate (3 sensors ≤ 10 km) | no official line (ISPU 27 km is past 25 km) | Community sensors only |
+
+Honest gaps: **Nusa Dua** (one sensor adds an hourly number), and the rest of the island outside the south (no sensors in
+Amed, Lovina or Nusa Penida; they aren't in the catalogue). Lombok and the Gilis have nothing yet.
+
+### Sensor push: where one or two sensors would unlock a destination
+
+Ranked by how many people go and how little it takes:
+
+1. **Pai** (TH): *zero* new sensors. 21 live AirGradient sensors are already within 10 km. It needs HazeNow's Thai feed to add
+   community sensors (the proxy already fetches them for five countries).
+2. **Bintan (Lagoi)** (ID): two sensors at the resorts. The closest Singapore weekend trip without data (BMKG Batam is 26 km
+   away across the water).
+3. **Nusa Dua** (ID) and **Labuan Bajo** (ID): **one** sensor each turns ISPU's 24-hr index into an hourly number.
+4. **Koh Samui / Phangan / Tao** (TH): a PCD station, or two sensors each once the Thai feed reads community sensors.
+5. **Genting / Cameron Highlands** (MY): two sensors each. DOE Batu Muda is 26.5 km from Genting, just past the limit, and a
+   lowland station can't stand for a hilltop anyway.
+6. **Lombok (Mataram, Senggigi, Gilis, Kuta)** (ID), **Boracay, El Nido, Siargao** (PH), **Hoi An, Nha Trang, Phu Quoc** (VN):
+   two sensors each.
+7. **Ho Chi Minh City** (VN): **one** more sensor within 10 km (one is 6 km out) makes it "Community sensors only".
+8. **Vang Vieng** (LA): two sensors in town (the nearest is 11.5 km out).
+
+---
+
 ## TODO: every uncovered or blocked city
 
 Grouped by the action that unblocks them. "Needs proxy" cities also have the deploy step.
@@ -149,6 +383,7 @@ Grouped by the action that unblocks them. "Needs proxy" cities also have the dep
 | Yangon, Mandalay | 1 suspect sensor | Not feasible. Tachileik can use Air4Thai 73t Mae Sai across the river (a Thai reading, labelled as such) |
 | Bandar Seri Begawan | JASTRe PSI as a JPEG only; 0 sensors in BSB | **Email JASTRe** for the PSI methodology and a machine-readable feed (even a CSV). Seed sensors with UBD/UTB |
 | Dili | nothing | Wait for sensors |
+| Destinations (Bintan, Lombok, Samui, Genting, Cameron, …) | see "Popular destinations" | Seed sensors per the ranked list there. Pai needs a Thai crowd feed, not sensors |
 
 ### 3. Product decisions still open (from the country docs)
 

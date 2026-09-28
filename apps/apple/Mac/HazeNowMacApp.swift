@@ -28,21 +28,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         HazeFonts.register()
         store.onSnapshot = { [weak self] snap in
             WidgetCenter.shared.reloadAllTimelines()
+            #if DEBUG
             if let self, let dir = ProcessInfo.processInfo.environment["HAZENOW_DEBUG_DIR"] {
                 DebugRender.write(snapshot: snap, store: self.store, notch: self.notch, to: URL(fileURLWithPath: dir))
             }
+            #endif
         }
         store.start()
         notch.setEnabled(store.settings.showNotch)
-        if ProcessInfo.processInfo.environment["HAZENOW_DEBUG_NOTCH_CYCLE"] != nil {
-            DebugRender.cycleNotch(notch)
-        }
-        if let dir = ProcessInfo.processInfo.environment["HAZENOW_DEBUG_NOTIFY_YES"] {
+        #if DEBUG
+        // Dev/QA hooks: environment variables only, nothing is persisted.
+        let env = ProcessInfo.processInfo.environment
+        if env["HAZENOW_DEBUG_NOTCH_CYCLE"] != nil { DebugRender.cycleNotch(notch) }
+        if let dir = env["HAZENOW_DEBUG_NOTIFY_YES"] {
             DebugRender.tapNotifyYes(store: store, notch: notch, dir: URL(fileURLWithPath: dir))
         }
-        if ProcessInfo.processInfo.environment["HAZENOW_DEBUG_POPOVER_CYCLE"] != nil {
-            DebugRender.cyclePopover()
-        }
+        if env["HAZENOW_DEBUG_POPOVER_CYCLE"] != nil { DebugRender.cyclePopover() }
+        #endif
     }
 }
 
@@ -56,9 +58,11 @@ struct MenuBarLabel: View {
             HStack(spacing: 3) {
                 Image(nsImage: MenuBarDot.image(for: s.band, stale: s.stale))
                 Text(s.compactValueText).monospacedDigit()
+                // Never mistakable for real data (QA mock is DEBUG-only and session-scoped).
+                if store.mockScenario != nil { Text("· MOCK").fontWeight(.bold) }
             }
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(store.insight?.compactLabel ?? HazeCompute.accessibleLabel(s))
+            .accessibilityLabel((store.insight?.compactLabel ?? HazeCompute.accessibleLabel(s)) + (store.mockScenario != nil ? ", mock data" : ""))
         } else {
             // No data yet / loading: the brand template mark (brand/png/menubar-template-18/36.png).
             Image("MenubarTemplate")

@@ -33,10 +33,10 @@ export function cityMode(c: Pick<CityPlace, "status">, proxyConfigured: boolean)
 /** When the recorded preview data was captured (fixtures/sea, 2026-09-28 ~10:30 UTC). Snapshots are built at this instant. */
 export const PREVIEW_CAPTURED_AT = "2026-09-28T10:30:00Z";
 
-/** Calm "Not available yet" state for needs-permission / not-feasible cities. */
-export function notAvailable(c: CityPlace): { headline: string; reason: string; detail: string } {
+/** Calm "Not available yet" state for needs-permission / not-feasible places, with what would fix it when known. */
+export function notAvailable(c: CityPlace): { headline: string; reason: string; detail: string; fix: string | null } {
   const detail = c.status === "needs_permission" ? NOT_AVAILABLE_COPY.needs_permission : NOT_AVAILABLE_COPY.not_feasible;
-  return { headline: NOT_AVAILABLE_COPY.headline, reason: c.reason ?? detail, detail };
+  return { headline: NOT_AVAILABLE_COPY.headline, reason: c.reason ?? detail, detail, fix: c.fix ?? null };
 }
 
 /* ------------------------------------------------------------------ time */
