@@ -241,7 +241,7 @@ struct ExperienceTests {
         #expect(HazeCopy.officialPsiLabel(84) == "NEA 24-hr PSI: 84 (Moderate)")
         #expect(HazeCopy.officialPsiLabel(nil) == "NEA 24-hr PSI: not available right now")
         s.officialPsi24h = 84
-        #expect(HazeCompute.shareText(s) == "Air in the South right now: Elevated (PM2.5 105), steady. NEA 24-hr PSI: 84. Data: NEA via data.gov.sg. hazenow.sg")
+        #expect(HazeCompute.shareText(s) == "Air in the South right now: Elevated (PM2.5 105), steady. NEA 24-hr PSI: 84. Data: NEA via data.gov.sg. hazenow.pages.dev")
     }
 
     @Test func noInstantPsiOrLaggingInUserCopy() {

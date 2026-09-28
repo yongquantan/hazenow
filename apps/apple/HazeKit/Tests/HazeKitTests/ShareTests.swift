@@ -105,11 +105,11 @@ struct ShareTests {
         let s = Self.snap(Self.flat(90, 22) + [100, 136])
         let ctx = ShareContext(placeName: "Tampines")
         let all = ShareCardKind.allCases.map { HazeShare.shareCardText($0, s, profile: [.kids], context: ctx) }
-        #expect(all[0] == "Air near Tampines at 4pm: Elevated (PM2.5 136), rising fast. NEA 24-hr PSI: 70 (Moderate). Data: NEA via data.gov.sg. hazenow.sg")
+        #expect(all[0] == "Air near Tampines at 4pm: Elevated (PM2.5 136), rising fast. NEA 24-hr PSI: 70 (Moderate). Data: NEA via data.gov.sg. hazenow.pages.dev")
         #expect(all[1].hasPrefix("Same NEA data, two clocks. Tampines at 4pm: last hour PM2.5 136, 24-hr average 30."))
         #expect(all[2].hasPrefix("For the kids · Recess check, Tampines at 4pm: "))
         for t in all {
-            #expect(t.hasSuffix("hazenow.sg"))
+            #expect(t.hasSuffix("hazenow.pages.dev"))
             for bad in ["~", "Instant", "real number", "lagging", "Unhealthy"] { #expect(!t.contains(bad)) }
         }
     }
@@ -136,9 +136,9 @@ struct ShareTests {
 
     @Test func payloadLinkAndFilename() {
         let c = ShareCardContent(card: .now, Self.snap(Self.flat(100)), context: ShareContext(placeName: "Choa Chu Kang"))
-        #expect(c.url.absoluteString == "https://hazenow.sg/?area=choa-chu-kang&s=now")
+        #expect(c.url.absoluteString == "https://hazenow.pages.dev/?area=choa-chu-kang&s=now")
         #expect(c.filename == "hazenow-choa-chu-kang-2026-09-28-1600.png")
-        #expect(c.shareText.hasSuffix("hazenow.sg"))
+        #expect(c.shareText.hasSuffix("hazenow.pages.dev"))
     }
 }
 
@@ -181,7 +181,7 @@ struct V17Tests {
         #expect(ShareCardContent(card: .group, s, profile: [.kids], context: ctx).statsRest == "µg/m³ · Elevated")
         #expect(ShareCardContent(.preview, s, context: ctx).direction == nil)
         let text = HazeShare.shareCardText(.now, s, context: ctx)
-        #expect(text == "Air near Tampines at 4pm: Elevated (PM2.5 136). NEA 24-hr PSI: 70 (Moderate). Data: NEA via data.gov.sg. hazenow.sg")
+        #expect(text == "Air near Tampines at 4pm: Elevated (PM2.5 136). NEA 24-hr PSI: 70 (Moderate). Data: NEA via data.gov.sg. hazenow.pages.dev")
         for word in ["rising", "easing", "steady", "clearing"] { #expect(!text.contains(word)) }
         // Fresh reading keeps it.
         s.stale = false
@@ -217,7 +217,7 @@ struct V17Tests {
             }
         }
         let g = ShareCardContent(card: .group, s, profile: [.kids], context: ctx)
-        #expect(g.actions.last == "Check hazenow.sg for NEA's next update.")
+        #expect(g.actions.last == "Check hazenow.pages.dev for NEA's next update.")
         #expect(!g.actions.contains { $0.hasPrefix("Next check") })
         // Fresh wording unchanged.
         s.stale = false

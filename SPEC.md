@@ -270,8 +270,8 @@ We only use location to pick the right area. We never need precise GPS and never
 5. Otherwise → **Now card**.
 Eligible alternates in the row: Now, Two clocks, For our group (current persona), All clear (only if rule 1 applies).
 
-**Every share payload = image + text + link.** Text per COPY.md §15 (update it to match each card's headline), ending with `hazenow.sg`. Link carries `?area=` so the link preview (card 6, server/OG) matches.
-**Every card image must print:** exact date and time, area, "Data: NEA via data.gov.sg", "Free and open source · Made by Yong Quan Tan", `hazenow.sg`. No Instant PSI, no "~", no "real number"/anti-NEA framing.
+**Every share payload = image + text + link.** Text per COPY.md §15 (update it to match each card's headline), ending with `hazenow.pages.dev`. Link carries `?area=` so the link preview (card 6, server/OG) matches.
+**Every card image must print:** exact date and time, area, "Data: NEA via data.gov.sg", "Free and open source · Made by Yong Quan Tan", `hazenow.pages.dev`. No Instant PSI, no "~", no "real number"/anti-NEA framing.
 **Quality:** render at exactly 1080×1350 (and 1200×630) pixels, independent of screen DPR; embed Apfel Grotezk; PNG; check text never clips at the largest numbers (e.g. 3-digit PM2.5, long area names like "Choa Chu Kang" — shrink-to-fit the headline).
 **Credit link:** in-app "Made by Yong Quan Tan" opens an About section (who, why, free/open source) linking LinkedIn first, then Kairos Labs, then GitHub. Cards show the name as text only.
 Haze receipt (card 5) is **not** in this build.

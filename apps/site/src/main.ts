@@ -1,5 +1,5 @@
 /**
- * hazenow.sg landing page: the live reading in the hero (reusing packages/core, so the maths and the words
+ * hazenow.pages.dev landing page: the live reading in the hero (reusing packages/core, so the maths and the words
  * match every HazeNow app), plus the "Copy script" button. No framework, no analytics, no cookies.
  */
 import {

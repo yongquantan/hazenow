@@ -288,7 +288,7 @@ describe("country share cards", () => {
     const { s } = snapAt("TH", "bangkok");
     const t = countryShareText(s, "Bangkok");
     expect(t).toStartWith("PM2.5 14 µg/m³ in Bangkok at 5pm ICT · PCD Thai AQI (24-hr): 19 · Excellent");
-    expect(t).toEndWith("via HazeNow hazenow.sg");
+    expect(t).toEndWith("via HazeNow hazenow.pages.dev");
   });
 });
 

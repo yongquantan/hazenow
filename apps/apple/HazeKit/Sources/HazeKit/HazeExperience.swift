@@ -373,7 +373,7 @@ extension HazeCompute {
     }
 
     /// COPY §15 share text (no verdict, no Instant PSI).
-    public static func shareText(_ s: Snapshot, shareURL: String = "hazenow.sg") -> String {
+    public static func shareText(_ s: Snapshot, shareURL: String = "hazenow.pages.dev") -> String {
         let area: String = switch s.locationMode {
         case .gps: "near me"
         case .island: "in Singapore"

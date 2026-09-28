@@ -393,8 +393,8 @@ export function countryShareCard(w: CityWhere, s: CountrySnapshot, profile: Prof
   const name = w.gps ? city.name : w.name;
   return {
     content: sea.countryNowCard(s, name, profile, w.point.lon),
-    text: sea.countryShareText(s, name, "hazenow.sg", w.point.lon),
+    text: sea.countryShareText(s, name, "hazenow.pages.dev", w.point.lon),
     placeName: name,
-    link: `https://hazenow.sg/?country=${w.country.toLowerCase()}&area=${encodeURIComponent(city.id)}&s=now`,
+    link: `https://hazenow.pages.dev/?country=${w.country.toLowerCase()}&area=${encodeURIComponent(city.id)}&s=now`,
   };
 }

@@ -302,9 +302,9 @@ const attributionLine = (s: CountrySnapshot) => `Data: ${s.attribution.map((a) =
 
 /**
  * Share text (SPEC v2.0 §9): names the scale and the authority, never mixes scales.
- * "PM2.5 14 µg/m³ in Bangkok at 5pm ICT · PCD Thai AQI (24-hr): 19 · Excellent · Data: … · via HazeNow hazenow.sg"
+ * "PM2.5 14 µg/m³ in Bangkok at 5pm ICT · PCD Thai AQI (24-hr): 19 · Excellent · Data: … · via HazeNow hazenow.pages.dev"
  */
-export function countryShareText(s: CountrySnapshot, placeName: string, site = "hazenow.sg", lon?: number): string {
+export function countryShareText(s: CountrySnapshot, placeName: string, site = "hazenow.pages.dev", lon?: number): string {
   const when = stationTime(s.observedAt, s.country, -99, lon);
   const parts: string[] = [];
   if (s.stale) parts.push("Latest reading is delayed.");

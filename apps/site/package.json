@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "license": "MIT",
   "type": "module",
-  "description": "hazenow.sg: the public website for HazeNow (static, Vite, no framework).",
+  "description": "hazenow.pages.dev: the public website for HazeNow (static, Vite, no framework).",
   "scripts": {
     "assets": "node scripts/assets.mjs",
     "dev": "node scripts/assets.mjs && vite",

@@ -61,8 +61,8 @@ const loadC = (): Promise<CountryModule> => (cLoading ??= import("./country").th
 import { mapSvg } from "./map";
 import { bandShape, esc, store, trendIcon } from "./util";
 
-const SITE = "hazenow.sg";
-const SITE_URL = "https://hazenow.sg/";
+const SITE = "hazenow.pages.dev";
+const SITE_URL = "https://hazenow.pages.dev/";
 const REPO_URL = "https://github.com/yongquantan/hazenow";
 const LINKEDIN_URL = "https://www.linkedin.com/in/yongquantan";
 

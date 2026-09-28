@@ -340,7 +340,7 @@ function drawNow(g: G, c: Extract<ShareCardContent, { kind: "now" }>) {
   const color = c.dotColor ?? bandDot(c.band);
   fitVertical(
     (scale) => [
-      headerBlock(g, color, C.ink, C.ink, { text: "hazenow.sg", st: { size: 30, weight: 500 }, color: C.ink }),
+      headerBlock(g, color, C.ink, C.ink, { text: "hazenow.pages.dev", st: { size: 30, weight: 500 }, color: C.ink }),
       (() => {
         const hook = layout(g, c.hook, { size: 34, weight: 500 }, INNER, { maxLines: 1, minSize: 24 });
         const h1 = layout(g, c.headline, { size: Math.round(132 * scale), weight: 500, lh: 0.95, ls: -0.045 }, INNER, { maxLines: 2, minSize: 72 });
@@ -541,7 +541,7 @@ function drawClocks(g: G, c: Extract<ShareCardContent, { kind: "clocks" }>) {
       footerBlock(
         g,
         [
-          { text: "hazenow.sg", st: { size: 30, weight: 700 }, color: C.ivory },
+          { text: "hazenow.pages.dev", st: { size: 30, weight: 700 }, color: C.ivory },
           { text: "Data: NEA via data.gov.sg", st: { size: 24, weight: 400 }, color: C.darkSub },
         ],
         ["Free and open source", `Made by ${c.credit}`],
@@ -561,7 +561,7 @@ function drawGroup(g: G, c: Extract<ShareCardContent, { kind: "group" }>) {
   const label = bandInfo(c.band).label;
   fitVertical(
     (scale) => [
-      headerBlock(g, color, C.ink, C.ink, { text: "hazenow.sg", st: { size: 30, weight: 500 }, color: C.ink }),
+      headerBlock(g, color, C.ink, C.ink, { text: "hazenow.pages.dev", st: { size: 30, weight: 500 }, color: C.ink }),
       (() => {
         const chip = layout(g, c.chip, { size: 30, weight: 700 }, INNER - 56, { maxLines: 1, minSize: 22 });
         const chipW = textWidth(g, chip.lines[0], chip.st) + 56;
@@ -641,7 +641,7 @@ function drawClear(g: G, c: Extract<ShareCardContent, { kind: "clear" }>) {
   const green = bandInfo("normal").color;
   fitVertical(
     (scale) => [
-      headerBlock(g, green, C.ink, C.ink, { text: "hazenow.sg", st: { size: 30, weight: 500 }, color: C.ink }),
+      headerBlock(g, green, C.ink, C.ink, { text: "hazenow.pages.dev", st: { size: 30, weight: 500 }, color: C.ink }),
       (() => {
         const hook = layout(g, placeWhen(c), { size: 34, weight: 500 }, INNER, { maxLines: 1, minSize: 24 });
         const h1 = layout(g, c.headline, { size: Math.round(150 * scale), weight: 500, lh: 0.92, ls: -0.05 }, INNER, { maxLines: 2, minSize: 80 });
@@ -737,7 +737,7 @@ function drawPreview(g: G, c: Extract<ShareCardContent, { kind: "preview" }> | G
   const bandSt: Style = { size: 26, weight: 700 };
   const bandText = generic ? "Normal to Very High" : c.bandLabel ?? bandInfo(c.band).label;
   const bandLaid = layout(g, bandText, bandSt, iw - 26 - 30, { maxLines: 1, minSize: 18 });
-  const tail = layout(g, generic ? "NEA via data.gov.sg · hazenow.sg" : `${c.officialShort ?? `24-hr PSI ${c.psi ?? "–"}`} · hazenow.sg`, { size: 22, weight: 400 }, iw, { maxLines: 1, minSize: 16 });
+  const tail = layout(g, generic ? "NEA via data.gov.sg · hazenow.pages.dev" : `${c.officialShort ?? `24-hr PSI ${c.psi ?? "–"}`} · hazenow.pages.dev`, { size: 22, weight: 400 }, iw, { maxLines: 1, minSize: 16 });
   const bottomH = bandLaid.height + 6 + tail.height;
   const pBlocks: Block[] = [
     { h: lab.height, draw: (top) => drawLaid(g, lab, ix, top, C.darkSub) },
