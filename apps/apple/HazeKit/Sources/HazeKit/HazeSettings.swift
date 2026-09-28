@@ -135,15 +135,49 @@ public final class HazeSettings: @unchecked Sendable {
     }
 
     /// Active QA mock scenario (see `HazeMock`), shared with widgets. nil = live data.
-    public var mockScenario: String? {
-        get { defaults.string(forKey: Key.mock).flatMap { $0.isEmpty ? nil : $0 } }
-        set { defaults.set(newValue, forKey: Key.mock) }
+    /// Mock mode is available only in DEBUG builds; release builds ignore the flag and the stored key.
+    public static var mockAllowed: Bool {
+        #if DEBUG
+        true
+        #else
+        false
+        #endif
     }
 
-    /// Apply `-HazeMock <scenario>` from the launch arguments (apps call this at launch).
-    public func applyMockLaunchArgument() {
-        if let arg = HazeMock.launchArgument { mockScenario = arg.isEmpty ? nil : arg }
+    public var mockScenario: String? {
+        get {
+            guard Self.mockAllowed else { return nil }
+            return defaults.string(forKey: Key.mock).flatMap { $0.isEmpty ? nil : $0 }
+        }
+        set {
+            if let newValue, !newValue.isEmpty, Self.mockAllowed {
+                defaults.set(newValue, forKey: Key.mock)
+            } else {
+                defaults.removeObject(forKey: Key.mock)
+            }
+        }
     }
+
+    /// Apply `-HazeMock <scenario>` at app launch. Mock is **session-scoped**: launching without the flag
+    /// clears any scenario a previous QA launch left behind, in these defaults (the App Group the widgets
+    /// read) and in the app's own standard defaults. Widgets never call this; they only read.
+    public func applyMockLaunchArgument() {
+        applyMock(launchValue: HazeMock.launchArgument, allowed: Self.mockAllowed, alsoClear: [.standard])
+    }
+
+    /// Testable core. `launchValue`: nil = no flag, "" = `-HazeMock off`, else a scenario.
+    public func applyMock(launchValue: String?, allowed: Bool, alsoClear: [UserDefaults] = []) {
+        let scenario = allowed ? launchValue.flatMap { $0.isEmpty ? nil : $0 } : nil
+        if let scenario {
+            defaults.set(scenario, forKey: Key.mock)
+        } else {
+            defaults.removeObject(forKey: Key.mock)
+            for d in alsoClear where d !== defaults { d.removeObject(forKey: Key.mock) }
+        }
+    }
+
+    /// Raw stored value (for tests / diagnostics), ignoring the DEBUG gate.
+    public var storedMockValue: String? { defaults.string(forKey: Key.mock) }
 
     public var alertPreferences: AlertPreferences {
         AlertPreferences(enabled: notifyOnRise, elevatedForGeneral: elevatedForGeneral,

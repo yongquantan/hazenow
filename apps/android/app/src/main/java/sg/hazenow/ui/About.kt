@@ -24,7 +24,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 
 object AboutLinks {
-    const val LINKEDIN = "https://www.linkedin.com/in/yongquantan"
+    const val LINKEDIN = "https://www.linkedin.com/in/yong-quan-tan"
     const val KAIROS = "https://kairoslabs.sg"
     const val GITHUB = "https://github.com/yongquantan/hazenow"
 }

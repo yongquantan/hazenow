@@ -1,7 +1,7 @@
 #!/bin/sh
 # Build the site at / and the web app at /app/ into one static folder: apps/site/out
 # Usage (from the repo root): sh apps/site/scripts/bundle.sh
-# Alternative to the default two-domain setup (see README). Env: HAZENOW_APP_BASE (use /app/), HAZENOW_SITE_URL (default https://hazenow.sg)
+# Alternative to the default two-domain setup (see README). Env: HAZENOW_APP_BASE (use /app/), HAZENOW_SITE_URL (default https://hazenow.pages.dev)
 set -eu
 ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
 BASE=${HAZENOW_APP_BASE:-/app/}

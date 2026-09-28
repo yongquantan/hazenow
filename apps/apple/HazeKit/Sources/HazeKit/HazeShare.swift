@@ -20,9 +20,9 @@ public enum ShareCardKind: String, Codable, Sendable, CaseIterable, Identifiable
 
 public enum ShareCredit {
     public static let name = "Yong Quan Tan"   // TS: CREDIT
-    public static let site = "hazenow.sg"      // TS: SHARE_SITE
-    public static let siteURL = URL(string: "https://hazenow.sg")!
-    public static let linkedIn = URL(string: "https://www.linkedin.com/in/yongquantan")!
+    public static let site = "hazenow.pages.dev"      // TS: SHARE_SITE
+    public static let siteURL = URL(string: "https://hazenow.pages.dev")!
+    public static let linkedIn = URL(string: "https://www.linkedin.com/in/yong-quan-tan")!
     public static let kairosLabs = URL(string: "https://kairoslabs.sg")!
     public static let gitHub = URL(string: "https://github.com/yongquantan/hazenow")!
 }
@@ -352,7 +352,7 @@ public struct ShareCardContent: Sendable, Hashable {
                 if kind == .group {
                     statsRest = "µg/m³ · \(label)"
                     // COPY §19: no "next check" time off an old reading.
-                    if !actions.isEmpty { actions[actions.count - 1] = "Check hazenow.sg for NEA's next update." }
+                    if !actions.isEmpty { actions[actions.count - 1] = "Check hazenow.pages.dev for NEA's next update." }
                 }
                 if kind == .preview { direction = nil }
                 if kind == .clocks { axisEnd = HazeFormat.hour(s.observedAt) }
@@ -415,7 +415,7 @@ public struct ShareCardContent: Sendable, Hashable {
         let ids = Profile.normalise(profile)
         self.init(Kind(rawValue: card.rawValue)!, s, profile: ids, context: ctx)
         shareText = HazeShare.shareCardText(card, s, profile: ids, context: ctx)
-        var comps = URLComponents(string: "https://hazenow.sg/")!
+        var comps = URLComponents(string: "https://hazenow.pages.dev/")!
         comps.queryItems = [URLQueryItem(name: "area", value: HazeShare.slug(place)), URLQueryItem(name: "s", value: card.rawValue)]
         url = comps.url!
         filename = HazeShare.shareFileName(place: place, observedAt: s.observedAt, card: card.rawValue)

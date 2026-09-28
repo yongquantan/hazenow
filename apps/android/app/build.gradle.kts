@@ -7,12 +7,28 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-// Optional release signing: create apps/android/keystore.properties (git-ignored) with
-// storeFile=..., storePassword=..., keyAlias=..., keyPassword=...
+// Optional release signing, in this order:
+//  1. CI: env HAZENOW_KEYSTORE_FILE, HAZENOW_KEYSTORE_PASSWORD, HAZENOW_KEY_ALIAS (and optional HAZENOW_KEY_PASSWORD,
+//     which defaults to the store password). Set by .github/workflows/release.yml from GitHub secrets.
+//  2. Local: apps/android/keystore.properties (git-ignored) with storeFile=..., storePassword=..., keyAlias=..., keyPassword=...
+//  3. Neither: release builds are unsigned, as before.
 val keystoreProps = Properties().apply {
-    val f = rootProject.file("keystore.properties")
-    if (f.exists()) f.inputStream().use { load(it) }
+    val envFile = System.getenv("HAZENOW_KEYSTORE_FILE")
+    if (!envFile.isNullOrBlank()) {
+        val pw = System.getenv("HAZENOW_KEYSTORE_PASSWORD").orEmpty()
+        setProperty("storeFile", envFile)
+        setProperty("storePassword", pw)
+        setProperty("keyAlias", System.getenv("HAZENOW_KEY_ALIAS") ?: "hazenow")
+        setProperty("keyPassword", System.getenv("HAZENOW_KEY_PASSWORD")?.takeIf { it.isNotBlank() } ?: pw)
+    } else {
+        val f = rootProject.file("keystore.properties")
+        if (f.exists()) f.inputStream().use { load(it) }
+    }
 }
+
+// Release versions come from the git tag in CI (HAZENOW_VERSION_NAME, HAZENOW_VERSION_CODE); local builds keep the defaults.
+val ciVersionName: String? = System.getenv("HAZENOW_VERSION_NAME")?.takeIf { it.isNotBlank() }
+val ciVersionCode: Int? = System.getenv("HAZENOW_VERSION_CODE")?.toIntOrNull()
 
 android {
     namespace = "sg.hazenow"
@@ -22,8 +38,8 @@ android {
         applicationId = "sg.hazenow"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = ciVersionCode ?: 1
+        versionName = ciVersionName ?: "1.0.0"
     }
 
     signingConfigs {

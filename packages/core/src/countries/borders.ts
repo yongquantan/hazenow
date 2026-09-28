@@ -57,6 +57,15 @@ function segDist(px: number, py: number, ax: number, ay: number, bx: number, by:
   return Math.hypot(px - ax - t * dx, py - ay - t * dy);
 }
 
+/**
+ * Small islands the simplified land polygons leave out and that sit beyond the coastal snap, as [cc, lat, lon, radius°].
+ * Only islands well inside one country's waters (verified on a map), so this can't move a point across a border.
+ */
+export const SMALL_ISLANDS: readonly [CountryCode, number, number, number][] = [
+  ["TH", 7.74, 98.77, 0.06], // Ko Phi Phi (Krabi)
+  ["TH", 10.09, 99.835, 0.05], // Ko Tao (Surat Thani)
+];
+
 /** Country code for a point, or null if it is outside ASEAN + Timor-Leste (and not within the coastal snap). */
 export function countryAt(lat: number, lon: number): CountryCode | null {
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
@@ -65,6 +74,7 @@ export function countryAt(lat: number, lon: number): CountryCode | null {
     if (lon < r.minX || lon > r.maxX || lat < r.minY || lat > r.maxY) continue;
     if (inside(lon, lat, r.pts)) return r.cc;
   }
+  for (const [cc, y, x, rad] of SMALL_ISLANDS) if (Math.hypot(lat - y, lon - x) <= rad) return cc;
   let best = SNAP_DEG;
   let bestCc: CountryCode | null = null;
   for (const r of rs) {

@@ -52,18 +52,55 @@ The gap runs both ways. When haze clears, the 24-hr PSI stays high for most of a
 
 ## Get it
 
-| Where | What you get | Status |
+Everything is free, and nothing needs an app store. **Step-by-step guide with pictures: [hazenow.pages.dev/download](https://hazenow.pages.dev/download/)**. Every file is on [GitHub Releases](https://github.com/yongquantan/hazenow/releases), and each has a stable link that always points at the newest release: `https://github.com/yongquantan/hazenow/releases/latest/download/<file>`.
+
+> **Heads-up while the repo is private:** GitHub only serves release files to signed-in collaborators of a private repo. The links below, the download page's buttons and Obtainium start working for everyone once releases are public: make this repo public, or set the `RELEASE_REPO` Actions variable to a public repo such as `yongquantan/hazenow-releases` (plus a `RELEASES_TOKEN` secret) and build the site with `HAZENOW_RELEASES_REPO` set to the same repo. See [Releases](#releases).
+
+| Where | How to install | Status |
 |---|---|---|
-| **Web** ([`apps/web`](apps/web)) | Installable app, works offline, dark mode, share cards, embeddable card | Ready. Needs a domain to go live |
-| **iPhone** ([`apps/apple`](apps/apple)) | App, home and Lock Screen widgets, Live Activity and Dynamic Island, share cards | Builds. Needs signing for TestFlight |
-| **Mac** ([`apps/apple`](apps/apple)) | Menu bar reading `● 105 ▲`, a pill beside the notch, desktop widgets | Builds. Needs signing and notarisation |
-| **Android** ([`apps/android`](apps/android)) | App, home-screen widgets, Quick Settings tile, "Haze watch" in the status bar | APK builds. No Google Play Services, F-Droid friendly |
-| **Command line** ([`packages/core`](packages/core)) | `npx hazenow`, `--watch`, `--json`, tmux and starship | Ready |
-| **SwiftBar / xbar** ([`integrations/swiftbar`](integrations/swiftbar)) | Zero-install Mac menu bar | Ready |
-| **Scriptable** ([`integrations/scriptable`](integrations/scriptable)) | An iPhone widget today, no App Store wait | Ready |
-| **Raycast** ([`integrations/raycast`](integrations/raycast)) | Menu bar command and a "Haze Now" view | Builds |
-| **Home Assistant** ([`integrations/home-assistant`](integrations/home-assistant)) | Sensors per region and "at home", HACS-ready | Ready |
-| **Telegram bot** ([`integrations/telegram-bot`](integrations/telegram-bot)) | `/now`, share your location, band-change alerts | Needs a bot token to deploy |
+| **Web** ([`apps/web`](apps/web)) | Open [hazenow-app.pages.dev](https://hazenow-app.pages.dev). Installable, works offline | Live |
+| **iPhone** | Safari → [hazenow-app.pages.dev](https://hazenow-app.pages.dev) → Share → **Add to Home Screen**. Widget: free **Scriptable** app + [`HazeNow-scriptable.js`](https://github.com/yongquantan/hazenow/releases/latest/download/HazeNow-scriptable.js). The native app ([`apps/apple`](apps/apple)) needs a paid Apple account, so it isn't distributed | Available |
+| **Android** ([`apps/android`](apps/android)) | [`HazeNow-android.apk`](https://github.com/yongquantan/hazenow/releases/latest/download/HazeNow-android.apk). Updates: [Obtainium](https://github.com/ImranR98/Obtainium) | Available |
+| **Mac** ([`apps/apple`](apps/apple)) | [`HazeNow-mac.zip`](https://github.com/yongquantan/hazenow/releases/latest/download/HazeNow-mac.zip): menu bar `● 105 ▲`, notch pill | Available (not notarised) |
+| **SwiftBar / xbar** ([`integrations/swiftbar`](integrations/swiftbar)) | [`hazenow.2m.py`](https://github.com/yongquantan/hazenow/releases/latest/download/hazenow.2m.py) in your plugin folder | Available |
+| **Command line** ([`packages/core`](packages/core)) | `npm i -g https://github.com/yongquantan/hazenow/releases/latest/download/hazenow-cli.tgz` | Available |
+| **Home Assistant** ([`integrations/home-assistant`](integrations/home-assistant)) | [`hazenow-home-assistant.zip`](https://github.com/yongquantan/hazenow/releases/latest/download/hazenow-home-assistant.zip), or HACS | Available |
+| **Raycast** ([`integrations/raycast`](integrations/raycast)) | Menu bar command and a "Haze Now" view | Coming soon |
+| **Telegram bot** ([`integrations/telegram-bot`](integrations/telegram-bot)) | `/now`, share your location, band-change alerts | Coming soon |
+
+### iPhone
+1. Open [hazenow-app.pages.dev](https://hazenow-app.pages.dev) in **Safari**.
+2. Tap **Share** (the square with an arrow pointing up; on iOS 26, tap **•••** first), then **Add to Home Screen**, then **Add**.
+3. For a Home Screen or Lock Screen widget: install **Scriptable** (free, App Store), open [`HazeNow-scriptable.js`](https://github.com/yongquantan/hazenow/releases/latest/download/HazeNow-scriptable.js), copy it into a new Scriptable script named **HazeNow**, then long-press your Home Screen → **+** → Scriptable → **Add Widget**, tap the widget and pick **Script: HazeNow**.
+
+### Android
+1. Download [`HazeNow-android.apk`](https://github.com/yongquantan/hazenow/releases/latest/download/HazeNow-android.apk) and open it.
+2. The first time, Android asks to allow your browser to **install unknown apps**. Allow it once, go back, and tap **Install**.
+3. Optional, for automatic updates: install [Obtainium](https://github.com/ImranR98/Obtainium), then open `obtainium://add/https://github.com/yongquantan/hazenow` (or paste `https://github.com/yongquantan/hazenow` into Obtainium's **Add app**). Obtainium watches GitHub Releases and offers each new APK.
+
+Google's Android developer verification starts in Singapore on 30 Sep 2026: on certified devices, an APK from an unregistered developer needs Android's extra "advanced" install steps (or `adb`). If Android shows an extra safety check for apps from outside an app store, follow its steps. Registering HazeNow's package with Google (free limited-distribution account, or full verification) would remove that step.
+
+The APK is signed with HazeNow's own key (certificate SHA-256 `e7:4c:5f:e9:b9:28:9b:08:5e:14:57:6d:99:0d:03:6e:3a:fd:c2:c7:d7:56:e0:1b:13:30:6c:1b:55:2d:58:d0`), so updates install over the top.
+
+### Mac
+1. Download [`HazeNow-mac.zip`](https://github.com/yongquantan/hazenow/releases/latest/download/HazeNow-mac.zip), double-click to unzip, and drag **HazeNow** into **Applications**.
+2. Open it. macOS says **"HazeNow" Not Opened** ("Apple could not verify "HazeNow" is free of malware…"), because HazeNow is free and isn't registered with Apple ($99/year). Click **Done**.
+3. Open **System Settings → Privacy & Security**, scroll down to **Security**, and next to **"HazeNow" was blocked to protect your Mac** click **Open Anyway**. Confirm **Open Anyway** and enter your password. The button appears for about an hour after you tried to open the app. From then on it opens normally.
+
+No warning at all: install [SwiftBar](https://swiftbar.app) (`brew install --cask swiftbar`), then put [`hazenow.2m.py`](https://github.com/yongquantan/hazenow/releases/latest/download/hazenow.2m.py) in its plugin folder and `chmod +x` it.
+
+### Command line
+```sh
+npm i -g https://github.com/yongquantan/hazenow/releases/latest/download/hazenow-cli.tgz   # Node 18+
+hazenow            # the full reading
+hazenow --oneline  # ● 105 ▲ for tmux, starship or your prompt
+```
+
+### Home Assistant
+- **HACS:** ⋮ → **Custom repositories** → add the integration's repository (type **Integration**) → install → restart → **Settings → Devices & services → Add → HazeNow**. HACS needs the integration at a repository root, so this works once `integrations/home-assistant` is published as its own public repo (see its [README](integrations/home-assistant/README.md)).
+- **Manual:** download [`hazenow-home-assistant.zip`](https://github.com/yongquantan/hazenow/releases/latest/download/hazenow-home-assistant.zip) and unzip it into your config folder, so you get `config/custom_components/hazenow`. Restart.
+
+Check any download against `SHA256SUMS.txt` on the release: `shasum -a 256 -c SHA256SUMS.txt --ignore-missing`.
 
 <p align="center">
   <img src="apps/android/docs/screenshots/16-main-v15-estimate.png" width="220" alt="Android app main screen: verdict, big PM2.5 number, band and trend">
@@ -195,6 +232,20 @@ cd apps/android && ./gradlew :core:test assembleDebug
 
 Every app has a mock mode for testing any air state without waiting for haze. For example, `?mock=high` on the web, `-HazeMock high` on Apple, and `am start … --es mock high` on Android. See each app's README.
 
+## Releases
+
+`.github/workflows/release.yml` builds every file above and publishes a GitHub Release with the same file names each time:
+
+- **Push a tag** `vX.Y.Z` (a tag with `-`, like `v0.3.0-rc1`, becomes a prerelease), or run **Release** from the Actions tab (workflow_dispatch; tag optional, prerelease and draft toggles).
+- **Monthly:** on the 1st, if `main` has changed since the last tag, it bumps the patch, tags and releases.
+- Files: `HazeNow-android.apk` (signed), `HazeNow-mac.zip` (ad-hoc signed, built on `macos-26` with Xcode 26.3; optional, since macOS minutes count 10x), `hazenow-cli.tgz`, `HazeNow-scriptable.js`, `hazenow.2m.py`, `hazenow-home-assistant.zip` and `SHA256SUMS.txt`. The notes list the commits since the last tag, plus how to install.
+- If the Mac job fails or is skipped, `scripts/release-mac-local.sh [tag]` builds the zip on a Mac and uploads it with `gh release upload`.
+- **Where releases go:** one switch. By default they go to this repo. Set the Actions variable `RELEASE_REPO` (e.g. `yongquantan/hazenow-releases`) and a `RELEASES_TOKEN` secret (fine-grained PAT, Contents: read and write on that repo) to publish elsewhere. Build the site with `HAZENOW_RELEASES_REPO` set to the same repo.
+- `releases/latest/download/…` skips prereleases and drafts, so release candidates never replace what people download.
+- **Android signing:** secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD` and `ANDROID_KEY_ALIAS`. Gradle reads them from the environment (`HAZENOW_KEYSTORE_FILE`, `HAZENOW_KEYSTORE_PASSWORD`, `HAZENOW_KEY_ALIAS`); without them, local release builds stay unsigned, as before. **Keep an offline backup of the keystore and its password.** If it's lost, installed apps can't be updated, and everyone has to uninstall and reinstall.
+- **Web and site** are on Cloudflare Pages (`hazenow-app` and `hazenow` projects). `scripts/deploy-pages.sh` builds and deploys both. The release workflow also redeploys them after a full release when a `CLOUDFLARE_API_TOKEN` secret (Cloudflare Pages: Edit) and `CLOUDFLARE_ACCOUNT_ID` exist.
+- **CI** (`.github/workflows/ci.yml`) runs on every push and PR, on Linux only: core tests, web and site builds, proxy tests, Android `:core:test assembleDebug` and the Home Assistant tests.
+
 ## Docs
 
 | | |
@@ -210,7 +261,7 @@ Every app has a mock mode for testing any air state without waiting for haze. Fo
 
 ## Credits
 
-Made by **Yong Quan Tan** · [LinkedIn](https://www.linkedin.com/in/yongquantan) · I run [Kairos Labs](https://kairoslabs.sg), an applied AI studio.
+Made by **Yong Quan Tan** · [LinkedIn](https://www.linkedin.com/in/yong-quan-tan) · I run [Kairos Labs](https://kairoslabs.sg), an applied AI studio.
 
 Data: NEA via [data.gov.sg](https://data.gov.sg), under the Singapore Open Data Licence. HazeNow is not affiliated with NEA.
 Typeface: [Apfel Grotezk](https://www.collletttivo.it/typefaces/apfel-grotezk) by Collletttivo, under the SIL Open Font License.

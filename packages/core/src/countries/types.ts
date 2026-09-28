@@ -165,6 +165,12 @@ export interface CountryQuery {
   lon?: number;
   /** Station id to pin (region mode). */
   station?: string;
+  /**
+   * Hard radius (km) for a catalogue destination: nothing farther away is used, not even the 60 km "nearest_far"
+   * fallback, so a far station is never stretched to cover a place (docs/sea/COVERAGE.md, Popular destinations).
+   * Freshness is then judged among the stations inside the radius. Unset = the SPEC v2.0 defaults.
+   */
+  withinKm?: number;
 }
 
 export type FetchLike = (

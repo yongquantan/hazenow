@@ -135,10 +135,10 @@ function trendWordOf(s: Snapshot): string | null {
 
 /**
  * Share text (COPY §15): no verdict, no Instant PSI.
- * "Air near me right now: Elevated (PM2.5 105), rising. NEA 24-hr PSI: 84. Data: NEA via data.gov.sg. hazenow.sg"
+ * "Air near me right now: Elevated (PM2.5 105), rising. NEA 24-hr PSI: 84. Data: NEA via data.gov.sg. hazenow.pages.dev"
  * COPY fixes "near me"; in region mode we say "in the West" so the recipient isn't misled about where.
  */
-export function shareText(s: Snapshot, shareUrl = "hazenow.sg", opts: { placeName?: string } = {}): string {
+export function shareText(s: Snapshot, shareUrl = "hazenow.pages.dev", opts: { placeName?: string } = {}): string {
   const band = bandInfo(s.band).label;
   const w = trendWordOf(s);
   const psi = s.officialPsi24h === null ? "" : ` NEA 24-hr PSI: ${s.officialPsi24h}.`;

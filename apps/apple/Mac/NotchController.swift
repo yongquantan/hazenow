@@ -266,7 +266,7 @@ struct NotchView: View {
             }
             .frame(width: NotchController.earWidth - 10, alignment: .trailing)
             Spacer(minLength: 0)
-            Text(store.snapshot?.compactValueText ?? "—")
+            Text((store.snapshot?.compactValueText ?? "—") + (store.mockScenario != nil ? " M" : ""))
                 .font(.system(size: 12, weight: .semibold, design: .rounded).monospacedDigit())
                 .foregroundStyle(.white)
                 .frame(width: NotchController.earWidth - 8, alignment: .leading)

@@ -124,7 +124,7 @@ sealed interface ShareCardContent {
 
 object ShareCards {
     const val CREDIT = "Yong Quan Tan"
-    const val SITE = "hazenow.sg"
+    const val SITE = "hazenow.pages.dev"
     /** 1-hr vs 24-hr gap (µg/m³) that makes the Two clocks card the pick (rule 4). */
     const val CLOCKS_GAP = 40
     /** All-clear looks back this far for an Elevated+ hour (rule 1). */
@@ -360,7 +360,7 @@ object ShareCards {
                     statsRest = "µg/m³ · $label${if (tw != null) " · $tw" else ""}",
                     // Stale: a "next check" time would already be in the past.
                     actions = acts.ifEmpty { listOf("Enjoy the fresh air.") } +
-                        (if (s.stale) "Check hazenow.sg for NEA’s next update." else "Next check at ${nextCheck(s.observedAt)}."),
+                        (if (s.stale) "Check hazenow.pages.dev for NEA’s next update." else "Next check at ${nextCheck(s.observedAt)}."),
                     station = place.stationShort,
                 )
             }

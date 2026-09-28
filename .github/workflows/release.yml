@@ -1,0 +1,344 @@
+# Builds every downloadable HazeNow file and publishes a GitHub Release with STABLE asset names, so
+#   https://github.com/<RELEASE_REPO>/releases/latest/download/<name>
+# always points at the newest non-prerelease build.
+#
+# Triggers
+#   - push a tag v*            → release that tag (a tag with "-", e.g. v0.3.0-rc1, becomes a prerelease)
+#   - workflow_dispatch        → release any branch; tag is the input, or the next patch after the last tag
+#   - monthly schedule         → only if main has commits since the last tag: bump the patch, tag, release
+#
+# Where releases go (one switch, no rework):
+#   Repository variable RELEASE_REPO (Settings → Secrets and variables → Actions → Variables), default: this repo.
+#   To publish to a separate public repo (e.g. yongquantan/hazenow-releases), set RELEASE_REPO to it and add a
+#   secret RELEASES_TOKEN: a fine-grained PAT with "Contents: read and write" on that repo. The tag is still
+#   created here too, so the monthly "changed since last tag" check keeps working.
+#
+# Secrets: ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS (optional ANDROID_KEY_PASSWORD).
+#
+# Cost: the Mac job is the only macOS job in the repo (~6–10 billed min x10 per release). It is optional: if it
+# fails, the release still ships and scripts/release-mac-local.sh uploads HazeNow-mac.zip from a Mac.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to create, e.g. v0.3.0 or v0.3.0-rc1 (empty = next patch after the last tag)"
+        required: false
+        type: string
+      prerelease:
+        description: "Mark as prerelease (prereleases are NOT served by releases/latest)"
+        required: false
+        type: boolean
+        default: true
+      draft:
+        description: "Create as a draft"
+        required: false
+        type: boolean
+        default: false
+      mac:
+        description: "Build the macOS app on a macOS runner (10x minutes)"
+        required: false
+        type: boolean
+        default: true
+  schedule:
+    - cron: "17 2 1 * *" # 02:17 UTC on the 1st of each month
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  RELEASE_REPO: ${{ vars.RELEASE_REPO || github.repository }}
+
+jobs:
+  prepare:
+    name: Decide version
+    runs-on: ubuntu-latest
+    outputs:
+      release: ${{ steps.v.outputs.release }}
+      tag: ${{ steps.v.outputs.tag }}
+      version: ${{ steps.v.outputs.version }}
+      version_code: ${{ steps.v.outputs.version_code }}
+      prerelease: ${{ steps.v.outputs.prerelease }}
+      draft: ${{ steps.v.outputs.draft }}
+      sha: ${{ steps.v.outputs.sha }}
+      prev_tag: ${{ steps.v.outputs.prev_tag }}
+      mac: ${{ steps.v.outputs.mac }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: v
+        env:
+          EVENT: ${{ github.event_name }}
+          IN_TAG: ${{ inputs.tag }}
+          IN_PRE: ${{ inputs.prerelease }}
+          IN_DRAFT: ${{ inputs.draft }}
+          IN_MAC: ${{ inputs.mac }}
+        run: |
+          set -euo pipefail
+          git fetch --tags --force
+          sha=$(git rev-parse HEAD)
+          # Last release tag reachable from HEAD (vX.Y.Z or vX.Y.Z-suffix), if any.
+          last=$(git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD 2>/dev/null || true)
+          next_patch() {
+            local t=${1#v}; local base=${t%%-*}
+            if [ "$t" != "$base" ]; then echo "v$base"; return; fi   # v0.3.0-rc1 → v0.3.0
+            IFS=. read -r ma mi pa <<<"$base"; echo "v$ma.$mi.$((pa+1))"
+          }
+          release=true; draft=false; mac=true
+          case "$EVENT" in
+            push)
+              tag=${GITHUB_REF_NAME}
+              last=$(git describe --tags --abbrev=0 --match 'v[0-9]*' "${tag}^" 2>/dev/null || true)
+              case "$tag" in *-*) pre=true ;; *) pre=false ;; esac ;;
+            workflow_dispatch)
+              tag=${IN_TAG:-$(next_patch "${last:-v0.0.0}")}
+              pre=${IN_PRE}; draft=${IN_DRAFT}; mac=${IN_MAC} ;;
+            schedule)
+              pre=false
+              if [ -z "$last" ]; then echo "No tag yet: nothing to compare, skipping."; release=false; tag=none
+              elif [ "$(git rev-list --count "$last"..HEAD)" = 0 ]; then echo "main unchanged since $last, skipping."; release=false; tag=none
+              else tag=$(next_patch "$last"); fi ;;
+          esac
+          if [ "$release" = true ]; then
+            [[ "$tag" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)(-([0-9A-Za-z.]+))?$ ]] || { echo "::error::Bad tag '$tag' (want vX.Y.Z or vX.Y.Z-rcN)"; exit 1; }
+            ma=${BASH_REMATCH[1]}; mi=${BASH_REMATCH[2]}; pa=${BASH_REMATCH[3]}; suf=${BASH_REMATCH[5]:-}
+            # versionCode grows with every release: X.Y.Z-rcN → XYYZZNN (rc N < 99 = final).
+            if [ -z "$suf" ]; then n=99; elif [[ "$suf" =~ ^rc\.?([0-9]+)$ ]]; then n=${BASH_REMATCH[1]}; else n=50; fi
+            code=$(( ma*1000000 + mi*10000 + pa*100 + n ))
+            if [ "$EVENT" != push ] && git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+              if [ "$(git rev-list -n1 "$tag")" != "$sha" ]; then echo "::error::Tag $tag already exists on another commit"; exit 1; fi
+            fi
+            [ "$last" = "$tag" ] && last=$(git describe --tags --abbrev=0 --match 'v[0-9]*' "${tag}^" 2>/dev/null || true)
+            echo "Release $tag (versionCode $code, prerelease=$pre, draft=$draft) at $sha; previous: ${last:-none}"
+          fi
+          {
+            echo "release=$release"; echo "tag=$tag"; echo "version=${tag#v}"; echo "version_code=${code:-0}"
+            echo "prerelease=$pre"; echo "draft=$draft"; echo "sha=$sha"; echo "prev_tag=$last"; echo "mac=$mac"
+          } >> "$GITHUB_OUTPUT"
+
+  android:
+    name: Android APK (signed)
+    needs: prepare
+    if: needs.prepare.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Build signed release APK
+        working-directory: apps/android
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          HAZENOW_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          HAZENOW_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          HAZENOW_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          HAZENOW_VERSION_NAME: ${{ needs.prepare.outputs.version }}
+          HAZENOW_VERSION_CODE: ${{ needs.prepare.outputs.version_code }}
+        run: |
+          set -euo pipefail
+          [ -n "$KEYSTORE_B64" ] || { echo "::error::ANDROID_KEYSTORE_BASE64 secret is missing"; exit 1; }
+          export HAZENOW_KEYSTORE_FILE="$RUNNER_TEMP/hazenow-release.jks"
+          echo "$KEYSTORE_B64" | base64 -d > "$HAZENOW_KEYSTORE_FILE"
+          ./gradlew --no-daemon assembleRelease
+          rm -f "$HAZENOW_KEYSTORE_FILE"
+          mkdir -p "$GITHUB_WORKSPACE/out"
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/out/HazeNow-android.apk"
+      - name: Verify signature and version
+        run: |
+          set -euo pipefail
+          bt=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$bt/apksigner" verify --print-certs out/HazeNow-android.apk | tee /dev/stderr | grep -q "CN=HazeNow"
+          "$bt/aapt" dump badging out/HazeNow-android.apk | head -1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: out/*
+          if-no-files-found: error
+
+  mac:
+    name: macOS app (ad-hoc signed, optional)
+    needs: prepare
+    if: needs.prepare.outputs.release == 'true' && needs.prepare.outputs.mac != 'false'
+    runs-on: macos-26
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - name: Build and zip
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          BUILD: ${{ needs.prepare.outputs.version_code }}
+          # The project was built locally with Xcode 26.3; the runner image has it side by side with newer ones.
+          DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          sh scripts/build-mac-app.sh "$VERSION" "$BUILD" out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac
+          path: out/HazeNow-mac.zip
+          if-no-files-found: error
+
+  bundle:
+    name: CLI + integrations
+    needs: prepare
+    if: needs.prepare.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - uses: oven-sh/setup-bun@v2
+      - name: CLI tarball (npm pack of packages/core)
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          npm ci
+          npm test
+          (cd packages/core && npm version "$VERSION" --no-git-tag-version --allow-same-version)
+          npm run build -w hazenow
+          mkdir -p out
+          (cd packages/core && npm pack --pack-destination ../../out)
+          mv out/hazenow-*.tgz out/hazenow-cli.tgz
+          # Smoke test: install globally into a temp prefix and run it.
+          prefix=$(mktemp -d); npm i -g --prefix "$prefix" ./out/hazenow-cli.tgz
+          "$prefix/bin/hazenow" --help | head -3
+      - name: Integrations
+        run: |
+          set -euo pipefail
+          cp integrations/scriptable/HazeNow.js out/HazeNow-scriptable.js
+          cp integrations/swiftbar/hazenow.2m.py out/hazenow.2m.py
+          python3 out/hazenow.2m.py --selftest
+          # Unzip into your Home Assistant config folder → config/custom_components/hazenow
+          (cd integrations/home-assistant && zip -r -X ../../out/hazenow-home-assistant.zip custom_components/hazenow -x '*/__pycache__/*' '*.pyc')
+          unzip -l out/hazenow-home-assistant.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bundle
+          path: out/*
+          if-no-files-found: error
+
+  publish:
+    name: Publish release
+    needs: [prepare, android, mac, bundle]
+    if: >-
+      always() && needs.prepare.outputs.release == 'true' &&
+      needs.android.result == 'success' && needs.bundle.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - name: Checksums
+        working-directory: out
+        run: |
+          set -euo pipefail
+          ls -la
+          sha256sum -- * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+      - name: Release notes
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+          PREV: ${{ needs.prepare.outputs.prev_tag }}
+          SHA: ${{ needs.prepare.outputs.sha }}
+        run: |
+          set -euo pipefail
+          range=${PREV:+$PREV..}$SHA
+          {
+            echo "## What's new"
+            echo
+            git log --no-merges --pretty='- %s (%h)' "$range" | head -100
+            [ -n "$PREV" ] && echo && echo "Full changes: https://github.com/${GITHUB_REPOSITORY}/compare/${PREV}...${TAG}"
+            echo
+            if [ ! -f out/HazeNow-mac.zip ]; then
+              echo "> The Mac app wasn't built in CI for this release. It will be added with \`scripts/release-mac-local.sh\`."
+              echo
+            fi
+            sed "s#{{REPO}}#${RELEASE_REPO}#g" .github/release-notes-install.md
+          } > notes.md
+          cat notes.md
+      - name: Tag and publish
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN || github.token }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          SHA: ${{ needs.prepare.outputs.sha }}
+          PRE: ${{ needs.prepare.outputs.prerelease }}
+          DRAFT: ${{ needs.prepare.outputs.draft }}
+        run: |
+          set -euo pipefail
+          # Tag in this repo (skipped for tag pushes). Pushes made with GITHUB_TOKEN don't re-trigger workflows.
+          if ! git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            git tag "$TAG" "$SHA"
+            git push origin "refs/tags/$TAG"
+          fi
+          flags=()
+          [ "$PRE" = true ] && flags+=(--prerelease)
+          [ "$DRAFT" = true ] && flags+=(--draft)
+          # In a separate release repo the source commit doesn't exist, so let GitHub tag its default branch.
+          [ "$RELEASE_REPO" = "$GITHUB_REPOSITORY" ] && flags+=(--target "$SHA")
+          if gh release view "$TAG" --repo "$RELEASE_REPO" >/dev/null 2>&1; then
+            gh release edit "$TAG" --repo "$RELEASE_REPO" --notes-file notes.md
+            gh release upload "$TAG" --repo "$RELEASE_REPO" --clobber out/*
+          else
+            gh release create "$TAG" --repo "$RELEASE_REPO" --title "HazeNow $VERSION" --notes-file notes.md "${flags[@]}" out/*
+          fi
+          url=$(gh release view "$TAG" --repo "$RELEASE_REPO" --json url -q .url)
+          echo "### Released [$TAG]($url)" >> "$GITHUB_STEP_SUMMARY"
+
+  deploy-pages:
+    # Optional: redeploys hazenow.pages.dev (site + /download/) and hazenow-app.pages.dev after a full release.
+    # Runs only when the CLOUDFLARE_API_TOKEN secret exists (create it in the Cloudflare dashboard with
+    # "Account → Cloudflare Pages → Edit"; also set CLOUDFLARE_ACCOUNT_ID as a secret or variable). Prereleases skip it.
+    name: Deploy to Cloudflare Pages (optional)
+    needs: [prepare, publish]
+    if: needs.publish.result == 'success' && needs.prepare.outputs.prerelease != 'true' && needs.prepare.outputs.draft != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
+      HAZENOW_RELEASES_REPO: ${{ vars.RELEASE_REPO || github.repository }}
+    steps:
+      - name: Skip without a Cloudflare token
+        if: env.CLOUDFLARE_API_TOKEN == ''
+        run: echo "No CLOUDFLARE_API_TOKEN secret, so Pages wasn't redeployed. Run scripts/deploy-pages.sh locally."
+      - uses: actions/checkout@v7
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: actions/setup-node@v7
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        with:
+          node-version: 22
+          cache: npm
+      - if: env.CLOUDFLARE_API_TOKEN != ''
+        run: npm ci && sh scripts/deploy-pages.sh both

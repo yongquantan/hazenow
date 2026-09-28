@@ -1,0 +1,78 @@
+# CI for every push and pull request. Linux only: macOS minutes count 10x on the free private-repo plan
+# (2,000 min/month), so the Apple builds run only in release.yml (or locally, scripts/release-mac-local.sh).
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+    paths-ignore: ["**/*.md", "docs/**", "brand/**", ".qa-runs/**"]
+  pull_request:
+    paths-ignore: ["**/*.md", "docs/**", "brand/**", ".qa-runs/**"]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  js:
+    name: Core tests, web + site builds, proxy tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            services/proxy/package-lock.json
+      - uses: oven-sh/setup-bun@v2
+      - run: npm ci
+      - name: Core tests
+        run: npm test
+      - name: Core + web build
+        run: npm run build
+      - name: Site build
+        run: npm run build --prefix apps/site
+      - name: Proxy tests
+        working-directory: services/proxy
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+
+  android:
+    name: Android core tests + debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v6
+      - name: ":core:test assembleDebug"
+        working-directory: apps/android
+        run: ./gradlew --no-daemon :core:test assembleDebug
+
+  home-assistant:
+    name: Home Assistant pytest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install pytest pytest-asyncio
+      - name: pytest
+        working-directory: integrations/home-assistant
+        run: python -m pytest -q
+      - name: SwiftBar self-test (same maths)
+        run: python integrations/swiftbar/hazenow.2m.py --selftest

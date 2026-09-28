@@ -57,7 +57,7 @@ Instant PSI is **not shown anywhere**, per SPEC v1.2 §1. The core module still 
 ## Share system (SPEC v1.6)
 
 - **One tap, no choosing.** A primary **Share** button sits next to the verdict. Share is also on the top bar, in the "Why two numbers?" dialog ("Share this") and as an action on band-change notifications (`--ez share true`).
-- The sheet shows a large preview of the auto-picked card, with the other eligible cards in a `HorizontalPager` underneath. **Send** shares the PNG through a FileProvider, plus `EXTRA_TEXT` with the text and a link like `https://hazenow.sg/?area=tampines`.
+- The sheet shows a large preview of the auto-picked card, with the other eligible cards in a `HorizontalPager` underneath. **Send** shares the PNG through a FileProvider, plus `EXTRA_TEXT` with the text and a link like `https://hazenow.pages.dev/?area=tampines`.
 - **Core (`core/.../Share.kt`):** a port of `packages/core/src/share.ts` with the same names, ids (`now|clocks|group|clear`), rules, persona chips and strings.
   - `pickShareCard` implements rules 1–5 and the alternates.
   - Also included: `episodeStats`, `shareCardContent`, `shareCardText`, `shareFileName` and `formatCardWhen`.
@@ -67,8 +67,8 @@ Instant PSI is **not shown anywhere**, per SPEC v1.2 §1. The core module still 
   - Layout, spacing and colours follow the HTML designs in `docs/share-cards`.
   - Headlines shrink until they fit without clipping. This was tested with "Choa Chu Kang" and 3-digit PM2.5.
   - Trend arrows are vectors.
-  - Every card prints the date and time, the area, "Data: NEA via data.gov.sg", "Free and open source · Made by Yong Quan Tan" and `hazenow.sg`.
-- **Stale readings (COPY §19):** cards still share, but the place/time line reads "{Area} · reading from {time} (latest available)" and the headline becomes "Latest NEA reading is delayed." The trend is hidden on stale cards and in stale share text (an old trend could mislead). Stale wording avoids "now": "NEA’s advice for that hour", "This reading is for the 3pm hour.", "The 3pm hour" on Two clocks, and "Check hazenow.sg for NEA’s next update." instead of "Next check at …" on group cards. The Two clocks chart ends at the reading's hour, not "Now". On stale Two clocks cards the long place/time line moves to its own row under the header, and the headline and chart shrink slightly so the card keeps normal spacing (parity with Apple).
+  - Every card prints the date and time, the area, "Data: NEA via data.gov.sg", "Free and open source · Made by Yong Quan Tan" and `hazenow.pages.dev`.
+- **Stale readings (COPY §19):** cards still share, but the place/time line reads "{Area} · reading from {time} (latest available)" and the headline becomes "Latest NEA reading is delayed." The trend is hidden on stale cards and in stale share text (an old trend could mislead). Stale wording avoids "now": "NEA’s advice for that hour", "This reading is for the 3pm hour.", "The 3pm hour" on Two clocks, and "Check hazenow.pages.dev for NEA’s next update." instead of "Next check at …" on group cards. The Two clocks chart ends at the reading's hour, not "Now". On stale Two clocks cards the long place/time line moves to its own row under the header, and the headline and chart shrink slightly so the card keeps normal spacing (parity with Apple).
 - **About (COPY §18):** "Made by Yong Quan Tan" in the footer opens "About HazeNow", with the signature "— Yong Quan Tan" and links to LinkedIn, then Kairos Labs, then GitHub.
 - **Card exports:** only 6 representative PNGs are committed in `docs/cards/`; everything else there is git-ignored. To regenerate the full set (about 40 cards: every mock scenario, every persona, and a long-name stress case) on a debug build:
   ```sh

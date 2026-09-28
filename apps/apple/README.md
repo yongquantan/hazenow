@@ -98,10 +98,14 @@ content. Move away and it collapses. How it works:
 
 ## QA: deterministic mock mode
 
-`-HazeMock <scenario>` (read through the UserDefaults argument domain) replaces the network with bundled fixtures
+`-HazeMock <scenario>` (**Debug builds only**, read through the UserDefaults argument domain) replaces the network with bundled fixtures
 (`HazeKit/Sources/HazeKit/Resources/Scenarios`, copied from `packages/core/fixtures/scenarios`, raw NEA shape) and uses
 the scenario's fixed clock. The app writes it to the App Group defaults so widgets render the same scenario, shows a
-**MOCK DATA** badge, skips first-run onboarding and sends no notifications. `-HazeMock off` returns to live data.
+**MOCK DATA** badge (and "· MOCK" after the macOS menu bar reading), skips first-run onboarding and sends no
+notifications. Mock is **session-scoped**: any launch *without* the flag clears the stored scenario from the App Group
+and the app's own defaults, so a QA launch can't leave an everyday app on fake data. Release builds ignore the flag
+and the stored key entirely (`#if DEBUG`). The other QA hooks (`-HazeOpenShare`, `-HazeOpenSheet`, `HAZENOW_DEBUG_*`
+environment variables) are also Debug-only and are never written to disk.
 
 Scenarios: `normal`, `elevated`, `high`, `very_high`, `south_offline` (south = -1), `all_offline_stale`, `rising_fast`
 (+25 in 1 h), `network_error`.

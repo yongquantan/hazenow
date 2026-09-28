@@ -21,7 +21,7 @@ export const PERSONAS: readonly { id: Persona; chip: string }[] = [
 ];
 
 export const CREDIT = "Yong Quan Tan";
-export const SHARE_SITE = "hazenow.sg";
+export const SHARE_SITE = "hazenow.pages.dev";
 /** 1-hr vs 24-hr gap (µg/m³) that makes the Two clocks card the pick (rule 4). */
 export const CLOCKS_GAP = 40;
 /** All-clear looks back this far for an Elevated+ hour (rule 1). */
@@ -315,7 +315,7 @@ function nextCheck(observedAt: string): string {
 }
 
 export const STALE_HEADLINE = "Latest NEA reading is delayed.";
-export const STALE_NEXT_CHECK = "Check hazenow.sg for NEA's next update.";
+export const STALE_NEXT_CHECK = "Check hazenow.pages.dev for NEA's next update.";
 
 /** COPY §19: "{Area} · reading from {time} (latest available)". */
 export function stalePlaceLine(place: string, observedAt: string): string {

@@ -12,6 +12,7 @@ npm run dev            # http://localhost:5173
 npm run build          # → dist/  (runs scripts/assets.mjs first)
 npm run preview        # http://localhost:4174
 npm run shots          # screenshots at 1440/768/390, light + dark → docs/screenshots/ (needs preview running)
+node scripts/shoot-download.mjs   # /download/ at 390 (iPhone UA, + dark with Android UA) and 1440 (Mac UA), with checks
 ```
 
 `apps/site` isn't in the root `workspaces` list yet, but it works as it is because everything it needs is already
@@ -24,8 +25,14 @@ hoisted into the root `node_modules`. To add it, put `"apps/site"` in the root `
 | `HAZENOW_APP_BASE` | `https://app.hazenow.sg/` | where the web app (`apps/web`) is served. Every "Open HazeNow" link and "How we calculate this" uses it. A same-origin path such as `/app/` also works (see "Alternative: one host"). |
 | `HAZENOW_SITE_URL` | `https://hazenow.sg` | the canonical URL, `og:url`/`og:image`, JSON-LD, `robots.txt` and `sitemap.xml`. It's a placeholder until a domain is registered. |
 | `HAZENOW_REPO_URL` | `https://github.com/yongquantan/hazenow` | GitHub links |
+| `HAZENOW_RELEASES_REPO` | `yongquantan/hazenow` | `owner/repo` whose GitHub Releases the `/download/` buttons use (`https://github.com/<repo>/releases/latest/download/<asset>`), plus the release version shown there and the Obtainium link. |
 
-`index.html` uses `%SITE_URL%`, `%APP_BASE%` and `%REPO_URL%` tokens, which `vite.config.ts` fills in. `robots.txt` and
+**Downloads only work publicly once the release repo is public.** GitHub serves release assets of a private repo only to
+signed-in collaborators, so for everyone else the buttons 404 and the page falls back to "Latest version on GitHub Releases".
+For now the repo stays private (founder decision). To go live, either make `yongquantan/hazenow` public, or publish releases to a
+public repo and build with `HAZENOW_RELEASES_REPO=yongquantan/hazenow-releases`. Nothing else changes.
+
+`index.html` and `download/index.html` use `%SITE_URL%`, `%APP_BASE%`, `%REPO_URL%`, `%RELEASES_REPO%` and `%DL%` (the latest-download base) tokens, which `vite.config.ts` fills in. `robots.txt` and
 `sitemap.xml` are generated at build time.
 
 ## What's where
@@ -33,6 +40,12 @@ hoisted into the root `node_modules`. To add it, put `"apps/site"` in the root `
 - `index.html`: every section in order: hero with the live reading, product demo, "Get it everywhere", two clocks,
   built to be shared, why open source, Southeast Asia, updates, About (COPY.md §18 verbatim) and the footer. It also holds the SEO
   meta and the `SoftwareApplication` JSON-LD.
+- `download/index.html` + `src/download.ts`: the `/download/` page (a second Vite entry). Every platform with short install
+  steps; the card for the visitor's device (from the user agent; `?platform=ios|android|mac|web` forces one) is marked
+  "Recommended for this device" and moved first, but all options stay visible. The latest version and date come from the
+  GitHub Releases API in the browser, cached per session, with a plain "Latest version on GitHub Releases" link if it fails
+  (private repo, rate limit, offline). Buttons use the stable asset names: `HazeNow-android.apk`, `HazeNow-mac.zip`,
+  `hazenow-cli.tgz`, `HazeNow-scriptable.js`, `hazenow.2m.py`, `hazenow-home-assistant.zip`, `SHA256SUMS.txt`.
 - `src/main.ts`: the live reading and the area picker. It refreshes every 5 min while the page is visible, v1-first via core. It
   also fills the menu-bar/CLI demo with the same live reading and powers "Copy script".
   Links meant for the app (`?embed=`, `?lat=`/`?lon=`, `?mock=`, `?theme=`) that land on `/` are sent on to the app.
@@ -50,8 +63,8 @@ hoisted into the root `node_modules`. To add it, put `"apps/site"` in the root `
   an image doesn't load, or the page scrolls sideways.
 
 Honesty rules the page follows: no store badges, because nothing is on a store yet. Every platform has a text + shape status (Live /
-Available / Beta / Coming soon). The DMG and APK links point at GitHub Releases as placeholders until CI publishes them.
-`npx hazenow` is marked "coming soon" because the package isn't on npm yet. For SEA, only Thailand is named, as "next · checking data licence"
+Available / Beta / Coming soon). "Get it everywhere" links to `/download/`, whose buttons point at the files the release workflow
+attaches to every GitHub Release. The CLI installs from the release tarball (`npm i -g <url>`), because the package isn't on npm yet. For SEA, only Thailand is named, as "next · checking data licence"
 (see `docs/sea/thailand.md`).
 
 ## Deploy: site at hazenow.sg, app at app.hazenow.sg (chosen)

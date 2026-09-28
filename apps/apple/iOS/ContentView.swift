@@ -10,6 +10,17 @@ struct ContentView: View {
     @State private var sheet: Sheet?
     @Environment(\.openURL) private var openURL
 
+    /// QA only (DEBUG builds): `-HazeOpenShare YES` / `-HazeOpenSheet profiles|about|explainer|areas`.
+    /// Read from the launch-argument domain, which is never written back to disk.
+    static var qaSheet: Sheet? {
+        #if DEBUG
+        if UserDefaults.standard.bool(forKey: "HazeOpenShare") { return .share }
+        return UserDefaults.standard.string(forKey: "HazeOpenSheet").flatMap(Sheet.init(rawValue:))
+        #else
+        return nil
+        #endif
+    }
+
     enum Sheet: String, Identifiable {
         case explainer, profiles, areas, onboarding, share, shareClocks, about
         var id: String { rawValue }
@@ -52,9 +63,7 @@ struct ContentView: View {
             .onAppear {
                 if !store.onboarded { sheet = .onboarding }
                 // QA: `-HazeOpenShare YES` opens the share sheet at launch (no URL confirmation dialog).
-                else if UserDefaults.standard.bool(forKey: "HazeOpenShare") { sheet = .share }
-                // QA: `-HazeOpenSheet profiles|about|explainer|areas` opens that sheet at launch.
-                else if let name = UserDefaults.standard.string(forKey: "HazeOpenSheet"), let s = Sheet(rawValue: name) { sheet = s }
+                else if let qa = Self.qaSheet { sheet = qa }
             }
             .onOpenURL { url in
                 if url.host == "share" { sheet = .share } else if url.host == "about" { sheet = .about }

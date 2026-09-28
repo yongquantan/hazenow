@@ -353,7 +353,7 @@ describe("format", () => {
   test("share text, summary and badge carry no Instant PSI (v1.2)", () => {
     const s = buildSnapshot(allInputs(), { region: "west" }, NOW);
     expect(shareText(s)).toBe(
-      "Air in the West right now: Elevated (PM2.5 117), rising. NEA 24-hr PSI: 81. Data: NEA via data.gov.sg. hazenow.sg",
+      "Air in the West right now: Elevated (PM2.5 117), rising. NEA 24-hr PSI: 81. Data: NEA via data.gov.sg. hazenow.pages.dev",
     );
     const g = buildSnapshot(allInputs(), { lat: 1.35735, lon: 103.7 }, NOW);
     expect(shareText(g)).toMatch(/^Air near me right now: Elevated \(PM2\.5 117\), rising\./);
@@ -855,11 +855,11 @@ describe("share system (SPEC v1.6)", () => {
   test("share text per card: headline-matched, ends with the site, no ~ / Instant PSI / anti-NEA words", () => {
     const s = snap([...flat(90, 22), 100, 136]);
     const all = (["now", "clocks", "group", "clear"] as const).map((c) => shareCardText(c, s, ["kids"], { placeName: "Tampines" }));
-    expect(all[0]).toBe("Air near Tampines at 4pm: Elevated (PM2.5 136), rising fast. NEA 24-hr PSI: 70 (Moderate). Data: NEA via data.gov.sg. hazenow.sg");
+    expect(all[0]).toBe("Air near Tampines at 4pm: Elevated (PM2.5 136), rising fast. NEA 24-hr PSI: 70 (Moderate). Data: NEA via data.gov.sg. hazenow.pages.dev");
     expect(all[1]).toMatch(/^Same NEA data, two clocks\. Tampines at 4pm: last hour PM2.5 136, 24-hr average 30\./);
     expect(all[2]).toMatch(/^For the kids · Recess check, Tampines at 4pm: /);
     for (const t of all) {
-      expect(t.endsWith("hazenow.sg")).toBe(true);
+      expect(t.endsWith("hazenow.pages.dev")).toBe(true);
       expect(t).not.toMatch(/~|Instant|real number|lagging|Unhealthy/);
     }
   });
@@ -957,9 +957,9 @@ describe("stale wording (COPY §19): 'that hour', never 'next hour' / 'last hour
     expect(c.adviceLabel).toBe("NEA’s advice for that hour");
     expect(c.psiLine).toBe("The 24-hr PSI (81) averages the whole day. This reading is for the 4pm hour.");
   });
-  test("group card: 'Next check at …' becomes 'Check hazenow.sg for NEA's next update.'", () => {
+  test("group card: 'Next check at …' becomes 'Check hazenow.pages.dev for NEA's next update.'", () => {
     const g = shareCardContent("group", s, ["kids"]) as GroupCard;
-    expect(g.actions.at(-1)).toBe("Check hazenow.sg for NEA's next update.");
+    expect(g.actions.at(-1)).toBe("Check hazenow.pages.dev for NEA's next update.");
     expect(g.actions.join(" ")).not.toMatch(/Next check at/);
     const fresh = buildSnapshot({ pm25Latest: pm25Response(LATEST) }, { region: "west" }, NOW);
     expect((shareCardContent("group", fresh, ["kids"]) as GroupCard).actions.at(-1)).toBe("Next check at 5pm.");

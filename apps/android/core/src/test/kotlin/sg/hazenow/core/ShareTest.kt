@@ -137,14 +137,14 @@ class ShareTest {
         val f = snap(flat(90, 22) + listOf(100, 136))
         val ctx = ShareContext(placeName = "Tampines")
         val all = ShareCard.entries.map { ShareCards.shareCardText(it, f.s, setOf(Profile.KIDS), ctx, avg24h = f.avg) }
-        assertEquals("Air near Tampines at 4pm: Elevated (PM2.5 136), rising fast. NEA 24-hr PSI: 70 (Moderate). Data: NEA via data.gov.sg. hazenow.sg", all[0])
+        assertEquals("Air near Tampines at 4pm: Elevated (PM2.5 136), rising fast. NEA 24-hr PSI: 70 (Moderate). Data: NEA via data.gov.sg. hazenow.pages.dev", all[0])
         assertTrue(all[1].startsWith("Same NEA data, two clocks. Tampines at 4pm: last hour PM2.5 136, 24-hr average 30."), all[1])
         assertTrue(all[2].startsWith("For the kids · Recess check, Tampines at 4pm: "), all[2])
         for (t in all) {
-            assertTrue(t.endsWith("hazenow.sg"), t)
+            assertTrue(t.endsWith("hazenow.pages.dev"), t)
             for (bad in listOf("~", "Instant", "real number", "lagging", "Unhealthy")) assertFalse(bad in t, "$bad in $t")
         }
-        assertEquals("https://hazenow.sg/?area=choa-chu-kang", ShareCards.shareLink("Choa Chu Kang"))
+        assertEquals("https://hazenow.pages.dev/?area=choa-chu-kang", ShareCards.shareLink("Choa Chu Kang"))
     }
 
     @Test fun staleShareCopy19() {
@@ -171,7 +171,7 @@ class ShareTest {
         assertEquals("The 24-hr PSI (70) averages the whole day. This reading is for the 4pm hour.", now.psiLine)
         val sk = ShareCards.shareCardContent("clocks", stale, general, ctx) as ShareCardContent.Clocks
         assertEquals("The 4pm hour", sk.lastHourLabel)
-        assertEquals("Check hazenow.sg for NEA’s next update.", g.actions.last())
+        assertEquals("Check hazenow.pages.dev for NEA’s next update.", g.actions.last())
         assertFalse(g.actions.any { it.startsWith("Next check at") })
         val staleWords = listOf(now.hook, now.headline, now.pmDetail, now.adviceLabel, now.psiLine, g.headline, g.statsRest) +
             g.actions + listOf(sk.lastHourLabel, sk.endLabel, pv.hook, pv.headline)

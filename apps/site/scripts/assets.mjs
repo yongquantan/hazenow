@@ -53,8 +53,11 @@ const images = [
 ];
 for (const [src, name, width, crop] of images) {
   const out = resolve(pub, `img/${name}.webp`);
-  if (!hasCwebp) {
-    if (!existsSync(out)) throw new Error(`cwebp not found and ${out} is missing (brew install webp)`);
+  // Some sources (e.g. most apps/web/docs/cards PNGs) are git-ignored and only exist after `npm run cards -w hazenow-web`.
+  // Without cwebp or the source, keep the WebP that's checked in, so CI and clean checkouts build as-is.
+  if (!hasCwebp || !existsSync(resolve(repo, src))) {
+    if (!existsSync(out)) throw new Error(`${out} is missing and can't be made (needs cwebp and ${src})`);
+    if (hasCwebp) console.log(`img/${name}.webp kept (no ${src}; run npm run cards -w hazenow-web to refresh)`);
     continue;
   }
   const args = ["-quiet", "-q", "82", "-m", "6", "-resize", String(width), "0"];

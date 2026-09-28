@@ -41,7 +41,7 @@
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "SGD" },
         "license": "https://opensource.org/licenses/MIT",
         "codeRepository": "%REPO_URL%",
-        "author": { "@type": "Person", "name": "Yong Quan Tan", "url": "https://www.linkedin.com/in/yongquantan" },
+        "author": { "@type": "Person", "name": "Yong Quan Tan", "url": "https://www.linkedin.com/in/yong-quan-tan" },
         "areaServed": { "@type": "Country", "name": "Singapore" },
         "image": "%SITE_URL%/og.png"
       }
@@ -79,6 +79,7 @@
           <span class="wordmark">HazeNow</span>
         </a>
         <nav class="nav" aria-label="Sections">
+          <a href="/download/">Download</a>
           <a href="#everywhere">Get it</a>
           <a href="#two-clocks">Two clocks</a>
           <a href="#open-source">Open source</a>
@@ -181,6 +182,7 @@
             <p class="kicker">Get it everywhere</p>
             <h2 id="everywhere-title">One number, wherever you look.</h2>
             <p class="sub">Every version uses the same rules and the same words, so the answer matches on your phone, your desk and your home. Nothing is on an app store yet, so you won't see store badges here. "Available" means you can install it today.</p>
+            <p class="everywhere-cta"><a class="btn btn-primary" href="/download/">All downloads and install steps</a></p>
           </div>
           <p class="legend" aria-label="Status key">
             <span class="status s-live"><i aria-hidden="true"></i>Live</span>
@@ -196,28 +198,28 @@
               <p class="plat-actions"><a class="btn btn-primary btn-sm" href="%APP_BASE%">Open HazeNow</a></p>
             </li>
             <li class="plat">
-              <div class="plat-top"><svg class="ic" aria-hidden="true"><use href="#i-phone"/></svg><span class="status s-soon"><i aria-hidden="true"></i>Coming soon</span></div>
-              <h3>iPhone and widgets</h3>
-              <p>Home and lock-screen widgets, a Live Activity and Apple Watch. TestFlight first.</p>
-              <p class="plat-actions"><a href="%REPO_URL%/tree/main/apps/apple" rel="noopener">Follow on GitHub</a></p>
+              <div class="plat-top"><svg class="ic" aria-hidden="true"><use href="#i-phone"/></svg><span class="status s-ready"><i aria-hidden="true"></i>Available</span></div>
+              <h3>iPhone</h3>
+              <p>Add the web app to your Home Screen from Safari today, or add the Scriptable widget. The native app, with a Live Activity and Apple Watch, comes later.</p>
+              <p class="plat-actions"><a href="/download/#iphone">How to add it</a></p>
             </li>
             <li class="plat">
               <div class="plat-top"><svg class="ic" aria-hidden="true"><use href="#i-mac"/></svg><span class="status s-beta"><i aria-hidden="true"></i>Beta</span></div>
               <h3>Mac menu bar and notch</h3>
               <p><span class="mono" data-live="compact">● 105 ▲</span> in your menu bar, with an optional pill by the notch.</p>
-              <p class="plat-actions"><a href="%REPO_URL%/releases/latest" rel="noopener">Download the DMG from GitHub Releases</a></p>
+              <p class="plat-actions"><a href="/download/#mac">Download for Mac</a></p>
             </li>
             <li class="plat">
               <div class="plat-top"><svg class="ic" aria-hidden="true"><use href="#i-android"/></svg><span class="status s-beta"><i aria-hidden="true"></i>Beta</span></div>
               <h3>Android</h3>
-              <p>Widgets, a Quick Settings tile and rare, calm band alerts. F-Droid soon.</p>
-              <p class="plat-actions"><a href="%REPO_URL%/releases/latest" rel="noopener">Get the APK from GitHub Releases</a></p>
+              <p>Widgets, a Quick Settings tile and rare, calm band alerts. Updates through Obtainium if you like.</p>
+              <p class="plat-actions"><a href="/download/#android">Download for Android</a></p>
             </li>
             <li class="plat">
-              <div class="plat-top"><svg class="ic" aria-hidden="true"><use href="#i-term"/></svg><span class="status s-soon"><i aria-hidden="true"></i>Coming soon</span></div>
+              <div class="plat-top"><svg class="ic" aria-hidden="true"><use href="#i-term"/></svg><span class="status s-ready"><i aria-hidden="true"></i>Available</span></div>
               <h3>Command line</h3>
-              <p><code>npx hazenow</code> once it's on npm. Until then, run it from the source.</p>
-              <p class="plat-actions"><a href="%REPO_URL%/tree/main/packages/core" rel="noopener">Source and usage</a></p>
+              <p><code>hazenow</code>, <code>--watch</code>, <code>--json</code>, tmux and starship. One <code>npm i -g</code> from our releases.</p>
+              <p class="plat-actions"><a href="/download/#cli">Install</a></p>
             </li>
             <li class="plat">
               <div class="plat-top"><svg class="ic" aria-hidden="true"><use href="#i-cmd"/></svg><span class="status s-soon"><i aria-hidden="true"></i>Coming soon</span></div>
@@ -229,7 +231,7 @@
               <div class="plat-top"><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg><span class="status s-ready"><i aria-hidden="true"></i>Available</span></div>
               <h3>Home Assistant</h3>
               <p>Sensors for PM2.5, band, verdict and NEA's 24-hr PSI. Install as a HACS custom repository.</p>
-              <p class="plat-actions"><a href="%REPO_URL%/tree/main/integrations/home-assistant" rel="noopener">Install guide</a></p>
+              <p class="plat-actions"><a href="/download/#home-assistant">Install</a></p>
             </li>
             <li class="plat">
               <div class="plat-top"><svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg><span class="status s-soon"><i aria-hidden="true"></i>Coming soon</span></div>
@@ -243,7 +245,7 @@
               <p>A home and lock-screen widget today, with no App Store wait. Paste one script into the free Scriptable app.</p>
               <p class="plat-actions">
                 <button class="btn btn-ghost btn-sm" type="button" data-copy="/get/HazeNow.js">Copy script</button>
-                <a href="%REPO_URL%/tree/main/integrations/scriptable" rel="noopener">How to install</a>
+                <a href="/download/#iphone">How to install</a>
               </p>
               <p class="copy-status" role="status" aria-live="polite"></p>
             </li>
@@ -251,7 +253,7 @@
               <div class="plat-top"><svg class="ic" aria-hidden="true"><use href="#i-bar"/></svg><span class="status s-ready"><i aria-hidden="true"></i>Available</span></div>
               <h3>SwiftBar and xbar</h3>
               <p>The zero-build Mac option: one Python file, standard library only.</p>
-              <p class="plat-actions"><a href="/get/hazenow.2m.py" download>Download plugin</a></p>
+              <p class="plat-actions"><a href="/get/hazenow.2m.py" download>Download plugin</a><a href="/download/#mac">How to install</a></p>
             </li>
             <li class="plat">
               <div class="plat-top"><svg class="ic" aria-hidden="true"><use href="#i-prompt"/></svg><span class="status s-ready"><i aria-hidden="true"></i>Available</span></div>
@@ -397,7 +399,7 @@
             <p>It's free and open source (MIT). No ads, no tracking, no account. Your location stays on your phone.</p>
             <p class="sig">— Yong Quan Tan</p>
             <ul class="about-links">
-              <li><a href="https://www.linkedin.com/in/yongquantan" rel="noopener me">LinkedIn</a></li>
+              <li><a href="https://www.linkedin.com/in/yong-quan-tan" rel="noopener me">LinkedIn</a></li>
               <li><a href="https://kairoslabs.sg" rel="noopener">Kairos Labs · kairoslabs.sg</a><span>I run Kairos Labs, an applied AI studio.</span></li>
               <li><a href="%REPO_URL%" rel="noopener">Source code on GitHub</a></li>
             </ul>
@@ -420,6 +422,7 @@
         </div>
         <nav class="footer-links" aria-label="Footer">
           <a href="%APP_BASE%">Open HazeNow</a>
+          <a href="/download/">Download</a>
           <a href="%APP_BASE%how.html">How we calculate this</a>
           <a href="%REPO_URL%" rel="noopener">GitHub</a>
           <a href="%REPO_URL%/blob/main/LICENSE" rel="noopener">MIT licence</a>
