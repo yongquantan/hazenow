@@ -64,7 +64,7 @@ import { bandShape, esc, store, trendIcon } from "./util";
 const SITE = "hazenow.pages.dev";
 const SITE_URL = "https://hazenow.pages.dev/";
 const REPO_URL = "https://github.com/yongquantan/hazenow";
-const LINKEDIN_URL = "https://www.linkedin.com/in/yongquantan";
+const LINKEDIN_URL = "https://www.linkedin.com/in/yong-quan-tan";
 
 /* ---------------------------------------------------------------- places (SPEC v1.4) */
 

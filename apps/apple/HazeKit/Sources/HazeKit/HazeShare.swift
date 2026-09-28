@@ -22,7 +22,7 @@ public enum ShareCredit {
     public static let name = "Yong Quan Tan"   // TS: CREDIT
     public static let site = "hazenow.pages.dev"      // TS: SHARE_SITE
     public static let siteURL = URL(string: "https://hazenow.pages.dev")!
-    public static let linkedIn = URL(string: "https://www.linkedin.com/in/yongquantan")!
+    public static let linkedIn = URL(string: "https://www.linkedin.com/in/yong-quan-tan")!
     public static let kairosLabs = URL(string: "https://kairoslabs.sg")!
     public static let gitHub = URL(string: "https://github.com/yongquantan/hazenow")!
 }

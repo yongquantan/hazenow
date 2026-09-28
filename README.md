@@ -261,7 +261,7 @@ Every app has a mock mode for testing any air state without waiting for haze. Fo
 
 ## Credits
 
-Made by **Yong Quan Tan** · [LinkedIn](https://www.linkedin.com/in/yongquantan) · I run [Kairos Labs](https://kairoslabs.sg), an applied AI studio.
+Made by **Yong Quan Tan** · [LinkedIn](https://www.linkedin.com/in/yong-quan-tan) · I run [Kairos Labs](https://kairoslabs.sg), an applied AI studio.
 
 Data: NEA via [data.gov.sg](https://data.gov.sg), under the Singapore Open Data Licence. HazeNow is not affiliated with NEA.
 Typeface: [Apfel Grotezk](https://www.collletttivo.it/typefaces/apfel-grotezk) by Collletttivo, under the SIL Open Font License.

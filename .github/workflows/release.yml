@@ -71,7 +71,7 @@ jobs:
       prev_tag: ${{ steps.v.outputs.prev_tag }}
       mac: ${{ steps.v.outputs.mac }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - id: v
@@ -131,14 +131,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare.outputs.sha }}
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 17
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
       - name: Build signed release APK
         working-directory: apps/android
         env:
@@ -177,7 +177,7 @@ jobs:
     timeout-minutes: 30
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare.outputs.sha }}
       - name: Build and zip
@@ -203,10 +203,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare.outputs.sha }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -249,7 +249,7 @@ jobs:
       needs.android.result == 'success' && needs.bundle.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare.outputs.sha }}
           fetch-depth: 0
@@ -331,11 +331,11 @@ jobs:
       - name: Skip without a Cloudflare token
         if: env.CLOUDFLARE_API_TOKEN == ''
         run: echo "No CLOUDFLARE_API_TOKEN secret, so Pages wasn't redeployed. Run scripts/deploy-pages.sh locally."
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: env.CLOUDFLARE_API_TOKEN != ''
         with:
           ref: ${{ needs.prepare.outputs.sha }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: env.CLOUDFLARE_API_TOKEN != ''
         with:
           node-version: 22

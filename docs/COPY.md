@@ -460,7 +460,7 @@ Title: "About HazeNow"
 Body 1: "I built HazeNow because the number most of us check during a haze, the 24-hr PSI, moves slowly. NEA also publishes the last hour's PM2.5, and recommends it for deciding what to do right now. HazeNow puts that number first, in plain words, using only NEA's data."
 Body 2: "It's free and open source (MIT). No ads, no tracking, no account. Your location stays on your phone."
 Signature: "— Yong Quan Tan"
-Links, in order: "LinkedIn" → https://www.linkedin.com/in/yongquantan · "Kairos Labs · kairoslabs.sg" → https://kairoslabs.sg (subtitle: "I run Kairos Labs, an applied AI studio.") · "Source code on GitHub" → https://github.com/yongquantan/hazenow
+Links, in order: "LinkedIn" → https://www.linkedin.com/in/yong-quan-tan · "Kairos Labs · kairoslabs.sg" → https://kairoslabs.sg (subtitle: "I run Kairos Labs, an applied AI studio.") · "Source code on GitHub" → https://github.com/yongquantan/hazenow
 Status: Approved by Yong Quan (2026-09-28).
 
 ## 19. Stale share
