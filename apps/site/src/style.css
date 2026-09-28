@@ -1,4 +1,4 @@
-/* hazenow.sg: calm, credible, brand-first. One motion only: the logo mark's dot on hover/focus. */
+/* hazenow.pages.dev: calm, credible, brand-first. One motion only: the logo mark's dot on hover/focus. */
 
 @font-face {
   font-family: "Apfel Grotezk";
@@ -1318,4 +1318,374 @@ figcaption strong {
 }
 .footer-made a {
   color: var(--text);
+}
+
+/* ------------------------------------------------------------------ download page */
+.nav a[aria-current="page"] {
+  color: var(--text);
+  text-decoration: underline;
+}
+.dl-hero {
+  padding-block: clamp(40px, 7vw, 88px) clamp(28px, 4vw, 48px);
+}
+.dl-hero h1 {
+  margin-top: 10px;
+  font-size: clamp(2.4rem, 6vw, 4.2rem);
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+.dl-release {
+  margin-top: 22px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  font-weight: 500;
+  font-size: 15px;
+}
+.dl-release-label {
+  padding: 3px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.dl-jump {
+  margin-top: 28px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.dl-jump a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 500;
+}
+.dl-jump a:hover {
+  border-color: var(--text);
+}
+.dl-jump a.is-rec {
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  border-color: var(--btn-bg);
+}
+.dl-section {
+  padding-top: clamp(32px, 5vw, 56px);
+}
+.dl-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 960px) {
+  .dl-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+  .dl-list > .is-rec,
+  .dl-list > #iphone {
+    grid-column: 1 / -1;
+  }
+}
+.dl {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: clamp(20px, 3.4vw, 32px);
+  scroll-margin-top: 84px;
+  min-width: 0;
+}
+.dl.is-rec {
+  border: 2px solid var(--text);
+  box-shadow: var(--shadow);
+}
+.dl-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.dl-head > div {
+  flex: 1;
+  min-width: 0;
+}
+.dl-head h2 {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  letter-spacing: -0.03em;
+}
+.dl-head .ic {
+  width: 30px;
+  height: 30px;
+  flex: none;
+}
+.dl-rec {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+.dl-intro {
+  margin-top: 14px;
+  color: var(--muted);
+  max-width: 62ch;
+}
+.dl-way {
+  margin-top: 26px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+.dl-way h3 {
+  font-size: 1.15rem;
+}
+.dl-note,
+.dl-why {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 15.5px;
+  max-width: 62ch;
+}
+.dl-why {
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: var(--tint);
+  border-radius: 12px;
+}
+.steps {
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+  display: grid;
+  gap: 12px;
+  max-width: 66ch;
+}
+.steps li {
+  counter-increment: step;
+  position: relative;
+  padding-left: 40px;
+  min-height: 28px;
+}
+.steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: -1px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 500;
+}
+.steps q {
+  quotes: none;
+  font-style: italic;
+}
+.dl-actions {
+  margin-top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+  font-weight: 500;
+  font-size: 15px;
+}
+.ic-btn {
+  width: 20px;
+  height: 20px;
+  stroke-width: 1.8;
+}
+.dl-file {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.dl .copy-status {
+  margin-top: 10px;
+  font-size: 14px;
+  color: var(--muted);
+}
+.dl-more {
+  margin-top: 22px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+.dl-more summary {
+  cursor: pointer;
+  font-weight: 500;
+  min-height: 32px;
+}
+.dl-more > p {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 15.5px;
+}
+.wrap-code {
+  overflow-wrap: anywhere;
+}
+.cmd {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--tint);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 10px 10px 14px;
+}
+.cmd pre {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.cmd code {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 14px;
+}
+.cmd .btn {
+  flex: none;
+}
+.soon-list {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+}
+.soon-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.soon-list li > div {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.soon-list p {
+  color: var(--muted);
+  font-size: 15.5px;
+  margin-top: 4px;
+}
+.dl-soon {
+  background: transparent;
+  border-style: dashed;
+}
+.dl-foot {
+  margin-top: 36px;
+  color: var(--muted);
+  font-size: 15px;
+  display: grid;
+  gap: 10px;
+}
+.dl-foot p:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+/* iPhone illustrations: drawn with tokens so they follow light and dark */
+.ios-figs {
+  margin-top: 18px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 720px;
+}
+.ios-fig {
+  margin: 0;
+}
+.ios-fig figcaption {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+}
+.fig-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.fig-svg .f-panel {
+  fill: var(--tint);
+  stroke: var(--line-strong);
+}
+.fig-svg .f-field,
+.fig-svg .f-row {
+  fill: var(--surface);
+  stroke: var(--line);
+}
+.fig-svg .f-rowhit {
+  fill: var(--surface);
+  stroke: var(--text);
+  stroke-width: 2;
+}
+.fig-svg .f-hit {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 2;
+}
+.fig-svg .f-text {
+  fill: var(--text);
+  font: 400 14px var(--font);
+}
+.fig-svg .f-bold {
+  font-weight: 500;
+  font-size: 14.5px;
+}
+.fig-svg .f-small {
+  font-size: 13px;
+}
+.fig-svg .f-muted {
+  fill: var(--muted);
+}
+.fig-svg .f-dim {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.fig-svg .f-strong {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.fig-svg .f-app {
+  fill: var(--ink);
+}
+.fig-svg .f-mark {
+  fill: var(--ivory);
+}
+@media (max-width: 479px) {
+  .ios-figs {
+    gap: 8px;
+  }
+  .ios-fig figcaption {
+    font-size: 12px;
+  }
+}
+.everywhere-cta {
+  margin-top: 24px;
 }

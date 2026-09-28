@@ -11,3 +11,6 @@ local.properties
 __pycache__/
 .qa-runs/
 docs/internal/
+keystore.properties
+*.jks
+*.keystore
