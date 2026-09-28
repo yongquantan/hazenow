@@ -50,6 +50,14 @@ import {
   type Snapshot,
 } from "hazenow";
 import { chartSvg } from "./chart";
+import type { CityWhere, DataMode } from "./country";
+import { countryParam, PICKER_LITE, surelySingapore } from "./country-lite";
+
+/* SPEC v2.0: other countries load on demand (catalogue, borders, adapters), so Singapore's bundle stays small. */
+type CountryModule = typeof import("./country");
+let C: CountryModule | null = null;
+let cLoading: Promise<CountryModule> | null = null;
+const loadC = (): Promise<CountryModule> => (cLoading ??= import("./country").then((m) => (C = m)));
 import { mapSvg } from "./map";
 import { bandShape, esc, store, trendIcon } from "./util";
 
@@ -65,7 +73,8 @@ type Place =
   | { kind: "gps"; point: LatLon }
   | { kind: "area"; name: string; point: LatLon }
   | { kind: "region"; region: string }
-  | { kind: "island" };
+  | { kind: "island" }
+  | CityWhere; // SPEC v2.0: another country (catalogue city or GPS point), rendered by country.ts
 type Slot = "home" | "work" | "other";
 const SLOTS: { id: Slot; label: string }[] = [
   { id: "home", label: "Home" },
@@ -74,10 +83,28 @@ const SLOTS: { id: Slot; label: string }[] = [
 ];
 
 const placeLabelOf = (p: Place): string =>
-  p.kind === "gps" ? "Near you" : p.kind === "area" ? p.name : p.kind === "region" ? regionLabel(p.region) : "Singapore";
+  p.kind === "city"
+    ? p.gps
+      ? `Near ${p.name}`
+      : p.name
+    : p.kind === "gps"
+      ? "Near you"
+      : p.kind === "area"
+        ? p.name
+        : p.kind === "region"
+          ? regionLabel(p.region)
+          : "Singapore";
 const placeKey = (p: Place): string =>
-  p.kind === "region" ? p.region : p.kind === "island" ? "island" : `pt:${p.point.lat},${p.point.lon}`;
-const pointOf = (p: Place): LatLon | null => (p.kind === "gps" || p.kind === "area" ? p.point : null);
+  p.kind === "city"
+    ? `${p.country}:${p.gps ? `pt:${p.point.lat},${p.point.lon}` : p.id}`
+    : p.kind === "region"
+      ? p.region
+      : p.kind === "island"
+        ? "island"
+        : `pt:${p.point.lat},${p.point.lon}`;
+const pointOf = (p: Place): LatLon | null => (p.kind === "gps" || p.kind === "area" || p.kind === "city" ? p.point : null);
+type CountryCode = import("hazenow").sea.CountryCode;
+type CountrySnapshot = import("hazenow").sea.CountrySnapshot;
 const samePlace = (a: Place | undefined, b: Place) => !!a && placeKey(a) === placeKey(b) && a.kind === b.kind;
 const rounded = (pt: LatLon): LatLon => ({ lat: roundCoord(pt.lat), lon: roundCoord(pt.lon) });
 
@@ -95,6 +122,11 @@ interface State {
   profileSet: boolean;
   profileOpen: boolean;
   snap: Snapshot | null;
+  /** SPEC v2.0: snapshot for a place outside Singapore (state.snap stays SG-only). */
+  csnap: CountrySnapshot | null;
+  cmode: DataMode | null;
+  /** Country shown in the place sheet's picker. */
+  sheetCountry: CountryCode;
   fromCache: boolean;
   error: "offline" | "api" | "nodata" | null;
   loading: boolean;
@@ -123,8 +155,12 @@ function initialWhere(): { where: Place; firstRun: boolean } {
   const lat = Number(params.get("lat"));
   const lon = Number(params.get("lon"));
   if (params.has("lat") && params.has("lon") && Number.isFinite(lat) && Number.isFinite(lon)) {
+    // Outside Singapore's core box, boot() resolves the country with locate() once country.ts has loaded.
     return { where: { kind: "gps", point: rounded({ lat, lon }) }, firstRun: false };
   }
+  // ?country=th&area=bangkok (SG's own ?area= / ?region= links below are unchanged). Resolved in boot().
+  const cc = countryParam(params);
+  if (cc) return { where: { kind: "city", country: cc, id: params.get("area") ?? "", name: "", point: { lat: 0, lon: 0 } }, firstRun: false };
   const area = params.get("area") ? findArea(params.get("area")!) : null;
   if (area) return { where: { kind: "area", name: area.name, point: rounded(area) }, firstRun: false };
   const r = (params.get("region") ?? "").toLowerCase();
@@ -135,6 +171,14 @@ function initialWhere(): { where: Place; firstRun: boolean } {
   const legacy = store.get<string | null>("hn.region", null); // pre-v1.4 installs
   if (legacy && legacy in REGION_COORDS) return { where: { kind: "region", region: legacy }, firstRun: false };
   return { where: { kind: "island" }, firstRun: !EMBED };
+}
+
+/** A point in another covered jurisdiction (locate() never mixes readings across a border), else null. */
+function abroadAt(m: CountryModule, pt: LatLon): CityWhere | null {
+  if (surelySingapore(pt)) return null;
+  const cc = m.sea.locate(pt.lat, pt.lon).country;
+  if (!cc || cc === "SG") return null;
+  return { kind: "city", country: cc, id: "", name: m.nearestCity(cc, pt).name, point: pt, gps: true };
 }
 
 const init = initialWhere();
@@ -150,6 +194,9 @@ const state: State = {
   profileSet: store.get("hn.profileSet", false),
   profileOpen: false,
   snap: null,
+  csnap: null,
+  cmode: null,
+  sheetCountry: init.where.kind === "city" ? init.where.country : "SG",
   fromCache: false,
   error: null,
   loading: false,
@@ -181,12 +228,62 @@ let inflight: AbortController | null = null;
 
 function query() {
   const w = state.where;
-  if (w.kind === "gps" || w.kind === "area") return { lat: w.point.lat, lon: w.point.lon };
+  if (w.kind === "gps" || w.kind === "area" || w.kind === "city") return { lat: w.point.lat, lon: w.point.lon };
   if (w.kind === "island") return { region: "island" };
   return { region: w.region };
 }
 
+const ccacheKey = () => `hn.csnap.${placeKey(state.where)}`;
+
+/** SPEC v2.0: another country. Preview/unavailable never poll; live TH/proxied follow country.ts's plan. */
+async function refreshCountry(w: CityWhere): Promise<void> {
+  const { modeOf, loadCountry, CountryUnavailable, nextPollMs } = C ?? (await loadC());
+  clearTimeout(pollTimer);
+  inflight?.abort();
+  const ctl = new AbortController();
+  inflight = ctl;
+  const timeout = setTimeout(() => ctl.abort(), 20_000);
+  state.cmode = modeOf(w);
+  state.loading = state.cmode === "live";
+  renderStatus();
+  let delay: number | null = null;
+  try {
+    const { snap, mode } = await loadCountry(w, ctl.signal);
+    if (ctl.signal.aborted) return;
+    state.csnap = snap;
+    state.cmode = mode;
+    state.fromCache = false;
+    state.error = null;
+    if (mode === "live") store.set(ccacheKey(), snap);
+  } catch (e) {
+    if (inflight !== ctl) return;
+    if (e instanceof CountryUnavailable) {
+      state.csnap = null;
+      state.error = null;
+    } else {
+      const cached = state.csnap ?? store.get<CountrySnapshot | null>(ccacheKey(), null);
+      state.csnap = cached;
+      state.fromCache = !!cached;
+      state.error = !navigator.onLine ? "offline" : (e as Error)?.name === "NoCountryDataError" ? "nodata" : "api";
+      console.warn("[hazenow]", (e as Error)?.message);
+    }
+  } finally {
+    clearTimeout(timeout);
+    if (inflight === ctl) {
+      inflight = null;
+      state.loading = false;
+      state.lastChecked = Date.now();
+      failures = state.error && state.error !== "nodata" ? failures + 1 : 0;
+      delay = state.error && state.error !== "nodata" ? backoffMs(failures - 1) : nextPollMs(w, state.cmode ?? "live", state.csnap?.observedAt);
+      state.nextCheck = delay === null ? null : Date.now() + delay;
+      if (delay !== null && !MOCK) pollTimer = window.setTimeout(refresh, delay);
+      render();
+    }
+  }
+}
+
 async function refresh(): Promise<void> {
+  if (state.where.kind === "city") return refreshCountry(state.where);
   clearTimeout(pollTimer);
   inflight?.abort();
   const ctl = new AbortController();
@@ -246,7 +343,25 @@ function choose(place: Place, opts: { assign?: Slot | null; keepNote?: boolean }
   state.sheet = null;
   state.search = "";
   state.geoExplain = false;
+  if (place.kind === "city" && !C) {
+    loadC().then(() => choose(place, opts));
+    return;
+  }
   if (!MOCK) store.set("hn.where", place);
+  if (place.kind === "city" && C) {
+    state.sheetCountry = place.country;
+    state.snap = null;
+    state.csnap = store.get<CountrySnapshot | null>(ccacheKey(), null);
+    state.cmode = C.modeOf(place);
+    state.fromCache = !!state.csnap;
+    state.error = null;
+    render();
+    refresh();
+    return;
+  }
+  state.csnap = null;
+  state.cmode = null;
+  state.sheetCountry = "SG";
   const cached = cacheGet();
   state.snap = cached ? refreshStale(cached, nowMs()) : null;
   state.fromCache = !!cached;
@@ -268,6 +383,39 @@ function locate(assign: Slot | null) {
     (pos) => {
       state.locating = false;
       const point = rounded({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+      // SPEC v2.0 §3: the reading's jurisdiction decides. A Johor Bahru point gets DOE Malaysia, never NEA.
+      if (!surelySingapore(point) && !C) {
+        // Outside Singapore's core box: load the border data, then decide (never mixes readings across a border).
+        loadC().then(() => onPosition(point, assign));
+        return;
+      }
+      onPosition(point, assign);
+    },
+    (err) => {
+      state.locating = false;
+      onGeoFail(err.code === err.PERMISSION_DENIED);
+    },
+    { enableHighAccuracy: false, maximumAge: 10 * 60_000, timeout: 15_000 },
+  );
+}
+
+function onPosition(point: LatLon, assign: Slot | null) {
+      const abroad = C ? abroadAt(C, point) : null;
+      if (abroad && C) {
+        state.geoBlocked = false;
+        store.set("hn.geoBlocked", false);
+        const seen = store.get<string[]>("hn.seenCountries", []);
+        if (!seen.includes(abroad.country)) {
+          const { sea, COUNTRY_NAME } = C;
+          const agency = sea.CHIP_SCALE[abroad.country] ? sea.getScale(sea.CHIP_SCALE[abroad.country]!).agency : null;
+          state.locNote = agency
+            ? `You're in ${abroad.name}. Bands and advice now follow ${COUNTRY_NAME(abroad.country)}'s ${agency}.`
+            : `You're in ${abroad.name}. ${COUNTRY_NAME(abroad.country)} has no official air-quality scale, so we show the number and the WHO guideline.`;
+          store.set("hn.seenCountries", [...seen, abroad.country]);
+        }
+        choose(abroad, { assign, keepNote: true });
+        return;
+      }
       const nearestKm = Math.min(...Object.values(REGION_COORDS).map((c) => haversineKm(point, c)));
       if (nearestKm > 40) {
         const r = nearestRegionAny(REGION_COORDS, point) ?? "central";
@@ -278,13 +426,6 @@ function locate(assign: Slot | null) {
       state.geoBlocked = false;
       store.set("hn.geoBlocked", false);
       choose({ kind: "gps", point }, { assign });
-    },
-    (err) => {
-      state.locating = false;
-      onGeoFail(err.code === err.PERMISSION_DENIED);
-    },
-    { enableHighAccuracy: false, maximumAge: 10 * 60_000, timeout: 15_000 },
-  );
 }
 
 /** Denied / unavailable: never re-prompt. Quietly open the area list; the island view stays underneath. */
@@ -370,6 +511,29 @@ function shareLink(card: ShareCardId): string {
 }
 
 function openShare(opts: { initial?: ShareCardId; fromWhy?: boolean } = {}) {
+  const w = state.where;
+  if (w.kind === "city") {
+    // Live data only: preview (recorded) and no-number states keep the Share button disabled.
+    const cs = state.csnap;
+    if (!C || !cs || state.cmode !== "live" || cs.pm25 === null) return;
+    const card = C.countryShareCard(w, cs, state.profile);
+    import("./sharesheet")
+      .then(({ openShareSheet }) =>
+        openShareSheet({
+          profile: state.profile,
+          ctx: {},
+          fixed: { content: card.content, text: card.text, observedAt: cs.observedAt },
+          placeName: card.placeName,
+          linkFor: () => card.link,
+          toast,
+        }),
+      )
+      .catch((e) => {
+        console.warn(e);
+        toast("Couldn't make the picture.");
+      });
+    return;
+  }
   const s = state.snap;
   if (!s) return;
   const placeName = sharePlaceName();
@@ -492,12 +656,28 @@ function placesSheet() {
         }).join("")}</ul>`
   }
   <div class="places-geo">${geoControls(assign)}</div>
-  <label class="search-label" for="area-search">Pick your area</label>
+  <p class="search-label country-label">Country</p>
+  ${countryTabs()}
+  ${
+    state.sheetCountry === "SG"
+      ? `<label class="search-label" for="area-search">Pick your area</label>
   <input id="area-search" class="area-search" type="search" inputmode="search" autocomplete="off" spellcheck="false" placeholder="Town or estate, e.g. Tampines" value="${esc(state.search)}" data-action="search" data-key="area-search"/>
   <div class="area-results" data-results>${areaResults()}</div>
   <p class="fine">The area list is built into the app. Searching sends nothing anywhere.</p>
-  ${assign ? "" : `<button class="link island-link" data-action="island" data-key="island">Show Singapore (island average)</button>`}
+  ${assign ? "" : `<button class="link island-link" data-action="island" data-key="island">Show Singapore (island average)</button>`}`
+      : `<p class="search-label">Pick a city</p>
+  ${C ? C.cityListHtml(state.sheetCountry, state.where.kind === "city" ? state.where : null) : `<p class="fine">Loading cities…</p>`}
+  <p class="fine">The city list is built into the app. Picking one sends nothing anywhere.</p>`
+  }
 </section>`;
+}
+
+/** Country row in the place sheet (names from country-lite, so it renders without loading country.ts). */
+function countryTabs() {
+  return `<div class="country-tabs" role="group" aria-label="Country">${PICKER_LITE.map(
+    ([cc, name]) =>
+      `<button class="chip-btn${cc === state.sheetCountry ? " is-on" : ""}" data-action="sheet-country" data-cc="${cc}" data-key="cc-${cc}" aria-pressed="${cc === state.sheetCountry}">${esc(name)}</button>`,
+  ).join("")}</div>`;
 }
 
 /** First run: two equal choices, no OS prompt until the user taps (SPEC v1.4 §1). */
@@ -709,8 +889,13 @@ function aboutSection() {
 }
 
 function statusText() {
+  if (state.where.kind === "city") {
+    if (state.cmode === "preview") return `<span class="dot-live is-off" aria-hidden="true"></span>Preview · recorded data, not live.`;
+    if (state.cmode === "unavailable") return "";
+  }
   if (state.loading) return `<span class="dot-live is-busy" aria-hidden="true"></span>Checking for a new reading…`;
   if (!state.online) return `<span class="dot-live is-off" aria-hidden="true"></span>You're offline.`;
+  if (state.error && state.where.kind === "city") return state.error === "nodata" ? "" : `<span class="dot-live is-off" aria-hidden="true"></span>Can't reach the data right now. We'll try again in a few minutes.`;
   if (state.error) return `<span class="dot-live is-off" aria-hidden="true"></span>Can't reach NEA's data right now. We'll try again in a few minutes.`;
   if (MOCK) return `<span class="dot-live" aria-hidden="true"></span>Mock scenario “${esc(MOCK)}”. Clock frozen at ${formatSgtTime(nowMs())}.`;
   if (state.lastChecked && state.nextCheck)
@@ -739,7 +924,60 @@ function ribbon() {
   return MOCK ? `<p class="mock-ribbon">MOCK DATA · ${esc(MOCK)}</p>` : "";
 }
 
+/** SPEC v2.0: a place outside Singapore. */
+function countryMainView(w: CityWhere): string {
+  if (!C || !w.name) {
+    return `${header()}<main class="page"><div class="col-a"><section class="now skeleton" aria-busy="true"><p class="for">&nbsp;</p><h1 class="verdict">Getting the latest reading…</h1></section></div></main>${toastEl()}`;
+  }
+  const { unavailableHtml, noDataHtml, countryNowHtml, countryChartHtml, stationsHtml } = C;
+  const cs = state.csnap;
+  const fr = "";
+  let colA: string;
+  let colB = "";
+  if (state.cmode === "unavailable") colA = unavailableHtml(w);
+  else if (!cs) colA = noDataHtml(w, state.error);
+  else {
+    colA = countryNowHtml({
+      w,
+      s: cs,
+      mode: state.cmode ?? "live",
+      profile: state.profile,
+      profileSet: state.profileSet,
+      profileOpen: state.profileOpen,
+      profilePanel,
+      shareIcon: iconShare(),
+      now: Date.now(),
+      offline: state.fromCache && state.error === "offline",
+      locNote: state.locNote,
+    });
+    colB = `${countryChartHtml(cs, w.point.lon)}${stationsHtml(cs, w)}`;
+  }
+  return `${cs && state.cmode !== "unavailable" ? '<div class="veil" aria-hidden="true"></div>' : ""}
+${header()}
+<main class="page">
+  <div class="col-a">${colA}${fr}</div>
+  <div class="col-b">${colB}</div>
+</main>
+${countryFooter(w)}${toastEl()}`;
+}
+
+function countryFooter(w: CityWhere) {
+  const cs = state.csnap;
+  if (!C) return "";
+  const agency = cs && state.cmode !== "unavailable" ? C.sea.mainAgency(cs) : null;
+  return `<footer class="foot">
+  <p class="status" data-status>${statusText()}</p>
+  ${cs && state.cmode !== "unavailable" ? C.attributionHtml(cs) : ""}
+  <p>Free &amp; open source · No ads, no tracking, no account</p>
+  <p>${esc(PRIVACY_LINE)}</p>
+  <p><a href="/how.html">How we calculate this</a> · <a href="${REPO_URL}" rel="noopener">View the code (MIT)</a> · <button class="link" data-action="about" data-key="about" aria-expanded="${state.aboutOpen}" aria-controls="about">Made by Yong Quan Tan</button></p>
+  ${state.aboutOpen ? aboutSection() : ""}
+  <p class="fine">Not medical advice${agency && agency !== "community sensors" ? `, and not an official ${esc(agency)} app` : ""}. If you feel unwell, see a doctor.${w ? "" : ""}</p>
+</footer>`;
+}
+
 function mainView(): string {
+  if (state.where.kind === "city") return countryMainView(state.where);
   const s = state.snap;
   const fr = state.firstRun && !state.sheet ? firstRunCard() : "";
   if (!s) return `${header()}<main class="page"><div class="col-a">${emptyState()}${fr}</div></main>${footer()}${toastEl()}`;
@@ -758,6 +996,21 @@ function toastEl() {
 }
 
 function embedView(): string {
+  if (state.where.kind === "city") {
+    const cs = state.csnap;
+    const w = state.where;
+    if (!C || !cs || state.cmode === "unavailable") return `<main><div class="embed"><h1 class="e-verdict">${state.cmode === "unavailable" ? "Not available yet" : "Getting the latest reading…"}</h1><p class="e-meta">HazeNow</p></div></main>`;
+    const { sea, cityOf } = C;
+    const v = sea.countryVerdict(cs, ["general"]);
+    const d = sea.countryDisplay(cs, { lon: w.point.lon });
+    return `<main><a class="embed" href="${SITE_URL}?country=${w.country.toLowerCase()}&area=${encodeURIComponent(cityOf(w).id)}" target="_blank" rel="noopener">
+  <h1 class="e-verdict">${esc(v.short)}</h1>
+  ${cs.pm25 !== null ? `<p class="e-num">${cs.pm25}<span>µg/m³ PM2.5</span></p>` : ""}
+  ${d.chip ? `<p class="e-chip"><span class="chip">${bandShape(d.chip.shape, d.chip.color, 12)}${esc(d.chip.en)}</span></p>` : ""}
+  ${d.official ? `<p class="e-psi">${esc(d.official.text)}</p>` : ""}
+  <p class="e-meta">${esc(placeLabelOf(w))} · ${esc(sea.stationTime(cs.observedAt, cs.country, undefined, w.point.lon))}${state.cmode === "preview" ? " · Preview" : ""}<span>HazeNow ↗</span></p>
+</a></main>`;
+  }
   const s = state.snap;
   if (!s) {
     return `<main>${ribbon()}<div class="embed"><h1 class="e-verdict">${state.error ? "Can't reach NEA's data right now" : "Getting NEA's latest reading…"}</h1><p class="e-meta">HazeNow</p></div></main>`;
@@ -785,6 +1038,24 @@ let animatedOnce = false;
 function applyTheme() {
   const s = state.snap;
   const root = document.documentElement;
+  if (state.where.kind === "city") {
+    const cs = state.csnap;
+    if (!C || !cs || state.cmode === "unavailable") {
+      root.style.setProperty("--band", "#8FA3AD");
+      root.style.setProperty("--haze", "0");
+      root.style.setProperty("--veil", "5%");
+      root.dataset.band = "normal";
+      document.title = `${placeLabelOf(state.where)} · HazeNow`;
+      return;
+    }
+    const h = cs.pm25 === null ? 0 : hazeLevel(cs.pm25);
+    root.style.setProperty("--band", cs.localBand?.color ?? "#8FA3AD");
+    root.style.setProperty("--haze", h.toFixed(3));
+    root.style.setProperty("--veil", `${(5 + h * 11).toFixed(1)}%`);
+    root.dataset.band = C.sea.adviceBand(cs) ?? "normal";
+    document.title = `${cs.pm25 ?? "–"}${cs.localBand ? ` ${cs.localBand.labelEn}` : ""} · ${placeLabelOf(state.where)} · HazeNow`;
+    return;
+  }
   if (!s) return;
   const info = bandInfo(s.band);
   const h = hazeLevel(s.pm25);
@@ -802,7 +1073,8 @@ function applyTheme() {
 
 function render() {
   const s = state.snap;
-  const key = JSON.stringify([s?.publishedAt, s?.pm25, s?.nearestRegion, s?.locationMode, s?.stale, s?.officialPsi24h, s?.history.length, state.where, state.firstRun, state.places, state.sheet, state.geoExplain, state.geoBlocked, state.profile, state.profileOpen, state.locating, state.locNote, state.error, state.fromCache, state.online, state.aboutOpen]);
+  const cs = state.csnap;
+  const key = JSON.stringify([cs?.observedAt, cs?.pm25, cs?.stale, state.cmode, state.sheetCountry, s?.publishedAt, s?.pm25, s?.nearestRegion, s?.locationMode, s?.stale, s?.officialPsi24h, s?.history.length, state.where, state.firstRun, state.places, state.sheet, state.geoExplain, state.geoBlocked, state.profile, state.profileOpen, state.locating, state.locNote, state.error, state.fromCache, state.online, state.aboutOpen]);
   applyTheme();
   if (key === lastRenderKey) {
     renderStatus();
@@ -828,7 +1100,7 @@ function renderStatus() {
   const el = app.querySelector("[data-status]");
   if (el) el.innerHTML = statusText();
   const age = app.querySelector("[data-age]");
-  if (age && state.snap) age.textContent = provenance(state.snap, point(), nowMs(), provOpts()).age;
+  if (age && state.snap && state.where.kind !== "city") age.textContent = provenance(state.snap, point(), nowMs(), provOpts()).age;
 }
 
 /* ---------------------------------------------------------------- events */
@@ -899,6 +1171,21 @@ app.addEventListener("click", (e) => {
     case "island":
       choose({ kind: "island" });
       break;
+    case "sheet-country":
+      state.sheetCountry = (el.dataset.cc as CountryCode) ?? "SG";
+      state.search = "";
+      render();
+      focusKey(`cc-${state.sheetCountry}`);
+      if (state.sheetCountry !== "SG" && !C) loadC().then(() => { lastRenderKey = ""; render(); focusKey(`cc-${state.sheetCountry}`); });
+      break;
+    case "pick-city": {
+      if (!C) break;
+      const c = C.sea.findCity(el.dataset.city ?? "", el.dataset.cc as CountryCode);
+      if (!c) break;
+      if (c.country === "SG") choose({ kind: "island" }, { assign: state.sheet?.assign ?? null });
+      else choose(C.cityWhere(c), { assign: state.sheet?.assign ?? null });
+      break;
+    }
     case "region":
       choose({ kind: "region", region: el.dataset.region! });
       break;
@@ -991,6 +1278,10 @@ document.addEventListener("visibilitychange", () => {
   if (!MOCK && document.visibilityState === "visible" && state.nextCheck && Date.now() >= state.nextCheck - 5_000) refresh();
 });
 setInterval(() => {
+  if (state.where.kind === "city") {
+    renderStatus();
+    return;
+  }
   if (!state.snap) return;
   const was = state.snap.stale;
   state.snap = refreshStale(state.snap, nowMs());
@@ -1000,7 +1291,33 @@ setInterval(() => {
 
 /* ---------------------------------------------------------------- boot */
 
-{
+/** Places that need country.ts before the first real render: other countries and GPS points outside SG's core box. */
+function bootCountry(): boolean {
+  const w = state.where;
+  const needs = w.kind === "city" || (w.kind === "gps" && !surelySingapore(w.point));
+  if (!needs) return false;
+  render(); // skeleton
+  loadC().then((m) => {
+    let where: Place = state.where;
+    if (where.kind === "city" && !where.name) where = m.cityFromParams(params) ?? m.cityWhere(m.sea.defaultCity(where.country));
+    else if (where.kind === "gps") where = abroadAt(m, where.point) ?? where;
+    state.where = where;
+    if (where.kind === "city") {
+      state.sheetCountry = where.country;
+      state.csnap = store.get<CountrySnapshot | null>(ccacheKey(), null);
+      state.cmode = m.modeOf(where);
+      state.fromCache = !!state.csnap;
+    }
+    render();
+    refresh();
+    refreshGrantedLocation();
+  });
+  return true;
+}
+
+if (bootCountry()) {
+  /* country.ts loads first */
+} else {
   const cached = cacheGet();
   if (cached) {
     // Paint instantly from the device cache; the live fetch replaces it in a moment.

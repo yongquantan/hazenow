@@ -18,6 +18,7 @@ import {
   type LatLon,
   type Snapshot,
 } from "hazenow";
+import { initSea } from "./sea";
 
 const APP_BASE = __APP_BASE__;
 const STORE_KEY = "hazenow-site-place";
@@ -291,6 +292,8 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && Date.now() - lastOk > REFRESH_MS) load();
 });
 matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => lastOk && load());
+
+initSea(APP_BASE);
 
 /* ------------------------------------------------------------------ copy script */
 

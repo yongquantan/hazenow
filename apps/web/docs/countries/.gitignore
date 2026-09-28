@@ -1,0 +1,14 @@
+# Only the per-country screenshots listed below are committed (regenerate: node scripts/screens.mjs).
+*
+!.gitignore
+!sg-tampines.png
+!th-bangkok.png
+!th-chiang-mai.png
+!my-kuala-lumpur.png
+!my-johor-bahru.png
+!id-palembang.png
+!id-jakarta.png
+!vn-hanoi.png
+!ph-metro-manila.png
+!la-vientiane.png
+!kh-phnom-penh.png

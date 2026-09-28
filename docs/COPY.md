@@ -465,3 +465,29 @@ Status: Approved by Yong Quan (2026-09-28).
 
 ## 19. Stale share
 If the reading is stale (SPEC: observedAt older than 2h15m), cards still share but the place/time line reads "{Area} · reading from {time} (latest available)" and the verdict headline is replaced by "Latest NEA reading is delayed." Never present stale data as "now". Two clocks keeps its fixed headline; its chart axis ends at the reading's hour (e.g. "3pm"), not "Now". Stale Now card: advice label "NEA's advice for that hour" (not "for the next hour"); PSI line "The 24-hr PSI ({psi}) averages the whole day. This reading is for the 3pm hour." Hide the trend (SPEC v1.7). Any "right now"/"this hour"/"the last hour" phrasing becomes "that hour"/"the {time} hour" when stale. Stale "For our group": replace "Next check at {time}." with "Check hazenow.sg for NEA's next update."
+
+## 20. Southeast Asia verdicts (SPEC v2.0), DRAFT, needs native review
+
+Outside Singapore the headline follows the **local authority's own category** (never NEA's bands). Rows live in
+`packages/core/src/countries/verdicts.ts` (`THAI_VERDICTS`, `CATEGORY_VERDICTS`), mirroring each authority's advice
+(`CATEGORY_SEVERITY`, 0 none to 4 stay indoors). Tests assert every verdict is at least as strict as the authority's advice,
+and that from the "Unhealthy" equivalent up (PCD เริ่มมีผลกระทบต่อสุขภาพ, DOE Tidak Sihat, ISPU Tidak Sehat, VN_AQI Kém,
+DAO USG) no headline says "Fine" or "OK to be out".
+
+| row | general | used for |
+|---|---|---|
+| fine | Fine to be out. | MY Baik/Sederhana, ID Baik, VN Tốt, PH Good |
+| sensitiveEasy | Fine to be out. (sensitive: "Fine to be out. Keep hard exercise short.") | ID Sedang, VN Trung bình, PH Fair |
+| goEasy | Go easy outdoors for now. Keep hard exercise short. | MY Tidak Sihat, VN Kém, PH USG |
+| reduce | Cut back on long or hard activity outside for now. (sensitive: "Avoid outdoor activity for now. Keep your medicine close.") | ID Tidak Sehat, VN Xấu |
+| avoid | Avoid long or hard activity outside. Keep trips out short. | MY Sangat Tidak Sihat, ID Sangat Tidak Sehat, VN Rất xấu, PH Very/Acutely Unhealthy |
+| indoors | Stay indoors for now. Go out only if you need to. | MY Merbahaya, ID Berbahaya, VN Nguy hại, PH Emergency |
+
+**Hedge (24-hr index only):** where the only official figure is a 24-hr index (Malaysia, ISPU-only cities), the headline
+starts "Based on the 24-hr index: …" in neutral ink. If an in-country community sensor within 20 km is in a worse category,
+add on its own line: "A community sensor nearby reads 104 µg/m³ right now. It's a community sensor, not an official reading."
+
+**Tips ("What helps now") outside SG:** COPY §5's action set for the closest SG band by the authority's advice severity
+(`adviceBand`): severity 0 → none, 1–2 → Elevated, 3 → High, 4 → Very High, and never below High from the "Unhealthy"
+equivalent up (so "Check here before a long run" never appears there). Same profile filters: masks never first, no N95 for
+kids. The Very High "call 995" line uses the local emergency number (TH 1669, MY 999, ID 112, VN 115, PH 911).

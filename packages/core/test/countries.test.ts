@@ -532,7 +532,8 @@ describe("Indonesia: BMKG 1-hr + KLH ISPU + SiPongi", () => {
     expect(s.band).toBe("high");
     expect(s.localBand!.labelLocal).toBe("Sangat Tidak Sehat");
     expect(s.official!.category).toBe("Tidak Sehat");
-    expect(countryVerdict(s, ["general"]).headline).toBe("Short trips out are OK. Exercise indoors.");
+    // KLH's Sangat Tidak Sehat advice (everyone avoids prolonged activity outside), not SG's High row.
+    expect(countryVerdict(s, ["general"]).headline).toBe("Avoid long or hard activity outside. Keep trips out short.");
   });
   test("Denpasar: no BMKG within 25 km → crowd estimate; Surabaya: ISPU only", () => {
     const d = buildCountrySnapshot(idSet(), { lat: -8.6705, lon: 115.2126 }, NOW);

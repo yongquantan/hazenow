@@ -46,6 +46,10 @@ const images = [
   ["apps/web/docs/cards/high-clocks.png", "clocks-rising", 720],
   ["apps/web/docs/cards/all_clear-clocks.png", "clocks-cleared", 720],
   ["apps/android/docs/screenshots/16-main-v15-estimate.png", "android-main", 540, [1080, 1800, 0, 300]],
+  // Southeast Asia switcher: the web app's per-country screens (390×844 @2x, full page), first screen only.
+  // Cropped at 790 CSS px so the QA "MOCK DATA" ribbon on the Singapore capture stays out of frame.
+  ...["sg-tampines", "th-bangkok", "th-chiang-mai", "my-kuala-lumpur", "my-johor-bahru", "id-palembang", "id-jakarta",
+    "vn-hanoi", "ph-metro-manila", "la-vientiane", "kh-phnom-penh"].map((n) => [`apps/web/docs/countries/${n}.png`, `sea-${n}`, 540, [780, 1580, 0, 0]]),
 ];
 for (const [src, name, width, crop] of images) {
   const out = resolve(pub, `img/${name}.webp`);

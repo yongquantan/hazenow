@@ -340,7 +340,7 @@
             <li><h3>Free, for good</h3><p>No price, no premium tier, no "pro" features held back during a haze.</p></li>
             <li><h3>No ads, no tracking, no account</h3><p>No analytics, no sign-up, nothing sold. Profiles are saved on your device only.</p></li>
             <li><h3>Your location stays on your phone</h3><p>We use it only to pick the nearest NEA stations, on the device. It's never sent anywhere.</p></li>
-            <li><h3>Only NEA's data, credited</h3><p>Every number comes from NEA via data.gov.sg. We don't change readings or invent an index.</p></li>
+            <li><h3>Official data, credited</h3><p>In Singapore, every number is NEA's, via data.gov.sg. Elsewhere, each country's own authority. We don't change readings or invent an index.</p></li>
             <li><h3>Audit every line</h3><p>MIT licensed. The maths, the wording and the advice rules are all in the repository.</p></li>
             <li><h3>One set of rules, every app</h3><p>Web, phone, Mac and integrations share one written spec and test cases, so they agree.</p></li>
           </ul>
@@ -348,20 +348,25 @@
         </div>
       </section>
 
-      <!-- 6. Southeast Asia -->
+      <!-- 6. Southeast Asia: country switcher (src/sea.ts) -->
       <section class="section" id="sea" aria-labelledby="sea-title">
-        <div class="wrap sea-grid">
-          <div>
-            <p class="kicker">Coming next</p>
-            <h2 id="sea-title">Southeast Asia.</h2>
-            <p>Haze doesn't stop at borders. Thailand is next: its Pollution Control Department publishes an hourly PM2.5 reading for each of its stations. We're confirming permission to use that data first.</p>
-            <p>Other countries will follow as data permission allows. Each one will use its own authority's numbers and its own words, the way HazeNow uses NEA's in Singapore.</p>
+        <div class="wrap">
+          <div class="section-head">
+            <p class="kicker">Southeast Asia</p>
+            <h2 id="sea-title">The same calm answer, across the region.</h2>
+            <p class="sub">Each place uses its own authority's numbers and its own band words. Thailand is live on the web. Other countries are built and tested on recorded data, and go live once our data server is up and each authority agrees.</p>
+            <p class="seasons">Haze has two seasons here: the southern one from Jul to Oct, and the northern one from Jan to Apr. HazeNow is built to be ready for both.</p>
           </div>
-          <ol class="sea-list" aria-label="Country status">
-            <li><span class="sea-name">Singapore</span><span class="status s-live"><i aria-hidden="true"></i>Live</span></li>
-            <li><span class="sea-name">Thailand</span><span class="status s-soon"><i aria-hidden="true"></i>Next · checking data licence</span></li>
-            <li><span class="sea-name">Malaysia, Indonesia, the Philippines, Vietnam and others</span><span class="status s-soon"><i aria-hidden="true"></i>Researching</span></li>
-          </ol>
+          <div class="sea" data-sea>
+            <div class="sea-tabs" role="tablist" aria-label="Country" data-sea-countries></div>
+            <div class="sea-panel" role="tabpanel" id="sea-country-panel" data-sea-panel>
+              <div class="sea-cities" role="tablist" data-sea-cities></div>
+              <div class="sea-body" role="tabpanel" id="sea-city-panel" data-sea-body></div>
+            </div>
+            <noscript>
+              <p class="sea-noscript">Live on the web: Singapore (NEA) and Thailand (PCD). Preview, needs our server: Malaysia, Indonesia, Hanoi, Metro Manila and Vientiane. Not available yet: Phnom Penh.</p>
+            </noscript>
+          </div>
         </div>
       </section>
 

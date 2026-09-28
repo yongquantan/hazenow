@@ -25,8 +25,9 @@ function precacheManifest(): Plugin {
         }
       };
       walk(outDir);
-      // Mock-scenario chunks (?mock=… QA only) and share assets aren't needed offline.
-      const skip = /^\/(sw\.js|og\.png|docs\/|fonts\/OFL\.txt|assets\/(normal|elevated|high|very_high|south_offline|all_offline_stale|rising_fast|network_error)-)/;
+      // Mock-scenario chunks (?mock=… QA only) and share assets aren't needed offline. The other-country module and its
+      // recorded preview sets load on demand (SPEC v2.0), so Singapore users never download them, not even to precache.
+      const skip = /^\/(sw\.js|og\.png|docs\/|fonts\/OFL\.txt|assets\/(normal|elevated|high|very_high|south_offline|all_offline_stale|rising_fast|network_error|country|my|id|vn|ph|la)-)/;
       const urls = files.filter((f) => !skip.test(f)).map((f) => (f === "/index.html" ? "/" : f)).sort();
       const hash = createHash("sha256");
       for (const f of files.filter((f) => !f.endsWith("sw.js")).sort()) hash.update(f).update(readFileSync(resolve(outDir, "." + f)));

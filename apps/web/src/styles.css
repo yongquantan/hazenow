@@ -1739,3 +1739,159 @@ figcaption .legend {
   color: var(--ink-2);
   font-size: 0.88rem;
 }
+
+/* ---------------------------------------------------------------- SPEC v2.0: other countries (country.ts) */
+.preview-ribbon {
+  margin-bottom: 14px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--paper-2);
+  border: 1px dashed var(--ink-3);
+  font-size: 0.86rem;
+  color: var(--ink-2);
+}
+.chip-local {
+  font-weight: 450;
+  font-size: 0.78rem;
+  color: var(--ink-2);
+}
+.chip-note {
+  margin-top: 6px;
+  font-size: 0.8rem;
+  color: var(--ink-2);
+}
+.kind {
+  font-weight: 600;
+  color: var(--ink);
+}
+.kind-crowd {
+  font-weight: 550;
+}
+.official-local {
+  font-size: 0.8rem;
+  color: var(--ink-2);
+}
+.official-note {
+  margin-top: 2px;
+  font-size: 0.84rem;
+  color: var(--ink-2);
+}
+.who-line {
+  margin-top: 4px;
+  font-size: 0.92rem;
+}
+.no-number {
+  margin-top: 18px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--card);
+  border: 1px solid var(--rule);
+}
+.nn-title {
+  font-weight: 650;
+  font-size: 1.05rem;
+}
+.nn-chip {
+  margin-top: 8px;
+}
+.nn-line {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: var(--ink-2);
+}
+.share-primary .btn[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.share-off {
+  margin-top: 6px;
+  max-width: 34ch;
+}
+.sea-draft {
+  margin-top: 18px;
+}
+.sea-attrib a {
+  color: inherit;
+}
+.sea-stations .rrow {
+  cursor: default;
+}
+.sea-stations .rrow:hover {
+  background: none;
+}
+.sea-stations .fine {
+  margin-top: 10px;
+}
+.na-detail {
+  margin-top: 10px;
+  font-size: 0.9rem;
+  color: var(--ink-2);
+}
+.na-alt {
+  margin-top: 16px;
+  font-size: 0.95rem;
+}
+.country-label {
+  margin-top: 16px;
+}
+.country-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 4px;
+}
+.country-tabs .chip-btn {
+  min-height: 34px;
+  font-size: 0.82rem;
+}
+.city-note {
+  margin: 4px 0 2px;
+}
+.city-list .area-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.city-list .area-row.is-sel {
+  font-weight: 650;
+}
+.city-tag {
+  flex: none;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--rule);
+  color: var(--ink-2);
+}
+.city-tag.tag-live {
+  color: var(--ink);
+  border-color: color-mix(in oklab, #2e9e5b 55%, transparent);
+}
+.city-tag.tag-unavailable {
+  border-style: dashed;
+}
+.na-reason {
+  margin-top: 12px;
+  font-size: 1.05rem;
+  line-height: 1.45;
+}
+.na-fine {
+  margin-top: 12px;
+}
+.sea-na .row-actions {
+  margin-top: 20px;
+}
+/* Hedged on a slow 24-hr index: no confident band colour on the headline. */
+.verdict.is-hedged {
+  color: var(--ink);
+}
+.sensor-line {
+  margin-top: 10px;
+  font-size: 0.92rem;
+}
+.sensor-note {
+  color: var(--ink-2);
+}

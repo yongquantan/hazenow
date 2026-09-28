@@ -336,7 +336,8 @@ function fitVertical(make: (scale: number) => Block[], top: number, bottom: numb
 /* ------------------------------------------------------------------ card 1: Now */
 
 function drawNow(g: G, c: Extract<ShareCardContent, { kind: "now" }>) {
-  const color = bandDot(c.band);
+  // Outside SG (SPEC v2.0) the dot is the local authority's colour and the data line names its source.
+  const color = c.dotColor ?? bandDot(c.band);
   fitVertical(
     (scale) => [
       headerBlock(g, color, C.ink, C.ink, { text: "hazenow.sg", st: { size: 30, weight: 500 }, color: C.ink }),
@@ -401,7 +402,7 @@ function drawNow(g: G, c: Extract<ShareCardContent, { kind: "now" }>) {
       footerBlock(
         g,
         [
-          { text: "Data: NEA via data.gov.sg", st: { size: 24, weight: 400 }, color: C.sub },
+          { text: c.dataLine ?? "Data: NEA via data.gov.sg", st: { size: 24, weight: 400 }, color: C.sub },
           { text: c.station, st: { size: 24, weight: 400 }, color: C.sub },
         ],
         ["Free and open source", `Made by ${c.credit}`],
@@ -693,14 +694,14 @@ function drawPreview(g: G, c: Extract<ShareCardContent, { kind: "preview" }> | G
   const panelW = 360 + 76;
   const leftW = WIDE_W - P.x * 2 - 52 - panelW;
   const generic = c.kind === "generic";
-  const color = generic ? bandInfo("elevated").color : bandDot(c.band);
+  const color = generic ? bandInfo("elevated").color : c.dotColor ?? bandDot(c.band);
   // left column (space-between)
   const brand: Style = { size: 26, weight: 700, ls: -0.01 };
   const bt = layout(g, "HazeNow", brand, 300, { maxLines: 1 });
   const hookText = generic ? "Singapore · NEA’s hourly reading, by area" : c.hook;
   const headText = generic ? "Air right now, near you." : c.headline;
   const hook = layout(g, hookText, { size: 26, weight: 500 }, leftW, { maxLines: 1, minSize: 18 });
-  const credit = layout(g, "Data: NEA · Free and open source · Made by Yong Quan Tan", { size: 22, weight: 400 }, leftW, { maxLines: 1, minSize: 16 });
+  const credit = layout(g, `${!generic && c.dataLine ? c.dataLine : "Data: NEA"} · Free and open source · Made by Yong Quan Tan`, { size: 22, weight: 400 }, leftW, { maxLines: 1, minSize: 16 });
   const avail = WIDE_H - P.y * 2 - Math.max(40, bt.height) - credit.height - hook.height - 16 - 40;
   let h1 = layout(g, headText, { size: 84, weight: 500, lh: 0.95, ls: -0.045 }, leftW, { maxLines: 3, minSize: 48 });
   while (h1.height > avail && h1.st.size > 48) h1 = layout(g, headText, { ...h1.st, size: h1.st.size - 2 }, leftW, { maxLines: 3, minSize: 48 });
@@ -731,12 +732,12 @@ function drawPreview(g: G, c: Extract<ShareCardContent, { kind: "preview" }> | G
   g.fill();
   const ix = px + 38;
   const iw = panelW - 76;
-  const lab = layout(g, generic ? "1-hr PM2.5, every hour" : "1-hr PM2.5", { size: 24, weight: 400 }, iw, { maxLines: 1 });
+  const lab = layout(g, generic ? "1-hr PM2.5, every hour" : c.dataLine ? "PM2.5 µg/m³" : "1-hr PM2.5", { size: 24, weight: 400 }, iw, { maxLines: 1 });
   const big = layout(g, generic ? "" : String(c.pm25), { size: 150, weight: 700, lh: 1, ls: -0.05 }, iw, { maxLines: 1, minSize: 90 });
   const bandSt: Style = { size: 26, weight: 700 };
-  const bandText = generic ? "Normal to Very High" : bandInfo(c.band).label;
+  const bandText = generic ? "Normal to Very High" : c.bandLabel ?? bandInfo(c.band).label;
   const bandLaid = layout(g, bandText, bandSt, iw - 26 - 30, { maxLines: 1, minSize: 18 });
-  const tail = layout(g, generic ? "NEA via data.gov.sg · hazenow.sg" : `24-hr PSI ${c.psi ?? "–"} · hazenow.sg`, { size: 22, weight: 400 }, iw, { maxLines: 1, minSize: 16 });
+  const tail = layout(g, generic ? "NEA via data.gov.sg · hazenow.sg" : `${c.officialShort ?? `24-hr PSI ${c.psi ?? "–"}`} · hazenow.sg`, { size: 22, weight: 400 }, iw, { maxLines: 1, minSize: 16 });
   const bottomH = bandLaid.height + 6 + tail.height;
   const pBlocks: Block[] = [
     { h: lab.height, draw: (top) => drawLaid(g, lab, ix, top, C.darkSub) },
@@ -751,7 +752,7 @@ function drawPreview(g: G, c: Extract<ShareCardContent, { kind: "preview" }> | G
           ["normal", "elevated", "high", "very_high"].forEach((b, i) => dot(g, ix + 8 + i * 22, top + bandLaid.height / 2, 8, bandDot(b as Band, true)));
           drawLaid(g, bandLaid, ix + 4 * 22 + 8, top, C.ivory);
         } else {
-          dot(g, ix + 8, top + bandLaid.height / 2, 8, bandDot(c.band, true));
+          dot(g, ix + 8, top + bandLaid.height / 2, 8, c.dotColor ?? bandDot(c.band, true));
           drawLaid(g, bandLaid, ix + 16 + 10, top, C.ivory);
           if (c.direction) {
             const bw = textWidth(g, bandLaid.lines[0], bandLaid.st);

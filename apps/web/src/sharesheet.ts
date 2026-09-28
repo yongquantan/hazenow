@@ -3,6 +3,7 @@
  * cards, and one "Send" button (Web Share with image + text + link). Fallbacks: download, copy text, copy link.
  */
 import {
+  type ShareCardContent,
   pickShareCard,
   shareCardContent,
   shareCardText,
@@ -16,7 +17,10 @@ import { ensureCardFonts, renderCard } from "./cards";
 import { esc } from "./util";
 
 export interface ShareSheetOptions {
-  snap: Snapshot;
+  /** Singapore snapshot (auto-pick between all four cards). Omit when `fixed` is given. */
+  snap?: Snapshot;
+  /** Outside Singapore (SPEC v2.0): one ready-made Now card with its text; no auto-pick. */
+  fixed?: { content: ShareCardContent; text: string; observedAt: string };
   profile: Profile[];
   ctx: ShareContext;
   /** Printed place name for file names. */
@@ -43,7 +47,7 @@ function blobOf(canvas: HTMLCanvasElement): Promise<Blob> {
 }
 
 export async function openShareSheet(o: ShareSheetOptions): Promise<void> {
-  const pick = pickShareCard(o.snap, o.profile, o.snap.history, o.ctx);
+  const pick = o.fixed ? { card: "now" as ShareCardId, alternates: [] as ShareCardId[] } : pickShareCard(o.snap!, o.profile, o.snap!.history, o.ctx);
   const order: ShareCardId[] = [pick.card, ...pick.alternates];
   let selected: ShareCardId = o.initial && order.includes(o.initial) ? o.initial : pick.card;
   const blobs = new Map<ShareCardId, Blob>();
@@ -68,7 +72,7 @@ export async function openShareSheet(o: ShareSheetOptions): Promise<void> {
   <button class="btn btn-solid ss-send" data-ss="send">Send</button>
   <div class="ss-fallbacks"><button class="btn-quiet" data-ss="download">Download image</button><button class="btn-quiet" data-ss="copy-text">Copy text</button><button class="btn-quiet" data-ss="copy-link">Copy link</button></div>
   <p class="ss-status" role="status" data-ss-status></p>
-  <p class="fine">The picture shows the time, your area and NEA as the source. Nothing about you is attached.</p>`;
+  <p class="fine">The picture shows the time, your area and ${o.fixed ? "the data source" : "NEA as the source"}. Nothing about you is attached.</p>`;
   document.body.append(dialog);
 
   const frame = dialog.querySelector<HTMLElement>("[data-ss-frame]")!;
@@ -78,13 +82,13 @@ export async function openShareSheet(o: ShareSheetOptions): Promise<void> {
     o.toast(m);
   };
   const textEl = dialog.querySelector<HTMLElement>("[data-ss-text]")!;
-  const textFor = (c: ShareCardId) => shareCardText(c, o.snap, o.profile, o.ctx);
+  const textFor = (c: ShareCardId) => (o.fixed ? o.fixed.text : shareCardText(c, o.snap!, o.profile, o.ctx));
 
   const render = async (c: ShareCardId): Promise<Blob> => {
     const hit = blobs.get(c);
     if (hit) return hit;
     await ensureCardFonts();
-    const canvas = renderCard(shareCardContent(c, o.snap, o.profile, o.ctx));
+    const canvas = renderCard(o.fixed ? o.fixed.content : shareCardContent(c, o.snap!, o.profile, o.ctx));
     const b = await blobOf(canvas);
     blobs.set(c, b);
     return b;
@@ -111,7 +115,7 @@ export async function openShareSheet(o: ShareSheetOptions): Promise<void> {
     }
     if (t.dataset.ssCard) return void show(t.dataset.ssCard as ShareCardId);
     const blob = await render(selected);
-    const name = shareFileName(o.placeName, o.snap.observedAt, selected);
+    const name = shareFileName(o.placeName, o.fixed ? o.fixed.observedAt : o.snap!.observedAt, selected);
     const text = textFor(selected);
     const url = o.linkFor(selected);
     switch (t.dataset.ss) {

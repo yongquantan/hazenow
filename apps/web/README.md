@@ -20,6 +20,7 @@ npm run build -w hazenow-web && npm run preview -w hazenow-web   # http://localh
 | `?embed=1` | compact card for iframes (combine with `region` or `lat`/`lon`) |
 | `?theme=dark` / `?theme=light` | force a theme (mainly for embeds) |
 | `?mock=<scenario>` | deterministic QA data, see below |
+| `?country=th&area=bangkok` | another Southeast Asian country and city (slugs from `sea.CITIES`; no `area` = the country's default city). `?country=sg` or no `country` = the Singapore page, unchanged |
 
 ## Mock mode (QA)
 
@@ -75,9 +76,32 @@ until the new hour appears, and the rate-limited v2 API is called only around hh
 back-filled values, with exponential backoff on HTTP 429. The last snapshot is kept on the device and
 shown with its real age when offline.
 
+## Southeast Asia (SPEC v2.0)
+
+Singapore's page is untouched (pixel-identical `?mock=elevated`). Everything else goes through `src/country.ts` and
+the pure display model in `packages/core/src/countries/ui.ts`. The place sheet has a country row, then that country's
+cities (from `docs/sea/COVERAGE.md`) tagged Live / Preview / Not available yet. A GPS point outside Singapore is
+resolved with `locate()`, so Johor Bahru gets DOE Malaysia and never an NEA station.
+
+| mode | countries | what you see |
+|---|---|---|
+| Live (direct) | TH | Air4Thai from the browser (CORS `*`), snapshot built on the device, polled from hh:02 ICT |
+| Live (proxy) | MY, ID, VN (Hanoi), PH (Metro Manila), LA | only when `VITE_PROXY_URL` is set at build time (`GET {proxy}/v1/{cc}/observations`, no location sent) |
+| Preview | the same, when `VITE_PROXY_URL` is unset | the recorded 28 Sep 2026 captures in `packages/core/fixtures/sea/preview/` with a "Preview · recorded data from 28 Sep, 5pm" ribbon. Sharing is disabled so recorded data is never passed on as live |
+| Not available yet | needs-permission and not-feasible cities (HCMC, Cebu, Phnom Penh, …) | a calm state with the reason from COVERAGE.md |
+
+```sh
+VITE_PROXY_URL=https://edge.example.app npm run build -w hazenow-web   # proxied countries go live
+bun packages/core/scripts/make-sea-preview.ts                         # rebuild the preview sets from fixtures/sea
+node apps/web/scripts/screens.mjs                                      # 390 px screenshots → docs/countries/
+```
+
+Screenshots of every country: `docs/countries/*.png`.
+
 ## What's in here
 
 - `src/main.ts`: state, polling, views (main page and `?embed=1`)
+- `src/country.ts`: other Southeast Asian countries (data modes, views, city picker, share card)
 - `src/chart.ts`: the "Last 24 hours" chart (hourly PM2.5 bars, NEA 24-hr average line, both µg/m³)
 - `src/map.ts`: the simple SVG map of the five regions
 - `src/sharecard.ts`: the 1200×630 share image (canvas → PNG → Web Share with files, or a download)

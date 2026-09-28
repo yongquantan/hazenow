@@ -242,6 +242,10 @@ export interface NowCard {
   psiLine: string;
   station: string;
   credit: string;
+  /** Outside SG: the authority's band colour for the dot (else from `band`). */
+  dotColor?: string;
+  /** Outside SG: attribution line (default "Data: NEA via data.gov.sg"). */
+  dataLine?: string;
 }
 export interface ClocksCard {
   kind: "clocks";
@@ -297,6 +301,12 @@ export interface PreviewCard {
   direction: TrendDirection | null;
   psi: number | null;
   credit: string;
+  /** Outside SG: authority colour, band words and official line instead of SG's. */
+  dotColor?: string;
+  bandLabel?: string;
+  /** Replaces "24-hr PSI {psi}" in the panel. */
+  officialShort?: string;
+  dataLine?: string;
 }
 export type ShareCardContent = NowCard | ClocksCard | GroupCard | ClearCard | PreviewCard;
 

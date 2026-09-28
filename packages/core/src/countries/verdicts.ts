@@ -9,10 +9,10 @@
  * - Other countries with a chip: COPY.md matrix through the level-mapped `band` until COPY.<cc>.md exists.
  * - No national scale (LA, KH, MM): no verdict headline; number + WHO line only (REGIONAL §3.3 rule 2).
  */
-import { normaliseProfile, isSensitive, forWhom, verdict as sgVerdict, type Profile, type Verdict } from "../experience.js";
+import { actions, normaliseProfile, isSensitive, forWhom, verdict as sgVerdict, type Profile, type Verdict } from "../experience.js";
 import type { Trend } from "../types.js";
-import { CHIP_SCALE } from "./scales.js";
-import type { CountrySnapshot } from "./types.js";
+import { CHIP_SCALE, SCALES } from "./scales.js";
+import type { CountryCode, CountrySnapshot } from "./types.js";
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
@@ -72,7 +72,7 @@ export const THAI_VERDICTS: Record<string, Record<ThGroup, ThCell>> = {
     general: T("Avoid outdoor activities for now. Go out only if you need to.", "Stay indoors for now", "หลีกเลี่ยงกิจกรรมกลางแจ้งไปก่อน ออกไปข้างนอกเมื่อจำเป็นเท่านั้น", "อยู่ในอาคารไปก่อน", 6),
     kids: T("Keep kids indoors for now.", "Kids indoors for now", "ให้เด็กอยู่ในบ้านไปก่อน", "ให้เด็กอยู่ในบ้าน", 7),
     sensitive: T("Stay indoors for now. Keep your medicine close.", "Stay indoors for now", "อยู่ในที่ปลอดภัยไปก่อน เตรียมยาประจำตัวให้พร้อม", "อยู่ในอาคารไปก่อน", 7),
-    exercising: T("Skip outdoor exercise for now.", "No outdoor exercise", "งดออกกำลังกายกลางแจ้งไปก่อน", "งดออกกำลังกายกลางแจ้ง", 6),
+    exercising: T("Skip outdoor exercise and keep time outside short for now.", "No outdoor exercise", "งดออกกำลังกายกลางแจ้ง และลดเวลาอยู่กลางแจ้งไปก่อน", "งดออกกำลังกายกลางแจ้ง", 6),
     outdoor_worker: T("Limit time outside for now. Ask about indoor work.", "Limit time outside", "ลดเวลาอยู่กลางแจ้งไปก่อน สอบถามเรื่องงานในอาคาร", "ลดเวลากลางแจ้ง", 6),
   },
 };
@@ -136,6 +136,10 @@ function thGroup(p: Profile): ThGroup {
 }
 
 export interface CountryVerdict extends Verdict {
+  /** True when the headline is hedged on a 24-hr index (no official 1-hr number here). */
+  hedged?: boolean;
+  /** Copy is a draft awaiting native review (TH table, MY/ID/VN/PH category rows). */
+  needsReview?: boolean;
   /** Local-language headline (TH), or null. */
   headlineLocal: string | null;
   shortLocal: string | null;
@@ -171,6 +175,235 @@ export function thaiVerdict(s: CountrySnapshot, profile: readonly Profile[] = ["
   };
 }
 
+/* ------------------------------------------------------------------ category verdicts (MY, ID, VN, PH) */
+
+/**
+ * Advice severity, one scale for every authority (0–4):
+ * 0 no restriction · 1 take it easier (sensitive, or brief caution) · 2 reduce long/hard activity outside ·
+ * 3 avoid hard activity outside / sensitive avoid going out · 4 stay indoors.
+ */
+export type Severity = 0 | 1 | 2 | 3 | 4;
+export type AdviceGroup = ThGroup;
+
+/** What each authority asks of the general public and of sensitive groups, per category (docs/sea/<country>.md). */
+export const CATEGORY_SEVERITY: Record<string, Record<string, { general: Severity; sensitive: Severity }>> = {
+  // PCD (thailand.md): 1–2 none; 3 general reduce strenuous; 4 at-risk avoid strenuous, everyone limit; 5 everyone avoid.
+  th_aqi: {
+    very_good: { general: 0, sensitive: 0 },
+    good: { general: 0, sensitive: 0 },
+    moderate: { general: 2, sensitive: 2 },
+    starting_to_affect: { general: 2, sensitive: 3 },
+    affects_health: { general: 4, sensitive: 4 },
+  },
+  // DOE Malaysia API (malaysia.md): Tidak Sihat limits the high-risk; Sangat Tidak Sihat keeps old/high-risk indoors.
+  my_api: {
+    good: { general: 0, sensitive: 0 },
+    moderate: { general: 0, sensitive: 0 },
+    unhealthy: { general: 1, sensitive: 2 },
+    very_unhealthy: { general: 2, sensitive: 4 },
+    hazardous: { general: 4, sensitive: 4 },
+    emergency: { general: 4, sensitive: 4 },
+  },
+  // KLH ISPU (indonesia.md): Sedang sensitive reduce; Tidak Sehat everyone reduce, sensitive avoid; SST everyone avoid
+  // prolonged activity, sensitive avoid all outdoor; Berbahaya everyone avoid all outdoor.
+  id_ispu: {
+    baik: { general: 0, sensitive: 0 },
+    sedang: { general: 0, sensitive: 1 },
+    tidak_sehat: { general: 2, sensitive: 3 },
+    sangat_tidak_sehat: { general: 3, sensitive: 4 },
+    berbahaya: { general: 4, sensitive: 4 },
+  },
+  // VN_AQI (vietnam.md; Table 3 advice not yet obtained, so mapped like the US-style bands it mirrors).
+  vn_aqi: {
+    tot: { general: 0, sensitive: 0 },
+    trung_binh: { general: 0, sensitive: 1 },
+    kem: { general: 1, sensitive: 2 },
+    xau: { general: 2, sensitive: 3 },
+    rat_xau: { general: 3, sensitive: 4 },
+    nguy_hai: { general: 4, sensitive: 4 },
+  },
+  // DENR DAO 2020-14 (philippines.md).
+  ph_dao_2020_14: {
+    good: { general: 0, sensitive: 0 },
+    fair: { general: 0, sensitive: 1 },
+    usg: { general: 1, sensitive: 2 },
+    very_unhealthy: { general: 3, sensitive: 4 },
+    acutely_unhealthy: { general: 3, sensitive: 4 },
+    emergency: { general: 4, sensitive: 4 },
+  },
+};
+
+/**
+ * First category that is the equivalent of "Unhealthy" (Tidak Sehat / above Sederhana …). From here on a headline never
+ * says "Fine" or "OK to be out".
+ */
+export const UNHEALTHY_FROM: Record<string, string> = {
+  th_aqi: "starting_to_affect",
+  my_api: "unhealthy",
+  id_ispu: "tidak_sehat",
+  vn_aqi: "kem",
+  ph_dao_2020_14: "usg",
+};
+
+type Cell = { en: string; short: string; sev: Severity };
+type Row = Record<AdviceGroup, Cell>;
+const c = (en: string, short: string, sev: Severity): Cell => ({ en, short, sev });
+
+/** Rows in COPY.md's tone. DRAFT: English only; needs review by native speakers and each authority's wording. */
+const ROW = {
+  fine: {
+    general: c("Fine to be out.", "Fine to be out", 0),
+    kids: c("Fine for outdoor play.", "Fine for outdoor play", 0),
+    sensitive: c("Fine to be out.", "Fine to be out", 0),
+    exercising: c("Fine to exercise outside.", "Fine to exercise outside", 0),
+    outdoor_worker: c("Fine to work outside.", "Fine to work outside", 0),
+  },
+  sensitiveEasy: {
+    general: c("Fine to be out.", "Fine to be out", 0),
+    kids: c("Fine for outdoor play. Keep long, hard games short.", "Fine, keep hard games short", 1),
+    sensitive: c("Fine to be out. Keep hard exercise short.", "Keep hard exercise short", 1),
+    exercising: c("Fine to exercise outside.", "Fine to exercise outside", 0),
+    outdoor_worker: c("Fine to work outside.", "Fine to work outside", 0),
+  },
+  goEasy: {
+    general: c("Go easy outdoors for now. Keep hard exercise short.", "Go easy outdoors", 1),
+    kids: c("Calm play outside for now. Skip running games.", "Calm play only", 2),
+    sensitive: c("Limit time outside for now. Skip hard exercise.", "Limit time outside", 2),
+    exercising: c("Keep your workout short and light, or move it indoors.", "Short, light workout", 2),
+    outdoor_worker: c("Take breaks indoors when you can.", "Take indoor breaks", 1),
+  },
+  reduce: {
+    general: c("Cut back on long or hard activity outside for now.", "Cut back outdoors", 2),
+    kids: c("Indoor play for now. Keep trips out short.", "Indoor play for now", 3),
+    sensitive: c("Avoid outdoor activity for now. Keep your medicine close.", "Avoid going out for now", 3),
+    exercising: c("Move your workout indoors for now.", "Work out indoors", 3),
+    outdoor_worker: c("Take regular breaks indoors. Ask about lighter tasks.", "Take regular indoor breaks", 2),
+  },
+  avoid: {
+    general: c("Avoid long or hard activity outside. Keep trips out short.", "Keep trips out short", 3),
+    kids: c("Keep kids indoors for now.", "Kids indoors for now", 4),
+    sensitive: c("Stay indoors for now. Keep your medicine close.", "Stay indoors for now", 4),
+    exercising: c("Skip outdoor exercise for now.", "No outdoor exercise", 3),
+    outdoor_worker: c("Limit time outside. Ask about indoor work.", "Limit time outside", 3),
+  },
+  indoors: {
+    general: c("Stay indoors for now. Go out only if you need to.", "Stay indoors for now", 4),
+    kids: c("Keep kids indoors for now.", "Kids indoors for now", 4),
+    sensitive: c("Stay indoors for now. Keep your medicine close.", "Stay indoors for now", 4),
+    exercising: c("Skip outdoor exercise. Stay indoors for now.", "Stay indoors for now", 4),
+    outdoor_worker: c("Keep time outside to a minimum. Ask about indoor work.", "Minimise time outside", 4),
+  },
+  emergency: {
+    general: c("Stay indoors and follow official instructions.", "Stay indoors", 4),
+    kids: c("Keep kids indoors and follow official instructions.", "Kids indoors", 4),
+    sensitive: c("Stay indoors, keep your medicine close, and follow official instructions.", "Stay indoors", 4),
+    exercising: c("Stay indoors and follow official instructions.", "Stay indoors", 4),
+    outdoor_worker: c("Stop outdoor work if you can. Follow official instructions.", "Stop outdoor work", 4),
+  },
+} satisfies Record<string, Row>;
+
+/** Verdict rows per scale and category (TH has its own bilingual table, THAI_VERDICTS). */
+export const CATEGORY_VERDICTS: Record<string, Record<string, Row>> = {
+  my_api: { good: ROW.fine, moderate: ROW.fine, unhealthy: ROW.goEasy, very_unhealthy: ROW.avoid, hazardous: ROW.indoors, emergency: ROW.emergency },
+  id_ispu: { baik: ROW.fine, sedang: ROW.sensitiveEasy, tidak_sehat: ROW.reduce, sangat_tidak_sehat: ROW.avoid, berbahaya: ROW.indoors },
+  vn_aqi: { tot: ROW.fine, trung_binh: ROW.sensitiveEasy, kem: ROW.goEasy, xau: ROW.reduce, rat_xau: ROW.avoid, nguy_hai: ROW.indoors },
+  ph_dao_2020_14: { good: ROW.fine, fair: ROW.sensitiveEasy, usg: ROW.goEasy, very_unhealthy: ROW.avoid, acutely_unhealthy: ROW.avoid, emergency: ROW.indoors },
+};
+
+/** Severity of each Thai verdict cell (same 0–4 scale), for the parity test. */
+export const THAI_CELL_SEVERITY: Record<string, Record<AdviceGroup, Severity>> = {
+  very_good: { general: 0, kids: 0, sensitive: 0, exercising: 0, outdoor_worker: 0 },
+  good: { general: 0, kids: 0, sensitive: 0, exercising: 0, outdoor_worker: 0 },
+  moderate: { general: 2, kids: 2, sensitive: 2, exercising: 2, outdoor_worker: 2 },
+  starting_to_affect: { general: 2, kids: 3, sensitive: 3, exercising: 3, outdoor_worker: 2 },
+  affects_health: { general: 4, kids: 4, sensitive: 4, exercising: 4, outdoor_worker: 4 },
+};
+
+/** Which category severity (general / sensitive) a group's verdict must meet. */
+export const GROUP_BASIS: Record<AdviceGroup, "general" | "sensitive"> = {
+  general: "general",
+  kids: "sensitive",
+  sensitive: "sensitive",
+  exercising: "general",
+  outdoor_worker: "general",
+};
+
+/** Shared band for actions/notifications from a category's advice (0 normal · 1–2 elevated · 3 high · 4 very_high). */
+export function severityBand(sev: Severity): "normal" | "elevated" | "high" | "very_high" {
+  return sev === 0 ? "normal" : sev <= 2 ? "elevated" : sev === 3 ? "high" : "very_high";
+}
+
+/** The chip's advice severity for the general public (null when there is no chip). */
+export function chipSeverity(s: Pick<CountrySnapshot, "localBand">): { general: Severity; sensitive: Severity } | null {
+  const b = s.localBand;
+  return b ? CATEGORY_SEVERITY[b.scaleId]?.[b.key] ?? null : null;
+}
+
+const BAND_RANK = { normal: 0, elevated: 1, high: 2, very_high: 3 } as const;
+type SharedBand = keyof typeof BAND_RANK;
+
+/** True when the chip's category is at or above the scale's "Unhealthy" equivalent (UNHEALTHY_FROM). */
+export function atOrAboveUnhealthy(scaleId: string, key: string): boolean {
+  const from = UNHEALTHY_FROM[scaleId];
+  const bands = SCALES[scaleId]?.bands;
+  if (!from || !bands) return false;
+  const i = bands.findIndex((b) => b.key === key);
+  const f = bands.findIndex((b) => b.key === from);
+  return i >= 0 && f >= 0 && i >= f;
+}
+
+/**
+ * Band that drives "What helps now" (COPY §5 actions) and notifications outside SG: the closest SG band **by the
+ * authority's advice severity** for the chip's category, never by SG's concentration bands. From the "Unhealthy"
+ * equivalent up it is at least High (close windows, purifier, reschedule exercise; masks never first, no N95 for kids).
+ * SG keeps its own `band`.
+ */
+export function adviceBand(s: Pick<CountrySnapshot, "country" | "band" | "localBand">): SharedBand | null {
+  if (s.country === "SG") return s.band;
+  const b = s.localBand;
+  const sev = chipSeverity(s);
+  if (!b || !sev) return s.band;
+  let band: SharedBand = severityBand(Math.max(sev.general, sev.sensitive >= 3 ? 2 : 0) as Severity);
+  if (atOrAboveUnhealthy(b.scaleId, b.key) && BAND_RANK[band] < BAND_RANK.high) band = "high";
+  return band;
+}
+
+/** Emergency medical numbers (for the "Feeling unwell?" action; SG's is 995). */
+export const EMERGENCY_NUMBER: Record<CountryCode, string> = {
+  SG: "995", TH: "1669", MY: "999", ID: "112", VN: "115", PH: "911", LA: "1195", KH: "119", MM: "192", BN: "991", TL: "112",
+};
+
+/** "What helps now" outside SG: COPY §5 actions for adviceBand(), with the local emergency number. */
+export function countryActions(s: Pick<CountrySnapshot, "country" | "band" | "localBand">, profile: readonly Profile[] = ["general"], max = 3): string[] {
+  const band = adviceBand(s);
+  if (!band) return [];
+  const list = actions(band, profile, max);
+  return s.country === "SG" ? list : list.map((a) => a.replace(/call 995\b/, `call ${EMERGENCY_NUMBER[s.country]}`));
+}
+
+export function categoryVerdictCell(scaleId: string, key: string, profile: readonly Profile[]): { cell: Cell; group: AdviceGroup; profile: Profile } | null {
+  const row = CATEGORY_VERDICTS[scaleId]?.[key];
+  if (!row) return null;
+  const ids = normaliseProfile(profile);
+  let pick: AdviceGroup = thGroup(ids[0]);
+  let pickProfile: Profile = ids[0];
+  for (const p of ids) {
+    const g = thGroup(p);
+    if (row[g].sev > row[pick].sev || (row[g].sev === row[pick].sev && TH_TIE.indexOf(g) < TH_TIE.indexOf(pick))) {
+      pick = g;
+      pickProfile = p;
+    }
+  }
+  return { cell: row[pick], group: pick, profile: pickProfile };
+}
+
+/** "Based on the 24-hr index: …" when the only official figure is a slow 24-hr index (no official 1-hr number). */
+export function hedgedOn24h(s: Pick<CountrySnapshot, "bandBasis" | "official" | "pm25Kind">): boolean {
+  return s.bandBasis === "official_index" && s.official?.averaging === "24h" && s.pm25Kind !== "official_1h";
+}
+export const HEDGE_24H = "Based on the 24-hr index: ";
+const hedge = (h: string) => HEDGE_24H + h.charAt(0).toLowerCase() + h.slice(1);
+
 /* ------------------------------------------------------------------ all countries */
 
 /** The country has a scale, but nothing official is near enough to band this place (e.g. HCMC today). */
@@ -189,9 +422,35 @@ export const NO_SCALE_COPY = {
 /** Headline for any CountrySnapshot and profile (see the module comment for the per-country rules). */
 export function countryVerdict(s: CountrySnapshot, profile: readonly Profile[] = ["general"]): CountryVerdict {
   const ids = normaliseProfile(profile);
+  const hedged = hedgedOn24h(s);
   if (s.country === "TH") {
     const v = thaiVerdict(s, ids);
-    if (v) return v;
+    if (v) return hedged ? { ...v, headline: hedge(v.headline), hedged, needsReview: true } : { ...v, needsReview: true };
+  }
+  const cat = s.localBand ? categoryVerdictCell(s.localBand.scaleId, s.localBand.key, ids) : null;
+  if (cat && s.country !== "SG") {
+    let secondLine: string | null = null;
+    if (s.stale) secondLine = `Reading is from ${formatLocalTime(s.observedAt)}. It may not match the air now.`;
+    else if (s.trend.delta >= 20 && s.pm25 !== null) secondLine = "Rising quickly. Check again in an hour.";
+    else if (s.bandBasis === "official_index" && hourAboveDay(s.pm25, s.pm25_24h))
+      secondLine =
+        s.pm25Kind === "crowd_estimate"
+          ? "Nearby sensors read higher than the 24-hour average. Check again in an hour."
+          : "The last hour is higher than the 24-hour average. Check again in an hour.";
+    else if (s.trend.delta <= -20 && s.pm25 !== null && cat.cell.sev >= 1) secondLine = "Getting better. Check again in an hour.";
+    return {
+      headline: hedged ? hedge(cat.cell.en) : cat.cell.en,
+      short: cat.cell.short,
+      secondLine,
+      forWhom: forWhom(ids),
+      profile: cat.profile,
+      sensitive: isSensitive(ids),
+      hedged,
+      needsReview: true,
+      headlineLocal: null,
+      shortLocal: null,
+      secondLineLocal: null,
+    };
   }
   if (s.band) {
     const opts = { stale: s.stale, observedAt: s.observedAt, history: s.history };

@@ -58,6 +58,33 @@ for (const { width, scheme, query, name } of runs) {
     await ctx.close();
   }
 }
+// Southeast Asia switcher: element shots at 1440 and 390 (light), several states, plus a keyboard check.
+for (const width of [1440, 390]) {
+  const ctx = await browser.newContext({ viewport: { width, height: width === 390 ? 844 : 900 }, colorScheme: "light", deviceScaleFactor: 1 });
+  const page = await ctx.newPage();
+  page.on("pageerror", (e) => problems.push(`sea-${width}: ${e.message}`));
+  await page.goto(url, { waitUntil: "networkidle" });
+  const sea = page.locator("#sea");
+  const states = [["Singapore", null], ["Thailand", "Chiang Mai"], ["Malaysia", "Johor Bahru"], ["Indonesia", "Palembang"], ["Cambodia", null]];
+  for (const [country, city] of states) {
+    await page.getByRole("tab", { name: country }).click();
+    if (city) await page.getByRole("tab", { name: city }).click();
+    await sea.scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => { const i = document.querySelector("#sea-city-panel img"); return i && i.complete && i.naturalWidth > 0; }, null, { timeout: 10000 })
+      .catch(() => problems.push(`sea-${width}: ${country} image did not load`));
+    const slug = `${country}${city ? "-" + city : ""}`.toLowerCase().replace(/[^a-z]+/g, "-");
+    await sea.screenshot({ path: `${out}/sea-${width}-${slug}.png` });
+  }
+  // Keyboard: focus the selected country tab, ArrowRight moves to the next country and selects it.
+  await page.getByRole("tab", { name: "Singapore" }).click();
+  await page.keyboard.press("ArrowRight");
+  const sel = await page.evaluate(() => [document.activeElement?.textContent, document.activeElement?.getAttribute("aria-selected")]);
+  if (sel[0] !== "Thailand" || sel[1] !== "true") problems.push(`sea-${width}: keyboard tabs failed (${sel})`);
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  if (overflow > 0) problems.push(`sea-${width}: horizontal overflow ${overflow}px`);
+  await ctx.close();
+}
+
 await browser.close();
 if (problems.length) {
   console.error("Problems:\n" + problems.join("\n"));
