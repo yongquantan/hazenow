@@ -1,0 +1,600 @@
+[
+ {
+  "name": "Ang Mo Kio",
+  "aliases": [
+   "AMK",
+   "Cheng San",
+   "Teck Ghee",
+   "Yio Chu Kang",
+   "Sembawang Hills"
+  ],
+  "lat": 1.38009,
+  "lon": 103.8421
+ },
+ {
+  "name": "Bedok",
+  "aliases": [
+   "Bedok North",
+   "Bedok South",
+   "Bedok Reservoir",
+   "Chai Chee",
+   "Kembangan",
+   "Frankel",
+   "Kaki Bukit",
+   "Siglap"
+  ],
+  "lat": 1.32405,
+  "lon": 103.92841
+ },
+ {
+  "name": "Bishan",
+  "aliases": [
+   "Bishan North",
+   "Sin Ming",
+   "Marymount"
+  ],
+  "lat": 1.35496,
+  "lon": 103.84044
+ },
+ {
+  "name": "Boon Lay",
+  "aliases": [
+   "Boon Lay Place",
+   "Liu Fang"
+  ],
+  "lat": 1.31479,
+  "lon": 103.70222
+ },
+ {
+  "name": "Bukit Batok",
+  "aliases": [
+   "Bukit Gombak",
+   "Hillview",
+   "Guilin",
+   "Brickworks"
+  ],
+  "lat": 1.35566,
+  "lon": 103.75473
+ },
+ {
+  "name": "Bukit Merah",
+  "aliases": [
+   "Redhill",
+   "Tiong Bahru",
+   "Telok Blangah",
+   "HarbourFront",
+   "Henderson",
+   "Depot Road",
+   "Alexandra",
+   "Kampong Bahru",
+   "Everton Park"
+  ],
+  "lat": 1.27549,
+  "lon": 103.82314
+ },
+ {
+  "name": "Bukit Panjang",
+  "aliases": [
+   "Senja",
+   "Fajar",
+   "Bangkit",
+   "Segar",
+   "Pending",
+   "Petir",
+   "Jelapang",
+   "Saujana"
+  ],
+  "lat": 1.36682,
+  "lon": 103.773
+ },
+ {
+  "name": "Bukit Timah",
+  "aliases": [
+   "Sixth Avenue",
+   "King Albert Park",
+   "Beauty World",
+   "Toh Yi",
+   "Hillcrest",
+   "Coronation Road",
+   "Swiss Club",
+   "Farrer Court"
+  ],
+  "lat": 1.33,
+  "lon": 103.7907
+ },
+ {
+  "name": "Central Water Catchment",
+  "aliases": [
+   "MacRitchie",
+   "MacRitchie Reservoir",
+   "Upper Peirce"
+  ],
+  "lat": 1.37665,
+  "lon": 103.8012
+ },
+ {
+  "name": "Changi",
+  "aliases": [
+   "Changi Airport",
+   "Changi Village",
+   "Changi Point"
+  ],
+  "lat": 1.35032,
+  "lon": 103.99782
+ },
+ {
+  "name": "Changi Bay",
+  "aliases": [],
+  "lat": 1.32407,
+  "lon": 104.02449
+ },
+ {
+  "name": "Choa Chu Kang",
+  "aliases": [
+   "CCK",
+   "Chua Chu Kang",
+   "Yew Tee",
+   "Teck Whye",
+   "Keat Hong",
+   "Brickland"
+  ],
+  "lat": 1.38556,
+  "lon": 103.74719
+ },
+ {
+  "name": "Clementi",
+  "aliases": [
+   "Clementi West",
+   "Clementi Central",
+   "West Coast",
+   "Sunset Way",
+   "Faber"
+  ],
+  "lat": 1.31759,
+  "lon": 103.76075
+ },
+ {
+  "name": "Downtown Core",
+  "aliases": [
+   "CBD",
+   "Raffles Place",
+   "City Hall",
+   "Marina Centre",
+   "Tanjong Pagar",
+   "Cecil",
+   "Bugis",
+   "Bayfront",
+   "Anson"
+  ],
+  "lat": 1.28679,
+  "lon": 103.8555
+ },
+ {
+  "name": "Geylang",
+  "aliases": [
+   "Aljunied",
+   "Geylang East",
+   "Kampong Ubi",
+   "MacPherson",
+   "Eunos"
+  ],
+  "lat": 1.3209,
+  "lon": 103.88952
+ },
+ {
+  "name": "Hougang",
+  "aliases": [
+   "Kovan",
+   "Lorong Ah Soo",
+   "Upper Paya Lebar",
+   "Tai Seng",
+   "Defu"
+  ],
+  "lat": 1.36364,
+  "lon": 103.8898
+ },
+ {
+  "name": "Jurong East",
+  "aliases": [
+   "Yuhua",
+   "Toh Guan",
+   "Teban Gardens",
+   "Jurong Gateway",
+   "Jurong Lake",
+   "Penjuru"
+  ],
+  "lat": 1.32044,
+  "lon": 103.73479
+ },
+ {
+  "name": "Jurong West",
+  "aliases": [
+   "Hong Kah",
+   "Taman Jurong",
+   "Yunnan",
+   "Wenya",
+   "Gek Poh",
+   "Jurong West Central"
+  ],
+  "lat": 1.34161,
+  "lon": 103.7049
+ },
+ {
+  "name": "Kallang",
+  "aliases": [
+   "Kallang Bahru",
+   "Bendemeer",
+   "Lavender",
+   "Boon Keng",
+   "Geylang Bahru",
+   "Jalan Besar",
+   "Crawford",
+   "Kallang Riverside"
+  ],
+  "lat": 1.31112,
+  "lon": 103.86654
+ },
+ {
+  "name": "Lim Chu Kang",
+  "aliases": [
+   "Sungei Gedong"
+  ],
+  "lat": 1.43064,
+  "lon": 103.71929
+ },
+ {
+  "name": "Mandai",
+  "aliases": [
+   "Mandai Estate"
+  ],
+  "lat": 1.42362,
+  "lon": 103.80246
+ },
+ {
+  "name": "Marina East",
+  "aliases": [],
+  "lat": 1.28852,
+  "lon": 103.87235
+ },
+ {
+  "name": "Marina South",
+  "aliases": [
+   "Gardens by the Bay",
+   "Marina Barrage"
+  ],
+  "lat": 1.28053,
+  "lon": 103.86563
+ },
+ {
+  "name": "Marine Parade",
+  "aliases": [
+   "Katong",
+   "Mountbatten",
+   "East Coast",
+   "East Coast Park",
+   "Joo Chiat"
+  ],
+  "lat": 1.30023,
+  "lon": 103.89627
+ },
+ {
+  "name": "Museum",
+  "aliases": [
+   "Dhoby Ghaut",
+   "Fort Canning",
+   "Bras Basah"
+  ],
+  "lat": 1.29592,
+  "lon": 103.84672
+ },
+ {
+  "name": "Newton",
+  "aliases": [
+   "Newton Circus",
+   "Cairnhill",
+   "Goodwood Park"
+  ],
+  "lat": 1.30866,
+  "lon": 103.83808
+ },
+ {
+  "name": "North-Eastern Islands",
+  "aliases": [
+   "Pulau Ubin",
+   "Pulau Tekong"
+  ],
+  "lat": 1.399,
+  "lon": 104.0516
+ },
+ {
+  "name": "Novena",
+  "aliases": [
+   "Balestier",
+   "Moulmein",
+   "Thomson",
+   "Mount Pleasant"
+  ],
+  "lat": 1.32698,
+  "lon": 103.83531
+ },
+ {
+  "name": "Orchard",
+  "aliases": [
+   "Orchard Road",
+   "Somerset",
+   "Boulevard"
+  ],
+  "lat": 1.30381,
+  "lon": 103.83358
+ },
+ {
+  "name": "Outram",
+  "aliases": [
+   "Chinatown",
+   "Pearl's Hill",
+   "People's Park",
+   "China Square"
+  ],
+  "lat": 1.28286,
+  "lon": 103.84206
+ },
+ {
+  "name": "Pasir Ris",
+  "aliases": [
+   "Loyang",
+   "Elias",
+   "Pasir Ris Park",
+   "Pasir Ris West"
+  ],
+  "lat": 1.37862,
+  "lon": 103.94829
+ },
+ {
+  "name": "Paya Lebar",
+  "aliases": [
+   "Paya Lebar Airbase"
+  ],
+  "lat": 1.3594,
+  "lon": 103.91478
+ },
+ {
+  "name": "Pioneer",
+  "aliases": [
+   "Pioneer Sector"
+  ],
+  "lat": 1.31259,
+  "lon": 103.67299
+ },
+ {
+  "name": "Punggol",
+  "aliases": [
+   "Punggol Waterway",
+   "Matilda",
+   "Coney Island",
+   "Punggol Field",
+   "Northshore"
+  ],
+  "lat": 1.40536,
+  "lon": 103.91005
+ },
+ {
+  "name": "Queenstown",
+  "aliases": [
+   "Commonwealth",
+   "Dover",
+   "Buona Vista",
+   "one-north",
+   "Tanglin Halt",
+   "Kent Ridge",
+   "NUS",
+   "Mei Chin",
+   "Ghim Moh",
+   "Holland Village"
+  ],
+  "lat": 1.28908,
+  "lon": 103.78457
+ },
+ {
+  "name": "River Valley",
+  "aliases": [
+   "Great World",
+   "Leonie Hill",
+   "Oxley"
+  ],
+  "lat": 1.29805,
+  "lon": 103.83398
+ },
+ {
+  "name": "Rochor",
+  "aliases": [
+   "Little India",
+   "Kampong Glam",
+   "Farrer Park",
+   "Victoria Street",
+   "Sungei Road"
+  ],
+  "lat": 1.30414,
+  "lon": 103.85328
+ },
+ {
+  "name": "Seletar",
+  "aliases": [
+   "Seletar Aerospace",
+   "Seletar Airport"
+  ],
+  "lat": 1.41438,
+  "lon": 103.87707
+ },
+ {
+  "name": "Sembawang",
+  "aliases": [
+   "Canberra",
+   "Sembawang Springs",
+   "Admiralty Park"
+  ],
+  "lat": 1.45575,
+  "lon": 103.81883
+ },
+ {
+  "name": "Sengkang",
+  "aliases": [
+   "Anchorvale",
+   "Compassvale",
+   "Rivervale",
+   "Fernvale",
+   "Sengkang West"
+  ],
+  "lat": 1.39128,
+  "lon": 103.88771
+ },
+ {
+  "name": "Serangoon",
+  "aliases": [
+   "Serangoon Gardens",
+   "Serangoon North",
+   "Lorong Chuan",
+   "Serangoon Central"
+  ],
+  "lat": 1.3652,
+  "lon": 103.86782
+ },
+ {
+  "name": "Simpang",
+  "aliases": [],
+  "lat": 1.44422,
+  "lon": 103.85003
+ },
+ {
+  "name": "Singapore River",
+  "aliases": [
+   "Clarke Quay",
+   "Boat Quay",
+   "Robertson Quay"
+  ],
+  "lat": 1.29011,
+  "lon": 103.84121
+ },
+ {
+  "name": "Southern Islands",
+  "aliases": [
+   "Sentosa",
+   "St John's Island",
+   "Kusu Island"
+  ],
+  "lat": 1.2497,
+  "lon": 103.8298
+ },
+ {
+  "name": "Straits View",
+  "aliases": [],
+  "lat": 1.27125,
+  "lon": 103.85877
+ },
+ {
+  "name": "Sungei Kadut",
+  "aliases": [
+   "Kranji"
+  ],
+  "lat": 1.41813,
+  "lon": 103.75746
+ },
+ {
+  "name": "Tampines",
+  "aliases": [
+   "Tampines East",
+   "Tampines West",
+   "Tampines North",
+   "Simei"
+  ],
+  "lat": 1.34379,
+  "lon": 103.95403
+ },
+ {
+  "name": "Tanglin",
+  "aliases": [
+   "Botanic Gardens",
+   "Dempsey",
+   "Nassim",
+   "Tyersall",
+   "Chatsworth",
+   "Ridout"
+  ],
+  "lat": 1.30837,
+  "lon": 103.8176
+ },
+ {
+  "name": "Tengah",
+  "aliases": [
+   "Tengah Garden",
+   "Tengah Park"
+  ],
+  "lat": 1.36385,
+  "lon": 103.72875
+ },
+ {
+  "name": "Toa Payoh",
+  "aliases": [
+   "Braddell",
+   "Potong Pasir",
+   "Woodleigh",
+   "Bidadari",
+   "Boon Teck",
+   "Caldecott"
+  ],
+  "lat": 1.33668,
+  "lon": 103.86103
+ },
+ {
+  "name": "Tuas",
+  "aliases": [
+   "Tuas South",
+   "Tuas View",
+   "Tuas Link",
+   "Joo Koon"
+  ],
+  "lat": 1.28024,
+  "lon": 103.6331
+ },
+ {
+  "name": "Western Islands",
+  "aliases": [
+   "Jurong Island",
+   "Pulau Bukom"
+  ],
+  "lat": 1.26599,
+  "lon": 103.69175
+ },
+ {
+  "name": "Western Water Catchment",
+  "aliases": [
+   "Tengeh",
+   "Poyan"
+  ],
+  "lat": 1.38211,
+  "lon": 103.68974
+ },
+ {
+  "name": "Woodlands",
+  "aliases": [
+   "Admiralty",
+   "Marsiling",
+   "Woodlands North",
+   "Woodlands South",
+   "Causeway"
+  ],
+  "lat": 1.44068,
+  "lon": 103.7877
+ },
+ {
+  "name": "Yishun",
+  "aliases": [
+   "Khatib",
+   "Chong Pang",
+   "Nee Soon",
+   "Yishun East",
+   "Yishun West"
+  ],
+  "lat": 1.41504,
+  "lon": 103.83712
+ }
+]

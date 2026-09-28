@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- brand/svg/mark-on-dark.svg, scaled into the 66dp safe zone of the 108dp adaptive canvas. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <group android:translateX="21.000" android:translateY="16.215" android:scaleX="0.66" android:scaleY="0.66">
+        <path android:fillColor="#F5F0E6" android:pathData="M33,38A17,17 0,1 1 67,38A17,17 0,1 1 33,38Z"/>
+        <path android:fillColor="#9FB3BB" android:pathData="M20.75,61H79.25A3.75,3.75 0,0 1 79.25,68.5H20.75A3.75,3.75 0,0 1 20.75,61Z"/>
+        <path android:fillColor="#9FB3BB" android:fillAlpha="0.7" android:pathData="M30.75,73.5H69.25A3.75,3.75 0,0 1 69.25,81H30.75A3.75,3.75 0,0 1 30.75,73.5Z"/>
+        <path android:fillColor="#9FB3BB" android:fillAlpha="0.45" android:pathData="M41.75,86H58.25A3.75,3.75 0,0 1 58.25,93.5H41.75A3.75,3.75 0,0 1 41.75,86Z"/>
+    </group>
+</vector>

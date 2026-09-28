@@ -1,0 +1,14 @@
+{
+  "name": "hazenow-monorepo",
+  "private": true,
+  "license": "MIT",
+  "workspaces": [
+    "packages/core",
+    "apps/web"
+  ],
+  "scripts": {
+    "test": "npm run test -w hazenow",
+    "build": "npm run build -w hazenow && npm run build -w hazenow-web",
+    "dev": "npm run dev -w hazenow-web"
+  }
+}

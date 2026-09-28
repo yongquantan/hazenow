@@ -1,0 +1,9 @@
+{
+ "_meta": {
+  "scenario": "network_error",
+  "description": "Simulate the network failing: clients should behave as if every request threw.",
+  "now": "2026-09-28T16:35:00+08:00",
+  "source": "Derived from the real NEA capture of 2026-09-28 16:00 SGT (data.gov.sg)",
+  "simulate": "network_error"
+ }
+}

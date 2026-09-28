@@ -1,0 +1,21 @@
+name = "hazenow-telegram-bot"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+# NEA data lands ~1 min after the hour (SPEC v1.3): check at :02, retry at :12 in case it was late.
+# The evaluator only advances hysteresis once per new observed hour; data comes from v1 (v2 only as fallback).
+[triggers]
+crons = ["2 * * * *", "12 * * * *"]
+
+# Create with: npx wrangler kv namespace create HAZENOW_KV   (then paste the id here)
+[[kv_namespaces]]
+binding = "HAZENOW_KV"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+[vars]
+WEB_URL = "https://hazenow.app"
+
+# Secrets (never commit):
+#   npx wrangler secret put TELEGRAM_BOT_TOKEN
+#   npx wrangler secret put WEBHOOK_SECRET
+#   npx wrangler secret put DATA_GOV_API_KEY   (optional, raises data.gov.sg rate limit)

@@ -1,0 +1,62 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "HazeNow Singapore",
+        "description": "Adds NEA's 1-hr PM2.5, a band, a plain-words verdict and NEA's 24-hr PSI for each region. \"Home\" sensors are estimated for your Home Assistant location from NEA's stations (your location stays in Home Assistant). Data: NEA via data.gov.sg.",
+        "data": {
+          "include_home": "Add \"Home\" sensors using this Home Assistant's location"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "HazeNow is already set up."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "include_home": "Add \"Home\" sensors",
+          "api_key": "Optional data.gov.sg API key (higher rate limit)",
+          "profile": "Who are you checking for?"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "pm25": {
+        "name": "PM2.5 (1-hr)"
+      },
+      "official_psi_24h": {
+        "name": "NEA 24-hr PSI"
+      },
+      "band": {
+        "name": "Haze band",
+        "state": {
+          "normal": "Normal",
+          "elevated": "Elevated",
+          "high": "High",
+          "very_high": "Very High"
+        }
+      },
+      "verdict": {
+        "name": "Verdict"
+      }
+    }
+  },
+  "selector": {
+    "profile": {
+      "options": {
+        "general": "Just me, generally healthy",
+        "kids": "Kids",
+        "elderly": "Older adults (65+)",
+        "pregnant": "Pregnant",
+        "heart_lung": "Asthma, COPD or a heart condition",
+        "exercising": "I exercise outdoors",
+        "outdoor_worker": "I work outdoors"
+      }
+    }
+  }
+}

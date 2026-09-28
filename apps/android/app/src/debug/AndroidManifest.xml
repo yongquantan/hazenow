@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- Debug builds only. See apps/android/README.md "QA / adb". -->
+        <receiver
+            android:name="sg.hazenow.debug.DebugReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="sg.hazenow.DEBUG_REFRESH" />
+                <action android:name="sg.hazenow.DEBUG_MOCK" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

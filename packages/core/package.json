@@ -1,0 +1,53 @@
+{
+  "name": "hazenow",
+  "version": "0.1.0",
+  "description": "Singapore haze right now: 1-hr PM2.5 and an Instant PSI estimate, instead of the lagging 24-hr PSI. Zero deps.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./math": {
+      "types": "./dist/math.d.ts",
+      "import": "./dist/math.js"
+    },
+    "./fixtures/*": "./fixtures/*",
+    "./data/*": "./data/*"
+  },
+  "bin": {
+    "hazenow": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "fixtures",
+    "data"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "singapore",
+    "haze",
+    "psi",
+    "pm2.5",
+    "air-quality",
+    "nea"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/postbuild.mjs",
+    "test": "bun test",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/node": "^22.0.0",
+    "@types/bun": "^1.1.0"
+  }
+}

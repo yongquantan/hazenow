@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en-SG">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>How HazeNow calculates · HazeNow</title>
+    <meta name="description" content="Where HazeNow's numbers come from, and how the advice follows NEA's 1-hr PM2.5 guide." />
+    <meta name="theme-color" content="#F3F1EC" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#14232B" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icons/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/icons/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="icon" href="/icons/favicon-16.png" sizes="16x16" type="image/png" />
+    <link rel="icon" href="/icons/favicon-48.png" sizes="48x48" type="image/png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta property="og:title" content="How HazeNow calculates" />
+    <meta property="og:image" content="https://hazenow.sg/og.png" />
+    <link rel="preload" href="/fonts/instrument-serif.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/instrument-sans.woff2" as="font" type="font/woff2" crossorigin />
+  </head>
+  <body>
+    <div class="veil" aria-hidden="true"></div>
+    <main class="how">
+      <a class="brand" href="/" aria-label="HazeNow home"><svg class="mark" width="26" height="26" viewBox="0 0 100 100" aria-hidden="true"><circle class="mark-dot" cx="50" cy="38" r="17"/><rect x="17" y="61" width="66" height="7.5" rx="3.75" fill="currentColor"/><rect x="27" y="73.5" width="46" height="7.5" rx="3.75" fill="currentColor" fill-opacity="0.7"/><rect x="38" y="86" width="24" height="7.5" rx="3.75" fill="currentColor" fill-opacity="0.45"/></svg><span>HazeNow</span></a>
+      <p style="margin-top:18px"><a class="back link" href="/">← Back to the reading</a></p>
+      <h1>How we calculate this</h1>
+
+      <h2>Where the numbers come from</h2>
+      <p>Every number here comes from the National Environment Agency (NEA), published on data.gov.sg. We don't have our own sensors and we don't change NEA's readings.</p>
+
+      <h2>The big number: 1-hr PM2.5</h2>
+      <p>PM2.5 is tiny particles in the air, the main part of haze. NEA measures it every hour at five stations: North, South, East, West and Central. The big number is the latest hour, in micrograms per cubic metre (µg/m³). NEA recommends this reading for deciding what to do in the next hour or so.</p>
+
+      <h2>Your spot</h2>
+      <p>If you share your location, we estimate the reading for your spot from all of NEA's stations. Closer stations count more. If you're right next to a station, we use that station. If you don't share your location, we use the area you pick. Your location stays on your device.</p>
+
+      <h2>The advice</h2>
+      <p>We use NEA's four bands for 1-hr PM2.5: Normal (0–55), Elevated (56–150), High (151–250) and Very High (251 and above). The advice for each band follows NEA's personal guide for healthy and vulnerable people. Vulnerable means older adults, pregnant women, children, and people with chronic lung or heart disease. We only put it in everyday words.</p>
+      <table>
+        <thead><tr><th>Band</th><th>1-hr PM2.5 (µg/m³)</th></tr></thead>
+        <tbody>
+          <tr><td>● Normal</td><td>0–55</td></tr>
+          <tr><td>◐ Elevated</td><td>56–150</td></tr>
+          <tr><td>△ High</td><td>151–250</td></tr>
+          <tr><td>⯃ Very High</td><td>251 and above</td></tr>
+        </tbody>
+      </table>
+
+      <h2>NEA's 24-hr PSI</h2>
+      <p>We also show NEA's official 24-hr PSI. It averages the last 24 hours, so it moves slowly. It's the right number for planning tomorrow, and schools and events use NEA's 24-hr PSI forecast. The chart shows both, so you can see how they move.</p>
+      <p><a class="link" href="https://www.haze.gov.sg/" rel="noopener">Planning for tomorrow? Use NEA's 24-hr PSI forecast. Schools and events plan with it.</a></p>
+
+      <h2>Trend</h2>
+      <p>We compare this hour with the hour before. “Rising” means up by 5 or more. “Rising fast” means up by 20 or more.</p>
+
+      <h2>When data is late or missing</h2>
+      <p>NEA usually posts each hour's reading about a minute after the hour. We check every minute until it arrives, and check again later in the hour in case NEA fills a gap. Sometimes a station goes offline, and we then use the other stations and tell you. If readings are more than 2 hours old, we say so clearly.</p>
+
+      <h2>What this app is not</h2>
+      <p>It's not medical advice, and it's not an official NEA app. If you feel unwell, see a doctor. In an emergency, call 995.</p>
+
+      <h2>Check our work</h2>
+      <p>HazeNow is free and open source (MIT). All the maths is public, and every app uses the same rules. <a class="link" href="https://github.com/hazenow/hazenow" rel="noopener">View the code</a></p>
+
+      <p class="fine" style="margin-top:40px">Data: NEA via data.gov.sg · Free &amp; open source · No ads, no tracking, no account</p>
+      <p><a class="link" href="/">← Back to the reading</a></p>
+    </main>
+    <script type="module" src="/src/how.ts"></script>
+  </body>
+</html>

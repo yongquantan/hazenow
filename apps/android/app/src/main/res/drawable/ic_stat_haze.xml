@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- brand/svg/mark-small-template.svg as a white status-bar / QS tile icon. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="100" android:viewportHeight="100">
+    <path android:fillColor="#FFFFFFFF" android:pathData="M28,34A22,22 0,1 1 72,34A22,22 0,1 1 28,34Z"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M18,66H82A6,6 0,0 1 82,78H18A6,6 0,0 1 18,66Z"/>
+    <path android:fillColor="#FFFFFFFF" android:fillAlpha="0.6" android:pathData="M36,86H64A6,6 0,0 1 64,98H36A6,6 0,0 1 36,86Z"/>
+</vector>

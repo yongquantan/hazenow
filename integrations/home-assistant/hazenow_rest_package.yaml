@@ -1,0 +1,65 @@
+# HazeNow — no-install alternative (Home Assistant "package").
+# Put in config/packages/hazenow.yaml and enable packages in configuration.yaml:
+#   homeassistant:
+#     packages: !include_dir_named packages
+# Change `region` below (central/north/south/east/west). Region-only (no home-coordinate IDW:
+# use the custom integration for that). Data: NEA via data.gov.sg. Copy follows docs/COPY.md.
+
+rest:
+  # NEA v1: fresh ~1 min after the hour, no observed rate limit (SPEC v1.3)
+  - resource: https://api.data.gov.sg/v1/environment/pm25
+    scan_interval: 120
+    headers:
+      User-Agent: "Mozilla/5.0 (compatible; HazeNow/0.1; +https://github.com/yongquantan/hazenow)"
+    sensor:
+      - name: "HazeNow PM2.5"
+        unique_id: hazenow_rest_pm25
+        device_class: pm25
+        state_class: measurement
+        unit_of_measurement: "µg/m³"
+        # -1 means station offline → fall back to the mean of valid regions.
+        value_template: >-
+          {% set region = 'central' %}
+          {% set r = value_json['items'][0].readings.pm25_one_hourly %}
+          {% set v = r.get(region, -1) %}
+          {% if v is number and v >= 0 %}{{ v }}{% else %}
+            {% set ok = r.values() | select('number') | select('ge', 0) | list %}
+            {% if ok | count > 0 %}{{ ((ok | sum) / (ok | count) + 0.5) | int }}{% else %}unavailable{% endif %}
+          {% endif %}
+        json_attributes_path: "$.items[0]"
+        json_attributes: [timestamp, update_timestamp]
+  - resource: https://api.data.gov.sg/v1/environment/psi
+    scan_interval: 600
+    headers:
+      User-Agent: "Mozilla/5.0 (compatible; HazeNow/0.1; +https://github.com/yongquantan/hazenow)"
+    sensor:
+      - name: "HazeNow Official 24-hr PSI"
+        unique_id: hazenow_rest_psi24
+        device_class: aqi
+        state_class: measurement
+        value_template: >-
+          {% set v = value_json['items'][0].readings.psi_twenty_four_hourly.get('central', -1) %}
+          {{ v if v is number and v >= 0 else 'unavailable' }}
+
+template:
+  - sensor:
+      - name: "HazeNow Band"
+        unique_id: hazenow_rest_band
+        availability: "{{ states('sensor.hazenow_pm2_5') | is_number }}"
+        state: >-
+          {% set c = states('sensor.hazenow_pm2_5') | float(0) %}
+          {{ 'Normal' if c <= 55 else 'Elevated' if c <= 150 else 'High' if c <= 250 else 'Very High' }}
+      - name: "HazeNow Verdict"
+        unique_id: hazenow_rest_verdict
+        availability: "{{ states('sensor.hazenow_pm2_5') | is_number }}"
+        state: >-
+          {% set c = states('sensor.hazenow_pm2_5') | float(0) %}
+          {{ 'Fine to be out.' if c <= 55 else 'OK to be out. Go easy on hard exercise.' if c <= 150
+             else 'Short trips out are OK. Exercise indoors.' if c <= 250 else 'Stay indoors for now. Go out only if you need to.' }}
+
+# Example automation: close-the-windows nudge on a band rise (the custom integration's
+# sensor.hazenow_home_haze_band works the same way).
+# automation:
+#   - alias: HazeNow band rose
+#     trigger: [{ platform: state, entity_id: sensor.hazenow_band, to: [High, Very High], for: "01:00:00" }]
+#     action: [{ service: notify.notify, data: { title: "Haze now {{ trigger.to_state.state }}", message: "{{ states('sensor.hazenow_verdict') }} Close windows and keep cool with aircon or a fan." } }]

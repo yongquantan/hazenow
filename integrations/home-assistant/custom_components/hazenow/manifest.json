@@ -1,0 +1,12 @@
+{
+  "domain": "hazenow",
+  "name": "HazeNow (Singapore haze right now)",
+  "codeowners": ["@hazenow"],
+  "config_flow": true,
+  "documentation": "https://github.com/hazenow/hazenow/tree/main/integrations/home-assistant",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/hazenow/hazenow/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

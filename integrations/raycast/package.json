@@ -1,0 +1,119 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "hazenow",
+  "title": "HazeNow",
+  "description": "Singapore haze right now: NEA's 1-hr PM2.5 with plain-words advice, next to NEA's 24-hr PSI. Data: NEA via data.gov.sg.",
+  "icon": "icon.png",
+  "author": "hazenow",
+  "license": "MIT",
+  "categories": [
+    "Data",
+    "Productivity"
+  ],
+  "commands": [
+    {
+      "name": "menu-bar",
+      "title": "HazeNow Menu Bar",
+      "subtitle": "HazeNow",
+      "description": "Shows the 1-hr PM2.5 for your region in the menu bar, e.g. ● 105 ▲.",
+      "mode": "menu-bar",
+      "interval": "2m"
+    },
+    {
+      "name": "haze-now",
+      "title": "Haze Now",
+      "subtitle": "HazeNow",
+      "description": "PM2.5 right now for every Singapore region, with a verdict, actions, trend and NEA's 24-hr PSI.",
+      "mode": "view"
+    }
+  ],
+  "preferences": [
+    {
+      "name": "region",
+      "title": "Region",
+      "description": "Region to show in the menu bar.",
+      "type": "dropdown",
+      "required": false,
+      "default": "central",
+      "data": [
+        {
+          "title": "Central",
+          "value": "central"
+        },
+        {
+          "title": "North",
+          "value": "north"
+        },
+        {
+          "title": "South",
+          "value": "south"
+        },
+        {
+          "title": "East",
+          "value": "east"
+        },
+        {
+          "title": "West",
+          "value": "west"
+        },
+        {
+          "title": "Island average",
+          "value": "island"
+        }
+      ]
+    },
+    {
+      "name": "profile",
+      "title": "Who are you checking for?",
+      "description": "Advice that fits. Saved on this device only.",
+      "type": "dropdown",
+      "required": false,
+      "default": "general",
+      "data": [
+        {
+          "title": "Just me, generally healthy",
+          "value": "general"
+        },
+        {
+          "title": "Kids",
+          "value": "kids"
+        },
+        {
+          "title": "Older adults (65+)",
+          "value": "elderly"
+        },
+        {
+          "title": "Pregnant",
+          "value": "pregnant"
+        },
+        {
+          "title": "Asthma, COPD or a heart condition",
+          "value": "heart_lung"
+        },
+        {
+          "title": "I exercise outdoors",
+          "value": "exercising"
+        },
+        {
+          "title": "I work outdoors",
+          "value": "outdoor_worker"
+        }
+      ]
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^2.5.3",
+    "@raycast/utils": "^2.3.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "typescript": "^5.8.0"
+  },
+  "scripts": {
+    "build": "ray build -e dist",
+    "dev": "ray develop",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types src/haze.test.ts"
+  }
+}

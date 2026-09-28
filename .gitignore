@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.build/
+build/
+DerivedData/
+.gradle/
+local.properties
+*.apk
+.DS_Store
+.wrangler/
+__pycache__/
+.qa-runs/
