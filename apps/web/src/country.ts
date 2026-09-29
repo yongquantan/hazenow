@@ -367,7 +367,16 @@ export function noDataHtml(w: CityWhere, error: string | null): string {
 /* ---------------------------------------------------------------- picker (place sheet) */
 
 import { PICKER_LITE } from "./country-lite";
-if (import.meta.env.DEV && PICKER_LITE.map(([cc]) => cc).join() !== sea.PICKER_COUNTRIES.join()) console.warn("[hazenow] PICKER_LITE is out of date");
+const liteCoverage = (cc: CountryCode) => {
+  const st = sea.COUNTRIES[cc].status;
+  return st === "live_direct" ? "direct" : st === "needs_proxy" ? "proxy" : "none";
+};
+if (
+  import.meta.env.DEV &&
+  (PICKER_LITE.map(([cc]) => cc).join() !== sea.PICKER_COUNTRIES.join() ||
+    PICKER_LITE.some(([cc, name, cov]) => name !== COUNTRY_NAME(cc) || cov !== liteCoverage(cc)))
+)
+  console.warn("[hazenow] PICKER_LITE is out of date");
 
 const STATUS_TAG: Record<DataMode, string> = { live: "Live", preview: "Preview", unavailable: "Not available yet" };
 
@@ -390,7 +399,8 @@ function cityRow(c: CityPlace, current: CityWhere | null, extra = ""): string {
   }</span> <span class="city-tag tag-${m}">${esc(STATUS_TAG[m])}</span></button></li>`;
 }
 
-export function cityListHtml(cc: CountryCode, current: CityWhere | null, search = ""): string {
+/** Step 2 of the place sheet for a country other than Singapore: a coverage note, Popular, then the other cities. */
+export function cityListHtml(cc: CountryCode, current: CityWhere | null): string {
   const note =
     cc === "TH"
       ? "Live from PCD's Air4Thai."
@@ -404,10 +414,7 @@ export function cityListHtml(cc: CountryCode, current: CityWhere | null, search 
     list.length
       ? `<h3 class="city-group" id="${id}">${esc(title)}</h3><ul class="area-list city-list" role="list" aria-labelledby="${id}">${list.map((c) => cityRow(c, current)).join("")}</ul>`
       : "";
-  return `<label class="search-label" for="place-search">Search places</label>
-  <input id="place-search" class="area-search" type="search" inputmode="search" autocomplete="off" spellcheck="false" placeholder="Town or island, e.g. Bali, Penang, KL" value="${esc(search)}" data-action="place-search" data-key="place-search"/>
-  <div data-place-results>${search.trim() ? placeResultsHtml(search, current) : ""}</div>
-  <p class="fine city-note">${esc(note)}</p>${group("Popular", `pop-${cc}`, popular)}${group(popular.length ? "Other cities" : "Cities", `oth-${cc}`, others)}`;
+  return `<p class="fine city-note">${esc(note)}</p>${group("Popular", `pop-${cc}`, popular)}${group(popular.length ? "All cities" : "Cities", `oth-${cc}`, others)}`;
 }
 
 /** Search results across every country (names, aliases like "Bali" or "KL", and islands). Empty query → "". */

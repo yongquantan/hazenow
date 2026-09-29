@@ -364,3 +364,36 @@ export const NOT_AVAILABLE_COPY = {
   needs_permission: "The data exists, but we need the publisher's permission (or a feed we can read) before we can show it.",
   not_feasible: "There isn't a reliable public source here yet.",
 } as const;
+
+/** Where a first-time visitor starts (SPEC v2.1), from a `guessCountry()` result. */
+export interface StartPlace {
+  place: CityPlace;
+  /** The guessed country isn't covered yet (Myanmar, Cambodia…): `place` is the nearest covered city instead. */
+  notCoveredFrom: CountryCode | null;
+  /** No SEA country guessed (e.g. a visitor in Europe): `place` is Singapore, and the picker deserves a hint. */
+  outside: boolean;
+  /** `place` is the time zone's suggestion (Asia/Makassar → Denpasar), not the country default. */
+  fromZone: boolean;
+}
+
+const covered = (c: CityPlace) => c.status === "live_direct" || c.status === "needs_proxy";
+
+/** Nearest covered major city to a point, in any country (for a guessed country we don't cover yet). */
+export function nearestCoveredCity(lat: number, lon: number): CityPlace {
+  const d2 = (c: CityPlace) => (c.lat - lat) ** 2 + ((c.lon - lon) * Math.cos((lat * Math.PI) / 180)) ** 2;
+  return CITIES.filter(covered).reduce((best, c) => (d2(c) < d2(best) ? c : best));
+}
+
+/**
+ * Turn a guess into a starting place: the suggested place when we cover it, else the country default, else the nearest
+ * covered city (with `notCoveredFrom` set so the client can say "not available yet"). No country → Singapore.
+ */
+export function startPlace(g: { country: CountryCode | null; place: string | null; placeFromZone?: boolean }): StartPlace {
+  const sg = defaultCity("SG");
+  if (!g.country) return { place: sg, notCoveredFrom: null, outside: true, fromZone: false };
+  const suggested = (g.place && findCity(g.place, g.country)) || null;
+  if (suggested && covered(suggested)) return { place: suggested, notCoveredFrom: null, outside: false, fromZone: !!g.placeFromZone };
+  const def = defaultCity(g.country);
+  if (covered(def)) return { place: def, notCoveredFrom: null, outside: false, fromZone: false };
+  return { place: nearestCoveredCity(def.lat, def.lon), notCoveredFrom: g.country, outside: false, fromZone: false };
+}

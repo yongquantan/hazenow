@@ -1,0 +1,177 @@
+{
+ "_source": "http://dubao.envisoft.gov.vn:8000/geoweb//20260929/vntinh_AQIDaily20260929.geojson",
+ "_note": "Properties only; geometry stripped (file is 30,138,869 B). CEM 48-h VN_AQI FORECAST (model) per province, published 28/9/2026 (Last-Modified Mon, 28 Sep 2026 08:02:48 GMT). NOT an observation.",
+ "_fetchedAt": "2026-09-29T02:27:32Z",
+ "features": [
+  {
+   "id_tinh": 1,
+   "tentinh": "TP. Hà Nội",
+   "AQI": 40.25
+  },
+  {
+   "id_tinh": 4,
+   "tentinh": "Cao Bằng",
+   "AQI": 34.625
+  },
+  {
+   "id_tinh": 8,
+   "tentinh": "Tuyên Quang",
+   "AQI": 31.333
+  },
+  {
+   "id_tinh": 11,
+   "tentinh": "Điện Biên",
+   "AQI": 20.113
+  },
+  {
+   "id_tinh": 12,
+   "tentinh": "Lai Châu",
+   "AQI": 18.328
+  },
+  {
+   "id_tinh": 14,
+   "tentinh": "Sơn La",
+   "AQI": 22.355
+  },
+  {
+   "id_tinh": 15,
+   "tentinh": "Lào Cai",
+   "AQI": 22.795
+  },
+  {
+   "id_tinh": 19,
+   "tentinh": "Thái Nguyên",
+   "AQI": 37.588
+  },
+  {
+   "id_tinh": 20,
+   "tentinh": "Lạng Sơn",
+   "AQI": 41.505
+  },
+  {
+   "id_tinh": 22,
+   "tentinh": "TP. Quảng Ninh",
+   "AQI": 56.913
+  },
+  {
+   "id_tinh": 24,
+   "tentinh": "TP. Bắc Ninh",
+   "AQI": 57.758
+  },
+  {
+   "id_tinh": 25,
+   "tentinh": "Phú Thọ",
+   "AQI": 27.678
+  },
+  {
+   "id_tinh": 31,
+   "tentinh": "TP. Hải Phòng",
+   "AQI": 84.593
+  },
+  {
+   "id_tinh": 33,
+   "tentinh": "Hưng Yên",
+   "AQI": 62.488
+  },
+  {
+   "id_tinh": 37,
+   "tentinh": "Ninh Bình",
+   "AQI": 32.519
+  },
+  {
+   "id_tinh": 38,
+   "tentinh": "Thanh Hóa",
+   "AQI": 23.791
+  },
+  {
+   "id_tinh": 40,
+   "tentinh": "Nghệ An",
+   "AQI": 22.719
+  },
+  {
+   "id_tinh": 42,
+   "tentinh": "Hà Tĩnh",
+   "AQI": 19.688
+  },
+  {
+   "id_tinh": 44,
+   "tentinh": "Quảng Trị",
+   "AQI": 17.773
+  },
+  {
+   "id_tinh": 46,
+   "tentinh": "TP. Huế",
+   "AQI": 21.338
+  },
+  {
+   "id_tinh": 48,
+   "tentinh": "TP. Đà Nẵng",
+   "AQI": 28.506
+  },
+  {
+   "id_tinh": 51,
+   "tentinh": "Quảng Ngãi",
+   "AQI": 23.731
+  },
+  {
+   "id_tinh": 52,
+   "tentinh": "Gia Lai",
+   "AQI": 25.058
+  },
+  {
+   "id_tinh": 56,
+   "tentinh": "Khánh Hòa",
+   "AQI": 27.877
+  },
+  {
+   "id_tinh": 66,
+   "tentinh": "Đắk Lắk",
+   "AQI": 27.749
+  },
+  {
+   "id_tinh": 68,
+   "tentinh": "Lâm Đồng",
+   "AQI": 33.138
+  },
+  {
+   "id_tinh": 75,
+   "tentinh": "TP. Đồng Nai",
+   "AQI": 38.414
+  },
+  {
+   "id_tinh": 79,
+   "tentinh": "TP. Hồ Chí Minh",
+   "AQI": 45.052
+  },
+  {
+   "id_tinh": 80,
+   "tentinh": "Tây Ninh",
+   "AQI": 44.167
+  },
+  {
+   "id_tinh": 82,
+   "tentinh": "Đồng Tháp",
+   "AQI": 48.038
+  },
+  {
+   "id_tinh": 86,
+   "tentinh": "Vĩnh Long",
+   "AQI": 45.699
+  },
+  {
+   "id_tinh": 91,
+   "tentinh": "An Giang",
+   "AQI": 43.065
+  },
+  {
+   "id_tinh": 92,
+   "tentinh": "TP. Cần Thơ",
+   "AQI": 47.564
+  },
+  {
+   "id_tinh": 96,
+   "tentinh": "Cà Mau",
+   "AQI": 37.191
+  }
+ ]
+}

@@ -25,12 +25,16 @@ if [ "$WHAT" = both ] || [ "$WHAT" = site ]; then
   npm run build --prefix apps/site   # → apps/site/dist
 fi
 
+# Pages Functions (SPEC v2.1: /api/where, the optional country hint) live in apps/{web,site}/functions. wrangler only
+# looks for ./functions in the directory it runs from, so each project deploys from its own temp dir with a copy.
+# wrangler writes a _routes.json that sends only /api/* to the Function; static files never invoke it.
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
-cd "$TMP"
 if [ "$WHAT" = both ] || [ "$WHAT" = app ]; then
-  npx --yes "$WRANGLER" pages deploy "$ROOT/apps/web/dist" --project-name hazenow-app --branch main --commit-dirty=true
+  mkdir -p "$TMP/app" && cp -R "$ROOT/apps/web/functions" "$TMP/app/functions"
+  (cd "$TMP/app" && npx --yes "$WRANGLER" pages deploy "$ROOT/apps/web/dist" --project-name hazenow-app --branch main --commit-dirty=true)
 fi
 if [ "$WHAT" = both ] || [ "$WHAT" = site ]; then
-  npx --yes "$WRANGLER" pages deploy "$ROOT/apps/site/dist" --project-name hazenow --branch main --commit-dirty=true
+  mkdir -p "$TMP/site" && cp -R "$ROOT/apps/site/functions" "$TMP/site/functions"
+  (cd "$TMP/site" && npx --yes "$WRANGLER" pages deploy "$ROOT/apps/site/dist" --project-name hazenow --branch main --commit-dirty=true)
 fi

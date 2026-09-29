@@ -410,6 +410,14 @@ For `exercising`: "Air's back to Normal (PM2.5 {pm25}). Fine for your run."
   > We use your location only on this device, to pick the nearest NEA stations. It's never sent or stored anywhere else.
   > [ Use my location ]  ·  Pick my area instead
 - **Profile storage line:** "Saved on this device only."
+- **Country hint line (SPEC v2.1; web and site only, wherever `/api/where` may be asked: the "Where are you checking?" card, the footer once it was asked, the site's privacy section and the How page):** "We use your country, from your connection, to pick a starting place. Nothing is stored."
+- **First-run starting place (SPEC v2.1):**
+  - Guessed place: "Showing {place} · Change" + "Use my precise location"
+  - Guessed country not covered yet: "{Country} isn't available yet. Showing {place}, the nearest place we cover. Change"
+  - Unsure guess (outside Southeast Asia, or signals that disagree), card under the reading: **"Where are you checking?"** / "Pick a country to see its places. You can change it any time." + country chips + "Use my precise location"
+  - Site, outside Southeast Asia: "Not in Singapore? HazeNow also covers Thailand, with more of Southeast Asia in preview. Change"
+  - Place sheet: step 1 "Where should we check?" (countries, each "Live" / "Preview" / "Not yet"); step 2 the country's name with "‹ Countries"; search label "Search every country", placeholder "Town, city or island, e.g. Tampines, Bali, KL".
+  - Location explainer outside Singapore: "We only use this to find your nearest station. It stays on your phone."
 
 ---
 

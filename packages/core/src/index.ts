@@ -27,3 +27,13 @@ export {
   type Observation,
   type ObservationSet,
 } from "./countries/index.js";
+// SPEC v2.1 — country guess (light: no catalogue, borders or scales, so the Singapore web bundle can use it at boot).
+export {
+  guessCountry,
+  deviceGuessInput,
+  wantsServerHint,
+  languageCountry,
+  type CountryGuess,
+  type CountryGuessInput,
+  type GuessConfidence,
+} from "./countries/guess.js";

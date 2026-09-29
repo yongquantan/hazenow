@@ -1551,6 +1551,34 @@ figcaption .legend {
   padding-top: 28px;
 }
 
+/* SPEC v2.1: first-run line over a guessed place ("Showing Bangkok · Change") */
+.guess {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: clamp(12px, 3vw, 20px);
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--rule);
+}
+.guess-line {
+  flex: 1 1 14rem;
+  color: var(--ink-2);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+.guess-line b {
+  color: var(--ink);
+  font-weight: 600;
+}
+.guess .geo-explain {
+  flex-basis: 100%;
+  margin-top: 0;
+}
+.guess-hint {
+  color: var(--ink-2);
+}
+
 /* ------------------------------------------------------------ brand mark */
 .mark {
   display: block;
@@ -1908,4 +1936,104 @@ figcaption .legend {
 }
 .sensor-note {
   color: var(--ink-2);
+}
+
+/* ------------------------------------------------------------ place sheet, two steps (SPEC v2.1) */
+.places-head h2:focus {
+  outline: none;
+}
+.places-head h2:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.places-head .sheet-close {
+  margin-left: auto;
+}
+.sheet-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+}
+.places-head:has(.sheet-back) {
+  flex-wrap: wrap;
+  align-items: center;
+}
+.places-head:has(.sheet-back) h2 {
+  order: 3;
+  flex-basis: 100%;
+}
+.places .area-search {
+  margin-top: 4px;
+}
+.country-list {
+  list-style: none;
+  padding: 0;
+  margin: 2px 0 0;
+}
+.country-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 6px;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+  cursor: pointer;
+  font-size: 1rem;
+  color: inherit;
+}
+.country-row:hover,
+.country-row:focus-visible {
+  background: color-mix(in oklab, var(--ink) 5%, transparent);
+}
+.country-row.is-sel .country-name {
+  font-weight: 650;
+}
+.country-name {
+  flex: 1;
+  min-width: 0;
+}
+.country-dot {
+  display: inline-flex;
+}
+.country-row .chev {
+  flex: none;
+  color: var(--ink-3);
+}
+.where-chips {
+  margin-top: 12px;
+}
+.where-card .quiet-loc {
+  margin-top: 12px;
+}
+
+/* Phones: the sheet is full height and the page underneath stops scrolling. */
+@media (max-width: 599px) {
+  .places {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    max-width: none;
+    margin: 0;
+    padding: max(14px, env(safe-area-inset-top)) var(--gutter) max(24px, env(safe-area-inset-bottom));
+    border: 0;
+    border-radius: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    box-shadow: none;
+  }
+  .sheet-open,
+  .sheet-open body {
+    overflow: hidden;
+  }
+  /* The sheet itself scrolls; no box-in-a-box. */
+  .places .area-results {
+    max-height: none;
+    overflow: visible;
+  }
 }

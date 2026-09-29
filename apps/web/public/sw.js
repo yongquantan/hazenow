@@ -32,6 +32,8 @@ self.addEventListener("fetch", (event) => {
 
   // Live data: always network (the page handles offline).
   if (url.hostname === "api-open.data.gov.sg" || url.hostname === "api.data.gov.sg") return;
+  // Our own Pages Functions (/api/where): always network, never cached (it answers no-store anyway).
+  if (url.origin === self.location.origin && url.pathname.startsWith("/api/")) return;
 
   // Pages: network first, fall back to the cached shell.
   if (req.mode === "navigate") {

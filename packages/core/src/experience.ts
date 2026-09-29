@@ -571,6 +571,8 @@ export const WHY_TWO_NUMBERS =
   "NEA's 24-hr PSI is an average of the last 24 hours, so it changes slowly and is best for planning tomorrow. The 1-hr PM2.5 shows the last hour, and NEA recommends it for deciding what to do right now.";
 export const WHY_TWO_NUMBERS_SHORT = "Both are from NEA: the PSI averages 24 hours, PM2.5 shows the last hour.";
 export const PRIVACY_LINE = "Your location stays on your device. We never send it anywhere.";
+/** SPEC v2.1: shown wherever the web asks /api/where for the connection's country (COPY.md §13). */
+export const COUNTRY_HINT_LINE = "We use your country, from your connection, to pick a starting place. Nothing is stored.";
 export const FOOTER_LINE = "Data: NEA via data.gov.sg · Free & open source · No ads, no tracking, no account";
 
 export const CHART_COPY = {

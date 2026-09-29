@@ -11,6 +11,7 @@ export * from "./build.js";
 export * from "./locate.js";
 export * from "./verdicts.js";
 export * from "./places.js";
+export * from "./guess.js";
 export * from "./ui.js";
 export { wallToIso, msToIso, localDate, localClock, offsetLabel } from "./time.js";
 export * from "./sources/air4thai.js";

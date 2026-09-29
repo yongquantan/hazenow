@@ -446,3 +446,73 @@ where the authority publishes a 24-h concentration (TH, MY inverted from a PM2.5
 7. The attribution footer from `snapshot.attribution`, and share text naming the scale.
 8. The `HAZENOW_EDGE` setting, fallback when it is down, 429/503 handling.
 9. Android: the Air4Thai certificate fix (§10).
+
+---
+
+# v2.1 — country guess (a relevant first screen, no prompt, nothing sent)
+
+A first-time visitor sees **their** country and a relevant place immediately: no permission prompt, no blocking modal,
+no location sent anywhere. Precise location stays opt-in (v1.4). Reference: `packages/core/src/countries/guess.ts`
+(`guessCountry`) and `places.ts` (`startPlace`); tests in `packages/core/test/guess.test.ts`.
+
+## 1. Order (a guess never overrides anything, and is never saved)
+
+1. Deep links (`?country&area`, SG `?area` / `?region`, `?lat&lon`) → 2. the saved choice → 3. the country guess → 4. Singapore.
+Only the user's own pick is persisted. Until they pick, every launch re-guesses (it's free and offline).
+
+## 2. `guessCountry({timeZone, languages, serverCountry?}) → {country, confidence, reason, place, placeFromZone}`
+
+- **Time zone decides** (`high`): Asia/Singapore→SG · Asia/Kuala_Lumpur→MY (Kuala Lumpur) · Asia/Kuching→MY (**Kuching**) ·
+  Asia/Jakarta, Asia/Jayapura→ID (Jakarta) · Asia/Pontianak→ID (**Pontianak**) · Asia/Makassar, Asia/Ujung_Pandang→ID
+  (**Denpasar**, a suggestion only: the zone also covers Sulawesi and Lombok) · Asia/Ho_Chi_Minh, Asia/Saigon→VN (Hanoi) ·
+  Asia/Manila→PH (Metro Manila) · Asia/Vientiane→LA · Asia/Phnom_Penh→KH · Asia/Yangon, Asia/Rangoon→MM · Asia/Brunei→BN ·
+  Asia/Dili→TL. Otherwise the place is the country's `defaultPlace` (capital or most-populous covered city).
+- **Asia/Bangkok is shared** by TH, VN, LA and KH. The language (`vi`/`lo`/`km`, or a region subtag such as `en-VN`) picks
+  VN/LA/KH (`medium`), `th` confirms TH (`high`), anything else is TH `low`.
+- **Languages only break ties.** Map: th→TH, vi→VN, id/in→ID, ms→MY, fil/tl→PH, lo→LA, km→KH, my (Burmese)→MM, tet→TL. A SEA
+  region subtag wins over the language (`zh-SG`→SG, `ms-BN`→BN). The first matching tag in preference order counts. If it names a
+  different SEA country than the zone, the zone still wins at `medium`.
+- **A non-SEA zone** (Europe/London, Asia/Tokyo…) → `country: null`, `medium`, languages ignored. **No usable zone** (missing,
+  UTC, Etc/*) → the languages at `low`, else null `low`.
+- `serverCountry` (web only, see §4) settles the ties: the shared Bangkok zone, a zone/language clash, or a missing or non-SEA zone.
+  XX and T1 are ignored.
+
+## 3. `startPlace(guess) → {place, notCoveredFrom, outside, fromZone}`
+
+The suggested place if covered (`live_direct`/`needs_proxy`), else the country default, else the **nearest covered major city**
+(MM→Chiang Mai, KH→Pattaya, BN→Kota Kinabalu, TL→Makassar) with `notCoveredFrom` set. `country: null` → Singapore, `outside: true`.
+
+## 4. UX (all clients)
+
+- **Sure guess (`high`, not SG):** render that place at once, with one calm line above the reading: "Showing Bangkok · Change"
+  and a quiet "Use my precise location" (the v1.4 explainer still comes before any OS prompt).
+- **Not covered:** "Myanmar isn't available yet. Showing Chiang Mai, the nearest place we cover. Change".
+- **Unsure guess** (`country: null`, or confidence below `high`): still render the default reading (Singapore, or the guessed
+  place), and under it a non-blocking card, "Where are you checking?", with a chip per country that opens that country's places.
+- **Singapore (`high`) is unchanged**: the v1.4 first-run card, pixel for pixel.
+- **"Change" opens a two-step sheet.** Step 1 lists the countries, each with its name, a status chip (Live / Preview / Not yet) and
+  the current band dot when a reading is loaded. Step 2 is that country's places: Popular first (`placeGroups`), then all cities
+  (SG: its 55 areas), then "Use my precise location". One search box at the top searches every country and alias ("Bali",
+  "Penang", "KL", "Saigon", "Tampines"). Back returns to countries. Accessible (dialog, focus moves to the step heading, Escape
+  closes); full height on phones.
+
+## 5. Web-only server hint
+
+`GET /api/where` (Cloudflare Pages Function in `apps/web/functions` and `apps/site/functions`) returns only
+`{"country":"TH"}` from `request.cf.country`, with `Cache-Control: no-store`: no logging, no IP/city echoed, no cookies. Clients
+call it only when `wantsServerHint(guess)` (confidence below `high`), never before the first render, and only move a view the
+visitor hasn't touched. Privacy text wherever it may be used: "We use your country, from your connection, to pick a starting
+place. Nothing is stored." Only `/api/*` invokes the Function (`_routes.json`), so the Workers free tier (100k requests/day)
+covers it. Over quota it just fails and the device guess stands.
+
+## 6. Native (Apple, Android): mirror without any network
+
+- **Apple:** `TimeZone.current.identifier` and `Locale.preferredLanguages` → `guessCountry` (Swift port of `guess.ts`, the same
+  tables) → `startPlace`. Don't call `/api/where`, and don't use `Locale.current.region` as a strong signal (it's the user's
+  format setting, not where they are), though it may break ties like a language region subtag.
+- **Android:** `TimeZone.getDefault().id` (or `ZoneId.systemDefault()`) and `LocaleList.getDefault()` (tags in order) → the same.
+  `TelephonyManager.networkCountryIso` needs no permission and may stand in for `serverCountry` on phones with a SIM. It's
+  optional, and it's on-device.
+- Unsure guesses show the "Where are you checking?" card. No blocking onboarding screen, and no location prompt until the user taps.
+- Port the test table in `guess.test.ts` (every zone, Bangkok ties, clashes, unknown zones, languages only) as fixtures.
+

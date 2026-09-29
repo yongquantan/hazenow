@@ -6,19 +6,22 @@ import type { LatLon } from "hazenow";
 
 type CountryCode = import("hazenow").sea.CountryCode;
 
-/** Picker order and names (mirrors sea.PICKER_COUNTRIES / sea.COUNTRIES; checked by country.ts at load). */
-export const PICKER_LITE: readonly [CountryCode, string][] = [
-  ["SG", "Singapore"],
-  ["TH", "Thailand"],
-  ["MY", "Malaysia"],
-  ["ID", "Indonesia"],
-  ["VN", "Vietnam"],
-  ["PH", "Philippines"],
-  ["LA", "Laos"],
-  ["KH", "Cambodia"],
-  ["MM", "Myanmar"],
-  ["BN", "Brunei"],
-  ["TL", "Timor-Leste"],
+/** How a country is covered: direct from the authority, through the HazeNow server, or not yet (sea.COUNTRIES status). */
+export type LiteCoverage = "direct" | "proxy" | "none";
+
+/** Picker order, names and coverage (mirrors sea.PICKER_COUNTRIES / sea.COUNTRIES; checked by country.ts at load). */
+export const PICKER_LITE: readonly [CountryCode, string, LiteCoverage][] = [
+  ["SG", "Singapore", "direct"],
+  ["TH", "Thailand", "direct"],
+  ["MY", "Malaysia", "proxy"],
+  ["ID", "Indonesia", "proxy"],
+  ["VN", "Vietnam", "proxy"],
+  ["PH", "Philippines", "proxy"],
+  ["LA", "Laos", "proxy"],
+  ["KH", "Cambodia", "none"],
+  ["MM", "Myanmar", "none"],
+  ["BN", "Brunei", "none"],
+  ["TL", "Timor-Leste", "none"],
 ];
 
 /**

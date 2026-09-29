@@ -7,7 +7,7 @@
     "apps/web"
   ],
   "scripts": {
-    "test": "npm run test -w hazenow",
+    "test": "npm run test -w hazenow && npm run test -w hazenow-web",
     "build": "npm run build -w hazenow && npm run build -w hazenow-web",
     "dev": "npm run dev -w hazenow-web"
   }

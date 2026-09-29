@@ -1689,3 +1689,39 @@ figcaption strong {
 .everywhere-cta {
   margin-top: 24px;
 }
+
+/* SPEC v2.1: "Showing Bangkok · Change" over the live card, and the SEA card's extras */
+.guess-line {
+  margin: 0 0 12px;
+  font-size: 15px;
+  color: var(--muted);
+}
+.guess-line b {
+  color: var(--text);
+  font-weight: 600;
+}
+.guess-line[hidden] {
+  display: none;
+}
+.link-btn {
+  font: inherit;
+  color: var(--text);
+  background: none;
+  border: 0;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.chip-local {
+  font-weight: 400;
+  opacity: 0.8;
+}
+.preview-note {
+  margin-bottom: 14px;
+  padding: 8px 12px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 10px;
+  font-size: 14px;
+  color: var(--muted);
+}

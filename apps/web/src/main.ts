@@ -13,6 +13,10 @@ import {
   FOOTER_LINE,
   formatSgtTime,
   getSnapshot,
+  guessCountry,
+  deviceGuessInput,
+  wantsServerHint,
+  type CountryGuess,
   haversineKm,
   headlineLabel,
   isStale,
@@ -24,6 +28,7 @@ import {
   OFFICIAL_CAPTION,
   PLANNING_LINE,
   PRIVACY_LINE,
+  COUNTRY_HINT_LINE,
   PROFILES,
   provenance,
   psiLabel,
@@ -31,7 +36,6 @@ import {
   REGION_COORDS,
   REGION_ORDER,
   regionLabel,
-  roundCoord,
   scenarioFetch,
   SCENARIOS,
   searchAreas,
@@ -51,7 +55,8 @@ import {
 } from "hazenow";
 import { chartSvg } from "./chart";
 import type { CityWhere, DataMode } from "./country";
-import { countryParam, PICKER_LITE, surelySingapore } from "./country-lite";
+import { PICKER_LITE, surelySingapore } from "./country-lite";
+import { resolveStart, rounded, type Place } from "./start";
 
 /* SPEC v2.0: other countries load on demand (catalogue, borders, adapters), so Singapore's bundle stays small. */
 type CountryModule = typeof import("./country");
@@ -68,13 +73,6 @@ const LINKEDIN_URL = "https://www.linkedin.com/in/yong-quan-tan";
 
 /* ---------------------------------------------------------------- places (SPEC v1.4) */
 
-/** Where to check. Coordinates are always rounded to 2 decimals (~1 km) before use or storage. */
-type Place =
-  | { kind: "gps"; point: LatLon }
-  | { kind: "area"; name: string; point: LatLon }
-  | { kind: "region"; region: string }
-  | { kind: "island" }
-  | CityWhere; // SPEC v2.0: another country (catalogue city or GPS point), rendered by country.ts
 type Slot = "home" | "work" | "other";
 const SLOTS: { id: Slot; label: string }[] = [
   { id: "home", label: "Home" },
@@ -106,9 +104,9 @@ const pointOf = (p: Place): LatLon | null => (p.kind === "gps" || p.kind === "ar
 type CountryCode = import("hazenow").sea.CountryCode;
 type CountrySnapshot = import("hazenow").sea.CountrySnapshot;
 const samePlace = (a: Place | undefined, b: Place) => !!a && placeKey(a) === placeKey(b) && a.kind === b.kind;
-const rounded = (pt: LatLon): LatLon => ({ lat: roundCoord(pt.lat), lon: roundCoord(pt.lon) });
 
-type SheetMode = null | { assign: Slot | null };
+/** The place sheet: step 1 lists countries, step 2 one country's places. */
+type SheetMode = null | { assign: Slot | null; step: "countries" | CountryCode };
 
 interface State {
   where: Place;
@@ -137,6 +135,13 @@ interface State {
   online: boolean;
   toast: string | null;
   aboutOpen: boolean;
+  /**
+   * SPEC v2.1: the device's country guess behind a first-run view (never saved). A non-SG guess starts at its place with
+   * "Showing Bangkok · Change"; an outside-SEA guess keeps the Singapore view and adds a picker hint.
+   */
+  guess: CountryGuess | null;
+  /** The guessed country isn't covered yet, so the view shows the nearest covered city instead. */
+  guessNotCovered: CountryCode | null;
 }
 
 const params = new URLSearchParams(location.search);
@@ -150,28 +155,12 @@ let mockScenario: Scenario | null = null;
 const mockFiles = import.meta.glob<Scenario>("../../../packages/core/fixtures/scenarios/*.json", { import: "default" });
 const nowMs = () => (mockScenario ? Date.parse(mockScenario._meta.now) : Date.now());
 
-/** URL params win (shared links, embeds); then the saved choice; otherwise first run (island view). */
-function initialWhere(): { where: Place; firstRun: boolean } {
-  const lat = Number(params.get("lat"));
-  const lon = Number(params.get("lon"));
-  if (params.has("lat") && params.has("lon") && Number.isFinite(lat) && Number.isFinite(lon)) {
-    // Outside Singapore's core box, boot() resolves the country with locate() once country.ts has loaded.
-    return { where: { kind: "gps", point: rounded({ lat, lon }) }, firstRun: false };
-  }
-  // ?country=th&area=bangkok (SG's own ?area= / ?region= links below are unchanged). Resolved in boot().
-  const cc = countryParam(params);
-  if (cc) return { where: { kind: "city", country: cc, id: params.get("area") ?? "", name: "", point: { lat: 0, lon: 0 } }, firstRun: false };
-  const area = params.get("area") ? findArea(params.get("area")!) : null;
-  if (area) return { where: { kind: "area", name: area.name, point: rounded(area) }, firstRun: false };
-  const r = (params.get("region") ?? "").toLowerCase();
-  if (r === "island") return { where: { kind: "island" }, firstRun: false };
-  if (r in REGION_COORDS) return { where: { kind: "region", region: r }, firstRun: false };
-  const saved = store.get<Place | null>("hn.where", null);
-  if (saved) return { where: saved, firstRun: false };
-  const legacy = store.get<string | null>("hn.region", null); // pre-v1.4 installs
-  if (legacy && legacy in REGION_COORDS) return { where: { kind: "region", region: legacy }, firstRun: false };
-  return { where: { kind: "island" }, firstRun: !EMBED };
-}
+/**
+ * URL params win (shared links, embeds); then the saved choice; otherwise first run at the device's country guess
+ * (SPEC v2.1: time zone + languages, read on the device, nothing sent). Mock mode keeps Singapore for deterministic QA.
+ */
+const deviceInput = deviceGuessInput();
+const init = resolveStart(params, store.get, EMBED || MOCK ? null : guessCountry(deviceInput), EMBED);
 
 /** A point in another covered jurisdiction (locate() never mixes readings across a border), else null. */
 function abroadAt(m: CountryModule, pt: LatLon): CityWhere | null {
@@ -181,7 +170,6 @@ function abroadAt(m: CountryModule, pt: LatLon): CityWhere | null {
   return { kind: "city", country: cc, id: "", name: m.nearestCity(cc, pt).name, point: pt, gps: true };
 }
 
-const init = initialWhere();
 const state: State = {
   where: init.where,
   firstRun: init.firstRun,
@@ -207,7 +195,12 @@ const state: State = {
   online: navigator.onLine,
   toast: null,
   aboutOpen: false,
+  guess: init.guess,
+  guessNotCovered: null,
 };
+
+/** SPEC v2.1: the page asked /api/where this visit (the footer then says so). */
+let askedWhere = false;
 
 const app = document.getElementById("app")!;
 app.removeAttribute("aria-live"); // only the headline is announced (SPEC v1.2 §11)
@@ -340,6 +333,7 @@ function choose(place: Place, opts: { assign?: Slot | null; keepNote?: boolean }
   }
   state.where = place;
   state.firstRun = false;
+  state.guessNotCovered = null;
   state.sheet = null;
   state.search = "";
   state.geoExplain = false;
@@ -435,10 +429,8 @@ function onGeoFail(denied: boolean) {
     store.set("hn.geoBlocked", true);
   }
   state.locNote = null;
-  state.sheet = { assign: state.sheet?.assign ?? null };
-  state.search = "";
-  render();
-  (app.querySelector("#area-search") as HTMLInputElement | null)?.focus();
+  // Straight to the places of the country on screen (step 2), search box focused.
+  openSheet(state.sheet?.step && state.sheet.step !== "countries" ? state.sheet.step : state.where.kind === "city" ? state.where.country : "SG", state.sheet?.assign ?? null, "area-search");
 }
 
 /** If location was granted before, refresh the rounded point silently (never prompts). */
@@ -609,24 +601,9 @@ function switcher() {
 </nav>`;
 }
 
-function areaResults() {
-  const results = searchAreas(state.search, state.search ? 8 : 55);
-  if (!results.length) {
-    // Not a Singapore area: offer places elsewhere in the region ("Bali", "Penang", "KL"), from the lazy catalogue.
-    const q = state.search.trim();
-    if (C && q) {
-      const where = state.where.kind === "city" ? state.where : null;
-      const hits = C.sea.searchPlaces(q, 6);
-      if (hits.length) return `<p class="fine">Not in Singapore. Elsewhere in the region:</p>${C.placeResultsHtml(q, where, 6)}`;
-    } else if (!C && q.length >= 2) {
-      loadC().then(() => {
-        const box = app.querySelector("[data-results]");
-        if (box && state.search.trim() === q) box.innerHTML = areaResults();
-      });
-    }
-    return `<p class="fine">No match. Try a town like “Tampines” or “Jurong East”.</p>`;
-  }
-  return `<ul class="area-list" role="list">${results
+/** Singapore's areas as sheet rows (all 55 on step 2, or the matches for a search). */
+function areaRows(list: ReturnType<typeof searchAreas>, label: string) {
+  return `<ul class="area-list" role="list" aria-label="${esc(label)}">${list
     .map(
       (a) =>
         `<li><button class="area-row" data-action="pick-area" data-area="${esc(a.name)}" data-key="area-${esc(a.name)}">${esc(a.name)}${
@@ -636,10 +613,33 @@ function areaResults() {
     .join("")}</ul>`;
 }
 
+/**
+ * The sheet's one search box: Singapore's towns and estates plus every other country's places and aliases ("Bali",
+ * "Penang", "KL", "Saigon"). The catalogue loads on demand; typing sends nothing anywhere.
+ */
+function searchResults() {
+  const q = state.search.trim();
+  if (!q) return "";
+  const sg = searchAreas(q, 6);
+  const where = state.where.kind === "city" ? state.where : null;
+  let sea = "";
+  if (C) {
+    if (C.sea.searchPlaces(q, 1).length) sea = C.placeResultsHtml(q, where, 12);
+  } else {
+    loadC().then(() => {
+      const box = app.querySelector("[data-results]");
+      if (box && state.search.trim() === q) box.innerHTML = searchResults();
+    });
+    if (!sg.length) return `<p class="fine">Searching…</p>`;
+  }
+  if (!sg.length && !sea) return `<p class="fine">No match. Try a town like “Tampines”, or a city or island like “Bali” or “Penang”.</p>`;
+  return `${sg.length ? `<h3 class="city-group">Singapore</h3>${areaRows(sg, "Singapore results")}` : ""}${sea ? `${sg.length ? `<h3 class="city-group">Elsewhere</h3>` : ""}${sea}` : ""}`;
+}
+
 function geoControls(assign: Slot | null) {
   if (state.geoExplain) {
     return `<div class="geo-explain" role="group" aria-label="Use my location">
-  <p>We only use this to find your nearest NEA station. It stays on your phone.</p>
+  <p>${state.where.kind === "city" ? "We only use this to find your nearest station. It stays on your phone." : "We only use this to find your nearest NEA station. It stays on your phone."}</p>
   <div class="row-actions"><button class="btn btn-solid btn-sm" data-action="geo-go" data-assign="${assign ?? ""}" data-key="geo-go">Continue</button><button class="link" data-action="geo-cancel" data-key="geo-cancel">Not now</button></div>
 </div>`;
   }
@@ -652,46 +652,109 @@ function geoControls(assign: Slot | null) {
   }`;
 }
 
+const PROXY_ON = !!((import.meta.env.VITE_PROXY_URL as string | undefined) ?? "").trim();
+const COVERAGE_TAG = { live: "Live", preview: "Preview", unavailable: "Not yet" } as const;
+const coverageMode = (cov: string): keyof typeof COVERAGE_TAG => (cov === "direct" ? "live" : cov === "proxy" ? (PROXY_ON ? "live" : "preview") : "unavailable");
+const countryName = (cc: CountryCode) => PICKER_LITE.find(([c]) => c === cc)?.[1] ?? cc;
+
+/** The band dot for a country whose reading is loaded (Singapore's, or the current place's country). */
+function countryDot(cc: CountryCode): { html: string; word: string } | null {
+  if (cc === "SG" && state.snap) {
+    const b = bandInfo(state.snap.band);
+    return { html: bandShape(b.shape, b.color, 12), word: b.label };
+  }
+  const lb = state.csnap?.country === cc ? state.csnap.localBand : null;
+  return lb ? { html: bandShape(lb.shape, lb.color, 12), word: lb.labelEn } : null;
+}
+
+/** Step 1: countries, each with its coverage and (when loaded) today's band. */
+function countryStep() {
+  const here = state.where.kind === "city" ? state.where.country : "SG";
+  return `<ul class="country-list" role="list" aria-label="Countries">${PICKER_LITE.map(([cc, name, cov]) => {
+    const m = coverageMode(cov);
+    const dot = countryDot(cc);
+    const label = [name, COVERAGE_TAG[m], dot ? `now ${dot.word}` : "", cc === here ? "current" : ""].filter(Boolean).join(", ");
+    return `<li><button class="country-row${cc === here ? " is-sel" : ""}" data-action="sheet-country" data-cc="${cc}" data-key="cc-${cc}" aria-label="${esc(label)}">
+      <span class="country-name">${esc(name)}</span>${dot ? `<span class="country-dot" aria-hidden="true">${dot.html}</span>` : ""}
+      <span class="city-tag tag-${m}" aria-hidden="true">${COVERAGE_TAG[m]}</span>
+      <svg class="chev" width="8" height="12" viewBox="0 0 8 12" aria-hidden="true"><path d="M1.5 1l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+    </button></li>`;
+  }).join("")}</ul>`;
+}
+
+/** Step 2: one country's places. Popular first, then every city (or Singapore's areas), then precise location. */
+function placeStep(cc: CountryCode, assign: Slot | null) {
+  const list =
+    cc === "SG"
+      ? `${assign ? "" : `<button class="link island-link" data-action="island" data-key="island">Show Singapore (island average)</button>`}
+  <h3 class="city-group" id="sg-areas">Towns and planning areas</h3>${areaRows(searchAreas("", 55), "Singapore towns and planning areas")}`
+      : C
+        ? C.cityListHtml(cc, state.where.kind === "city" ? state.where : null)
+        : `<p class="fine">Loading places…</p>`;
+  return `${list}
+  <div class="places-geo">${geoControls(assign)}</div>`;
+}
+
+/**
+ * The place sheet (founder decision, SPEC v2.1): search every country at the top; step 1 lists countries, step 2 one
+ * country's places; Back returns to countries. A dialog that keeps focus inside, full height on phones.
+ */
 function placesSheet() {
   const assign = state.sheet?.assign ?? null;
+  const step = state.sheet?.step ?? "countries";
   const slotLabel = assign ? SLOTS.find((s) => s.id === assign)!.label : null;
-  return `<section class="places" id="places" aria-labelledby="places-h">
+  const inCountry = step !== "countries";
+  const title = inCountry ? countryName(step) : assign ? `Set ${slotLabel!}` : "Where should we check?";
+  const searching = !!state.search.trim();
+  return `<section class="places" id="places" role="dialog" aria-modal="true" aria-labelledby="places-h">
   <div class="places-head">
-    <h2 id="places-h">${assign ? `Set ${esc(slotLabel!)}` : "Where should we check?"}</h2>
-    <button class="link" data-action="sheet-close" data-key="sheet-close">${assign ? "Cancel" : "Close"}</button>
+    ${inCountry ? `<button class="link sheet-back" data-action="sheet-back" data-key="sheet-back"><svg width="8" height="12" viewBox="0 0 8 12" aria-hidden="true"><path d="M6.5 1l-5 5 5 5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>Countries</button>` : ""}
+    <h2 id="places-h" tabindex="-1">${esc(title)}</h2>
+    <button class="link sheet-close" data-action="sheet-close" data-key="sheet-close">${assign ? "Cancel" : "Close"}</button>
   </div>
+  <label class="search-label" for="area-search">Search every country</label>
+  <input id="area-search" class="area-search" type="search" inputmode="search" autocomplete="off" spellcheck="false" placeholder="Town, city or island, e.g. Tampines, Bali, KL" value="${esc(state.search)}" data-action="search" data-key="area-search" aria-describedby="search-note"/>
+  <p class="fine" id="search-note">The place list is built into the app. Searching sends nothing anywhere.</p>
+  <div class="area-results" data-results aria-live="polite">${searchResults()}</div>
+  <div data-step${searching ? " hidden" : ""}>
   ${
-    assign
-      ? ""
-      : `<ul class="slots">${SLOTS.map((s) => {
-          const p = state.places[s.id];
-          return `<li><button class="slot-use" data-action="${p ? "use-slot" : "assign"}" data-slot="${s.id}" data-key="use-${s.id}"><b>${esc(s.label)}</b><span>${p ? esc(placeLabelOf(p)) : "Not set"}</span></button>
+    inCountry
+      ? placeStep(step, assign)
+      : `${
+          assign
+            ? ""
+            : `<ul class="slots">${SLOTS.map((s) => {
+                const p = state.places[s.id];
+                return `<li><button class="slot-use" data-action="${p ? "use-slot" : "assign"}" data-slot="${s.id}" data-key="use-${s.id}"><b>${esc(s.label)}</b><span>${p ? esc(placeLabelOf(p)) : "Not set"}</span></button>
           <button class="btn-quiet" data-action="assign" data-slot="${s.id}" data-key="assign-${s.id}">${p ? "Change" : "Set"}</button></li>`;
-        }).join("")}</ul>`
+              }).join("")}</ul>`
+        }
+  <h3 class="city-group" id="countries-h">Countries</h3>
+  ${countryStep()}
+  <div class="places-geo">${geoControls(assign)}</div>`
   }
-  <div class="places-geo">${geoControls(assign)}</div>
-  <p class="search-label country-label">Country</p>
-  ${countryTabs()}
-  ${
-    state.sheetCountry === "SG"
-      ? `<label class="search-label" for="area-search">Pick your area</label>
-  <input id="area-search" class="area-search" type="search" inputmode="search" autocomplete="off" spellcheck="false" placeholder="Town or estate, e.g. Tampines" value="${esc(state.search)}" data-action="search" data-key="area-search"/>
-  <div class="area-results" data-results>${areaResults()}</div>
-  <p class="fine">The area list is built into the app. Searching sends nothing anywhere.</p>
-  ${assign ? "" : `<button class="link island-link" data-action="island" data-key="island">Show Singapore (island average)</button>`}`
-      : `${C ? C.cityListHtml(state.sheetCountry, state.where.kind === "city" ? state.where : null, state.search) : `<p class="search-label">Pick a city</p><p class="fine">Loading cities…</p>`}
-  <p class="fine">The city list is built into the app. Picking one sends nothing anywhere.</p>`
-  }
+  </div>
 </section>`;
 }
 
-/** Country row in the place sheet (names from country-lite, so it renders without loading country.ts). */
-function countryTabs() {
-  return `<div class="country-tabs" role="group" aria-label="Country">${PICKER_LITE.map(
-    ([cc, name]) =>
-      `<button class="chip-btn${cc === state.sheetCountry ? " is-on" : ""}" data-action="sheet-country" data-cc="${cc}" data-key="cc-${cc}" aria-pressed="${cc === state.sheetCountry}">${esc(name)}</button>`,
-  ).join("")}</div>`;
+/**
+ * Low-confidence guess (outside Southeast Asia, or device signals that disagree): a non-blocking card under the
+ * reading. Each country chip opens that country's places (step 2) directly.
+ */
+function whereCard() {
+  return `<section class="first-run where-card" aria-labelledby="wc-h">
+  <h2 id="wc-h">Where are you checking?</h2>
+  <p>Pick a country to see its places. You can change it any time.</p>
+  <div class="country-tabs where-chips" role="group" aria-labelledby="wc-h">${PICKER_LITE.map(
+    ([cc, name]) => `<button class="chip-btn" data-action="sheet-country" data-cc="${cc}" data-key="wc-${cc}">${esc(name)}</button>`,
+  ).join("")}</div>
+  ${state.geoExplain ? geoControls(null) : `<button class="btn btn-sm quiet-loc" data-action="geo-ask" data-key="wc-geo"${state.locating ? " disabled" : ""}>${target} ${state.locating ? "Finding your spot…" : "Use my precise location"}</button>`}
+  <p class="fine">${esc(PRIVACY_LINE)} ${esc(COUNTRY_HINT_LINE)}</p>
+</section>`;
 }
+
+/** A first run whose guess isn't sure: outside Southeast Asia, or not "high" (SPEC v2.1). */
+const unsureGuess = () => !!state.guess && init.source === "guess" && (state.guess.country === null || state.guess.confidence !== "high");
 
 /** First run: two equal choices, no OS prompt until the user taps (SPEC v1.4 §1). */
 function firstRunCard() {
@@ -704,6 +767,22 @@ function firstRunCard() {
   </div>
   ${state.geoExplain ? geoControls(null) : ""}
   <p class="fine">${esc(PRIVACY_LINE)} Until you choose, we show the island average.</p>
+</section>`;
+}
+
+/**
+ * SPEC v2.1: the first-run line over a guessed place. Calm, one line, and two ways out: another place, or the exact
+ * spot (the location explainer comes first, as always).
+ */
+function guessLine(w: CityWhere) {
+  if (!state.firstRun || !state.guess || state.sheet) return "";
+  const nc = state.guessNotCovered;
+  const lead = nc
+    ? `<p class="guess-line">${esc(PICKER_LITE.find(([cc]) => cc === nc)?.[1] ?? nc)} isn't available yet. Showing <b>${esc(w.name)}</b>, the nearest place we cover. <button class="link" data-action="guess-change" data-key="guess-change">Change</button></p>`
+    : `<p class="guess-line">Showing <b>${esc(w.name)}</b> · <button class="link" data-action="guess-change" data-key="guess-change">Change</button></p>`;
+  return `<section class="guess" aria-label="Starting place">
+  ${lead}
+  ${unsureGuess() ? "" : state.geoExplain ? geoControls(null) : `<button class="btn btn-sm quiet-loc" data-action="geo-ask" data-key="guess-geo"${state.locating ? " disabled" : ""}>${target} ${state.locating ? "Finding your spot…" : "Use my precise location"}</button>`}
 </section>`;
 }
 
@@ -879,7 +958,7 @@ function footer() {
   <p class="status" data-status>${statusText()}</p>
   ${s ? `<p>${esc(provenance(s, point(), nowMs()).detail)}</p>` : ""}
   <p>${esc(FOOTER_LINE)}</p>
-  <p>${esc(PRIVACY_LINE)}</p>
+  <p>${esc(PRIVACY_LINE)}${askedWhere ? ` ${esc(COUNTRY_HINT_LINE)}` : ""}</p>
   <p><a href="/how.html">How we calculate this</a> · <a href="${REPO_URL}" rel="noopener">View the code (MIT)</a> · <button class="link" data-action="share-open" data-key="share-foot">Share</button> · <button class="link" data-action="about" data-key="about" aria-expanded="${state.aboutOpen}" aria-controls="about">Made by Yong Quan Tan</button></p>
   ${state.aboutOpen ? aboutSection() : ""}
   <p class="fine">Not medical advice, and not an official NEA app. If you feel unwell, see a doctor. In an emergency, call 995.</p>
@@ -944,7 +1023,8 @@ function countryMainView(w: CityWhere): string {
   }
   const { unavailableHtml, noDataHtml, countryNowHtml, countryChartHtml, stationsHtml } = C;
   const cs = state.csnap;
-  const fr = "";
+  const fr = state.firstRun && !state.sheet && unsureGuess() ? whereCard() : "";
+  const gl = guessLine(w);
   let colA: string;
   let colB = "";
   if (state.cmode === "unavailable") colA = unavailableHtml(w);
@@ -968,7 +1048,7 @@ function countryMainView(w: CityWhere): string {
   return `${cs && state.cmode !== "unavailable" ? '<div class="veil" aria-hidden="true"></div>' : ""}
 ${header()}
 <main class="page">
-  <div class="col-a">${colA}${fr}</div>
+  <div class="col-a">${gl}${colA}${fr}</div>
   <div class="col-b">${colB}</div>
 </main>
 ${countryFooter(w)}${toastEl()}`;
@@ -982,7 +1062,7 @@ function countryFooter(w: CityWhere) {
   <p class="status" data-status>${statusText()}</p>
   ${cs && state.cmode !== "unavailable" ? C.attributionHtml(cs) : ""}
   <p>Free &amp; open source · No ads, no tracking, no account</p>
-  <p>${esc(PRIVACY_LINE)}</p>
+  <p>${esc(PRIVACY_LINE)}${askedWhere ? ` ${esc(COUNTRY_HINT_LINE)}` : ""}</p>
   <p><a href="/how.html">How we calculate this</a> · <a href="${REPO_URL}" rel="noopener">View the code (MIT)</a> · <button class="link" data-action="about" data-key="about" aria-expanded="${state.aboutOpen}" aria-controls="about">Made by Yong Quan Tan</button></p>
   ${state.aboutOpen ? aboutSection() : ""}
   <p class="fine">Not medical advice${agency && agency !== "community sensors" ? `, and not an official ${esc(agency)} app` : ""}. If you feel unwell, see a doctor.${w ? "" : ""}</p>
@@ -992,7 +1072,8 @@ function countryFooter(w: CityWhere) {
 function mainView(): string {
   if (state.where.kind === "city") return countryMainView(state.where);
   const s = state.snap;
-  const fr = state.firstRun && !state.sheet ? firstRunCard() : "";
+  // SG visitors (a sure guess) keep the v1.4 first-run card exactly; an unsure guess gets "Where are you checking?".
+  const fr = state.firstRun && !state.sheet ? (unsureGuess() ? whereCard() : firstRunCard()) : "";
   if (!s) return `${header()}<main class="page"><div class="col-a">${emptyState()}${fr}</div></main>${footer()}${toastEl()}`;
   return `<div class="veil" aria-hidden="true"></div>
 ${header()}
@@ -1087,7 +1168,7 @@ function applyTheme() {
 function render() {
   const s = state.snap;
   const cs = state.csnap;
-  const key = JSON.stringify([cs?.observedAt, cs?.pm25, cs?.stale, state.cmode, state.sheetCountry, s?.publishedAt, s?.pm25, s?.nearestRegion, s?.locationMode, s?.stale, s?.officialPsi24h, s?.history.length, state.where, state.firstRun, state.places, state.sheet, state.geoExplain, state.geoBlocked, state.profile, state.profileOpen, state.locating, state.locNote, state.error, state.fromCache, state.online, state.aboutOpen]);
+  const key = JSON.stringify([cs?.observedAt, cs?.pm25, cs?.stale, state.cmode, state.sheetCountry, s?.publishedAt, s?.pm25, s?.nearestRegion, s?.locationMode, s?.stale, s?.officialPsi24h, s?.history.length, state.where, state.firstRun, state.places, state.sheet, state.geoExplain, state.geoBlocked, state.profile, state.profileOpen, state.locating, state.locNote, state.error, state.fromCache, state.online, state.aboutOpen, state.guess, state.guessNotCovered, askedWhere]);
   applyTheme();
   if (key === lastRenderKey) {
     renderStatus();
@@ -1102,6 +1183,7 @@ function render() {
   const caret = active instanceof HTMLInputElement ? active.selectionStart : null;
   app.innerHTML = EMBED ? embedView() : mainView();
   app.classList.toggle("is-first", first);
+  document.documentElement.classList.toggle("sheet-open", !!state.sheet);
   if (focusKey) {
     const el = app.querySelector(`[data-key="${CSS.escape(focusKey)}"]`) as HTMLElement | null;
     el?.focus();
@@ -1127,6 +1209,49 @@ function saveProfile(done: boolean) {
   if (done) (app.querySelector('[data-key="profile-toggle"]') as HTMLElement | null)?.focus();
 }
 
+/** Open the place sheet at a step, then move focus there (the heading, or a given control). */
+function openSheet(step: "countries" | CountryCode, assign: Slot | null = null, focus?: string) {
+  state.sheet = { assign, step };
+  state.search = "";
+  state.geoExplain = false;
+  render();
+  if (focus) focusKey(focus);
+  else (app.querySelector("#places-h") as HTMLElement | null)?.focus();
+  if (step !== "countries" && step !== "SG" && !C) {
+    loadC().then(() => {
+      if (state.sheet?.step !== step) return;
+      lastRenderKey = "";
+      render();
+    });
+  }
+}
+
+function closeSheet() {
+  state.sheet = null;
+  state.search = "";
+  state.geoExplain = false;
+  render();
+  focusKey(state.firstRun ? "guess-change" : "sheet");
+}
+
+/** Keep Tab inside the open sheet (it's a dialog; on phones it covers the page). */
+function trapFocus(e: KeyboardEvent) {
+  const box = app.querySelector<HTMLElement>("#places");
+  if (!box) return;
+  const items = [...box.querySelectorAll<HTMLElement>("button:not([disabled]), input, a[href], [tabindex='0']")].filter((x) => x.offsetParent !== null);
+  if (!items.length) return;
+  const first = items[0];
+  const last = items[items.length - 1];
+  const active = document.activeElement as HTMLElement | null;
+  if (e.shiftKey && (active === first || !box.contains(active))) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && (active === last || !box.contains(active))) {
+    e.preventDefault();
+    first.focus();
+  }
+}
+
 function focusKey(k: string) {
   (app.querySelector(`[data-key="${k}"]`) as HTMLElement | null)?.focus();
 }
@@ -1137,29 +1262,26 @@ app.addEventListener("click", (e) => {
   const slot = el.dataset.slot as Slot | undefined;
   switch (el.dataset.action) {
     case "sheet":
-      state.sheet = state.sheet ? null : { assign: null };
-      state.search = "";
-      state.geoExplain = false;
-      render();
+      if (state.sheet) closeSheet();
+      else openSheet("countries");
       break;
     case "sheet-close":
-      state.sheet = null;
-      state.geoExplain = false;
-      render();
-      focusKey("sheet");
+      closeSheet();
+      break;
+    case "guess-change":
+      openSheet("countries");
       break;
     case "fr-area":
-      state.sheet = { assign: null };
-      render();
-      focusKey("area-search");
+      openSheet("SG", null, "area-search");
       break;
     case "assign":
-      state.sheet = { assign: slot! };
-      state.search = "";
-      state.geoExplain = false;
-      render();
-      focusKey("area-search");
+      openSheet("countries", slot!);
       break;
+    case "sheet-back": {
+      const from = state.sheet?.step;
+      openSheet("countries", state.sheet?.assign ?? null, from && from !== "countries" ? `cc-${from}` : undefined);
+      break;
+    }
     case "use-slot":
       if (slot && state.places[slot]) choose(state.places[slot]!);
       break;
@@ -1185,11 +1307,8 @@ app.addEventListener("click", (e) => {
       choose({ kind: "island" });
       break;
     case "sheet-country":
-      state.sheetCountry = (el.dataset.cc as CountryCode) ?? "SG";
-      state.search = "";
-      render();
-      focusKey(`cc-${state.sheetCountry}`);
-      if (state.sheetCountry !== "SG" && !C) loadC().then(() => { lastRenderKey = ""; render(); focusKey(`cc-${state.sheetCountry}`); });
+      // From step 1, or straight from a "Where are you checking?" chip: that country's places (step 2).
+      openSheet((el.dataset.cc as CountryCode) ?? "SG", state.sheet?.assign ?? null);
       break;
     case "pick-city": {
       if (!C) break;
@@ -1249,38 +1368,27 @@ app.addEventListener("keydown", (e) => {
   const input = e.target as HTMLElement;
   if (input.dataset?.action === "search" && e.key === "Enter") {
     e.preventDefault();
-    const first = searchAreas(state.search, 1)[0];
+    const q = state.search.trim();
+    const first = q ? searchAreas(q, 1)[0] : null;
     if (first) choose({ kind: "area", name: first.name, point: rounded(first) }, { assign: state.sheet?.assign ?? null });
-    else if (C && state.search.trim()) {
-      const c = C.firstPlaceHit(state.search);
+    else if (C && q) {
+      const c = C.firstPlaceHit(q);
       if (c) choose(C.cityWhere(c), { assign: state.sheet?.assign ?? null });
     }
   }
-  if (input.dataset?.action === "place-search" && e.key === "Enter" && C) {
-    e.preventDefault();
-    const c = C.firstPlaceHit(state.search);
-    if (c) choose(C.cityWhere(c), { assign: state.sheet?.assign ?? null });
-  }
-  if (e.key === "Escape" && state.sheet) {
-    state.sheet = null;
-    render();
-    focusKey("sheet");
-  }
+  if (e.key === "Tab" && state.sheet) trapFocus(e);
+  if (e.key === "Escape" && state.sheet) closeSheet();
 });
 
 app.addEventListener("input", (e) => {
   const el = e.target as HTMLInputElement;
-  if (el.dataset.action === "place-search") {
-    state.search = el.value;
-    const box = app.querySelector("[data-place-results]");
-    if (box && C) box.innerHTML = C.placeResultsHtml(state.search, state.where.kind === "city" ? state.where : null);
-    return;
-  }
   if (el.dataset.action !== "search") return;
   state.search = el.value;
-  // Update only the results so typing never loses focus.
+  // Update only the results so typing never loses focus; the step underneath hides while searching.
   const box = app.querySelector("[data-results]");
-  if (box) box.innerHTML = areaResults();
+  if (box) box.innerHTML = searchResults();
+  const step = app.querySelector<HTMLElement>("[data-step]");
+  if (step) step.hidden = !!state.search.trim();
 });
 
 app.addEventListener("change", (e) => {
@@ -1327,9 +1435,16 @@ function bootCountry(): boolean {
   render(); // skeleton
   loadC().then((m) => {
     let where: Place = state.where;
-    if (where.kind === "city" && !where.name) where = m.cityFromParams(params) ?? m.cityWhere(m.sea.defaultCity(where.country));
+    if (where.kind === "city" && !where.name && init.source === "guess" && state.guess) where = guessedWhere(m, state.guess);
+    else if (where.kind === "city" && !where.name) where = m.cityFromParams(params) ?? m.cityWhere(m.sea.defaultCity(where.country));
     else if (where.kind === "gps") where = abroadAt(m, where.point) ?? where;
     state.where = where;
+    if (where.kind === "island") {
+      // A guessed country we don't cover whose nearest covered city is Singapore: the plain Singapore first run.
+      const cached = cacheGet();
+      state.snap = cached ? refreshStale(cached, nowMs()) : null;
+      state.fromCache = !!cached;
+    }
     if (where.kind === "city") {
       state.sheetCountry = where.country;
       state.csnap = store.get<CountrySnapshot | null>(ccacheKey(), null);
@@ -1341,6 +1456,73 @@ function bootCountry(): boolean {
     refreshGrantedLocation();
   });
   return true;
+}
+
+/** SPEC v2.1: the starting place for a guess (catalogue city; an uncovered country gets the nearest covered one). */
+function guessedWhere(m: CountryModule, g: CountryGuess): Place {
+  const start = m.sea.startPlace(g);
+  state.guessNotCovered = start.notCoveredFrom;
+  return start.place.country === "SG" ? { kind: "island" } : m.cityWhere(start.place);
+}
+
+/**
+ * SPEC v2.1 optional server hint: when the device guess isn't sure (Asia/Bangkok with no Thai/Vietnamese/Lao/Khmer
+ * language, a non-SEA or missing time zone, or a zone/language clash), ask this site's /api/where for the country of the
+ * connection. It returns only {country}, isn't stored, and never blocks the first render: the guess shows first, and the
+ * answer only moves an untouched first-run view.
+ */
+async function firmUpGuess(): Promise<void> {
+  const g = state.guess;
+  if (!g || init.source !== "guess" || !wantsServerHint(g) || MOCK || EMBED) return;
+  askedWhere = true;
+  render();
+  let country: string | null = null;
+  try {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 3000);
+    const res = await fetch("/api/where", { cache: "no-store", credentials: "omit", signal: ctl.signal });
+    clearTimeout(t);
+    if (!res.ok || !(res.headers.get("content-type") ?? "").includes("application/json")) return;
+    const body = (await res.json()) as { country?: unknown };
+    country = typeof body?.country === "string" ? body.country : null;
+  } catch {
+    return; // offline, dev server, or the Function is over its free quota: the device guess stands
+  }
+  if (!country) return;
+  const next = guessCountry({ ...deviceInput, serverCountry: country });
+  // Only an untouched first-run view moves. Anything the visitor did (a pick, the sheet, location) wins.
+  if (!state.firstRun || state.sheet || state.geoExplain || state.locating || state.guess !== g) return;
+  state.guess = next;
+  if (next.country === g.country && next.place === g.place) {
+    render();
+    return;
+  }
+  const m = next.country && next.country !== "SG" ? C ?? (await loadC()) : C;
+  if (!state.firstRun || state.sheet || state.guess !== next) return;
+  state.guessNotCovered = null;
+  const where: Place = m && next.country && next.country !== "SG" ? guessedWhere(m, next) : { kind: "island" };
+  if (samePlace(state.where, where)) {
+    render();
+    return;
+  }
+  state.where = where;
+  if (where.kind === "city" && m) {
+    state.sheetCountry = where.country;
+    state.snap = null;
+    state.csnap = store.get<CountrySnapshot | null>(ccacheKey(), null);
+    state.cmode = m.modeOf(where);
+    state.fromCache = !!state.csnap;
+  } else {
+    state.sheetCountry = "SG";
+    state.csnap = null;
+    state.cmode = null;
+    const cached = cacheGet();
+    state.snap = cached ? refreshStale(cached, nowMs()) : null;
+    state.fromCache = !!cached;
+  }
+  state.error = null;
+  render();
+  refresh();
 }
 
 if (bootCountry()) {
@@ -1356,6 +1538,8 @@ if (bootCountry()) {
   refresh();
   refreshGrantedLocation();
 }
+
+firmUpGuess();
 
 // Register right away (not on "load") so the precache is in place as early as possible.
 if (import.meta.env.PROD && "serviceWorker" in navigator && !EMBED && !MOCK) {

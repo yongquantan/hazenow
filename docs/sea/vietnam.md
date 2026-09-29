@@ -161,3 +161,132 @@ Model check (17:29 SGT, Open-Meteo/CAMS, 16:00 ICT): Hanoi Nhân Chính **30.5**
 - HCMC and the rest of Vietnam depend on CEM, which is CAPTCHA-walled with no documented API. It is **blocked pending an agreement**, and scraping is not acceptable.
 - Crowd is weak without PAM Air: AirGradient has 3 sensors and Sensor.Community 3. PAM Air is the real crowd network but is commercial and auth-gated.
 - Key blockers: (1) licence/permission from the Hanoi centre and CEM, (2) CEM machine access, (3) PAM Air partnership, (4) verbatim VN_AQI health-advice text (Table 3) and higher PM2.5 breakpoints from the original PDF, (5) Vietnamese copy.
+
+## HCMC / CEM access, round 2
+
+Captured live on **2026-09-29, 02:17–02:28 UTC = 09:17–09:28 ICT**, from the same Singapore IP as round 1. Pages were loaded with **Kuri 0.3.3** (`~/.local/bin/kuri`, HTTP server → headless Chrome 154) with HAR recording, and robots.txt was checked with plain `curl`. There were about 12 page loads in total across 7 hosts, each ≥ 4 s apart. **No CAPTCHA was answered, retried or worked around.** On each CEM host I stopped at the first CAPTCHA. The HAR summary is in `packages/core/fixtures/sea/vn-kuri-har-summary-2026-09-29.json`.
+
+**Tooling caveat (read before reusing Kuri here).** The Kuri *server* always applies its "stealth" patches to every tab it discovers, and there is no flag to turn this off in 0.3.3 (`src/server/router.zig`, `discoverTabs`). The patches are `navigator.webdriver=false`, fake plugins/languages, WebGL/canvas spoofing and a **random user agent**. That conflicts with our "don't spoof identity" rule. Mitigation used here: after startup I reset the UA with `/set/useragent` to the true headless string plus a `HazeNow-research/0.1` token. The JS fingerprint patches could not be removed without rebuilding Kuri (it needs Zig 0.17-dev; 0.16 is installed). They made no difference to what we saw: CEM's WAF blocked us by IP anyway. **Next time, use `kuri-agent`** (stealth is off by default) **or Chrome DevTools "Save all as HAR"** in a normal browser. Kuri's HAR recorder also misses requests: the cem.gov.vn document itself was not captured. So `performance.getEntriesByType('resource')` was read as a second record of what each page fetched.
+
+### 1. CEM (`cem.gov.vn`, `tedp.vn`, `envisoft.gov.vn`): no open "now" endpoint
+
+| check | result (verified 2026-09-29) |
+|---|---|
+| robots.txt | `cem.gov.vn/robots.txt` → `User-agent: * / Disallow:` (allow all). `envisoft.gov.vn/robots.txt` → HTTP 400 "invalid request". `tedp.vn/robots.txt` → **CAPTCHA page** |
+| cem.gov.vn home (Kuri, 02:18 UTC) | **Loaded normally** (title "CEM \| Trang Chủ"). The "VN_AQI GIỜ" table (columns Trạm / Thời gian / Chỉ số / Chất lượng) was **empty**: `#block_aqi_index` has no rows, and **no XHR/fetch was made**. Its "Trang chi tiết" link and the "Công khai kết quả quan trắc" menu both point to **`tedp.vn/web/tedp/map?filter-kind=aqi&code=4`**. The page loads Barracuda's `bnith__…` script and `cdn.infisecure.com/barracuda.js` (the WAF behind the CAPTCHA) |
+| second request to cem.gov.vn (02:18, a static `/front/js/chart_home.js`) | **Barracuda "Validation request" CAPTCHA**. I stopped CEM there |
+| tedp.vn (curl robots 02:19, one Kuri page load 02:26) | **CAPTCHA** both times: "Validation needed due to the detection of invalid input from this client IP address, error code : 426". `tedp.vn` and `envisoft.gov.vn` resolve to the same IP (103.88.113.253), and `cem.gov.vn` is .228 in the same /24. It is the same WAF, and it now flags **our IP** (probably since round 1's probes). Not retried |
+| terms / licence | The CEM homepage has **no terms-of-use or licence link** (links: Giới thiệu, Liên hệ, news categories only). tedp.vn terms: **unverified** (CAPTCHA) |
+| **Open, CAPTCHA-free:** `dubao.envisoft.gov.vn:8000/airforecast/` (CEM forecast site, same header "Cổng thông tin quan trắc môi trường / Trung tâm quan trắc môi trường miền Bắc") | Different host (14.160.24.136), no WAF. The page's own XHR is `GET /geoweb//{YYYYMMDD}/vntinh_AQIDaily{YYYYMMDD}.geojson`: `application/geo+json`, **30 MB** (province polygons), `server: webfs/1.21`, no CORS header seen. Properties per province are `{id_tinh, tentinh, AQI}`, 34 provinces (post-merger), **HCMC (id 79) = 45.05** for 29/09. It is a **48-h VN_AQI *forecast* (model), published daily (Last-Modified 2026-09-28 08:02 UTC)**, not an observation, so it is **not usable as "right now"**. robots.txt → 404. Fixture: `vn-cem-forecast-aqidaily-props-2026-09-29.json` (geometry stripped) |
+
+**CEM answers:**
+- **Open JSON/XML "now" endpoint reachable without a CAPTCHA token: none found.** The CEM homepage no longer embeds live station data. The live map moved to `tedp.vn`, which sits behind the same Barracuda WAF.
+- **Station list, cadence and units from CEM directly: unverified** (behind CAPTCHA). From round 1 via the WAQI mirror (evidence only): hourly PM2.5 in µg/m³, and 2 HCMC stations (Q2 Lê Hữu Kiều, 20 Lý Chính Thắng). CEM's own public widget shows **hourly VN_AQI (index), not µg/m³**.
+- The **only open CEM endpoint is the province-level AQI forecast**. It is a forecast, and no licence is stated.
+
+### 2. HCMC's own sources: none real-time
+
+| source | result |
+|---|---|
+| **Sở Nông nghiệp và Môi trường TP.HCM** (successor to Sở TN&MT), `sonnmt.hochiminhcity.gov.vn` | Loaded with Kuri. The page's own XHRs are CMS widgets (`POST /home/Widget_GetList`, `Document_GetWithCategory`…), with **no AQ data**. The "Quan trắc môi trường" category has 4 items: regulations, a draft decision, and "Bảng tổng hợp kết quả quan trắc môi trường (đợt 11)" dated 25/12/2025 (periodic campaign results, not real-time). Footer: **"Ghi rõ nguồn Sở Nông nghiệp và Môi trường Thành phố Hồ Chí Minh khi sử dụng thông tin trên website này"** (attribution required). Contact **snnmt@tphcm.gov.vn**, 63 Lý Tự Trọng, hotline (028) 3829 3653 |
+| **Chi cục Bảo vệ Môi trường TP.HCM (HEPA)**, `hepa.gov.vn` | robots allows all but /wp-admin/. WordPress. "Báo cáo quan trắc chất lượng môi trường" holds **weekly/monthly PDF air bulletins ("Bản tin chất lượng môi trường không khí"), last posted 4 Sep 2024** (covering 12–16/8/2024). No live data, no API. Contact **ccbvmt.snnmt@tphcm.gov.vn**, 227 Đồng Khởi, (028) 3827 9669 |
+| **HCMC data portal** `data.hochiminhcity.gov.vn` → open-data portal **`opendata.hochiminhcity.gov.vn`** (DKAN, run by Trung tâm Chuyển đổi số, ttcds@tphcm.gov.vn) | Behind an F5 "TSPD" JavaScript challenge (curl gets the JS challenge; a browser passes it transparently, and it is not a CAPTCHA). Dataset search: "không khí" → **0 results**. "môi trường" → only unrelated datasets (occupational-environment labs etc.). **No air-quality dataset.** Its `/dieu-khoan-su-dung` terms were not read |
+| Other city AQ subdomains | DNS only: `quantrac.`, `quantracmoitruong.`, `aqi.`, `moitruong.`, `khongkhi.` under `hochiminhcity.gov.vn` and `tphcm.gov.vn` → **none resolve** |
+
+So HCMC's public air monitoring (the 2 automatic stations) runs through CEM. The city itself publishes nothing real-time.
+
+### 3. Other HCMC options (live checks 2026-09-29 ~02:23 UTC)
+
+| source | today | terms | usable for "now"? |
+|---|---|---|---|
+| **AirGradient** (map API, bbox 106.3–107.1 E, 10.3–11.2 N) | **2 live outdoor sensors**: CMT8 (10.785, 106.670) **26 µg/m³** @02:22:36Z, SSIS D7 (10.722, 106.709) **25.4** @02:22:11Z. EPA-corrected, ~1 min old. `Access-Control-Allow-Credentials: true` but **no `Allow-Origin`** → needs the proxy. The existing `agMapObservations` already maps both to `VN` (checked against fixture `vn-ag-hcmc-2026-09-29T0923ICT.json`) | CC BY-SA 4.0 | **Yes**, as a labelled low-cost "~ estimate" (`pm25_now`, not an official 1-hr). Only 2 points for ~9 M people |
+| **Sensor.Community** `area=10.7769,106.7009,50` | **0 sensors**. `access-control-allow-origin: *` | ODbL | No |
+| **OpenAQ v3** | 401 without `X-API-Key`. No key in the repo or env, and none was sought. The AG map (which merges OpenAQ reference rows) shows **no OpenAQ reference in HCMC**. HCMC coverage **unverified** | free registered key, per-provider licence | Unverified. Probably nothing beyond AG |
+| **US Consulate HCMC** (AirNow DOS `HC1010001`) | Listed "Active" in `monitoring_site_locations.dat`, but **0 rows** in `HourlyData` for 2026-09-29 00Z/01Z and 2026-09-28 12Z/18Z. It is also absent from every sample back to 2024-06-01. Hanoi `HN1010001` reported until at least 2025-03-01 but was absent from 2025-06-01 on. Files have no CORS header | US gov → public domain | **No: not reporting** |
+| **IQAir / AirVisual** | `api.airvisual.com` → `incorrect_api_key` (400). Terms pages `/terms-of-service`, `/legal/terms-of-service` → 404; `/terms`, `/legal` → 429. **Terms unverified today.** Previous finding (REGIONAL.md): no redistribution, link-only | proprietary | No |
+| **PAM Air** | `pamair.org/dich-vu-pamair/dich-vu-api/`: "Image API" and "Data API" for **partners** ("hiển thị trực tiếp trên hệ thống hiển thị của đối tác"), no pricing/free tier/licence stated. Contact **contact@dlcorp.com.vn**, hotline/Zalo 0363 159 596. No public API. The web map's embedded credentials were not used | proprietary, partner agreement | Only via partnership. It is the densest HCMC network (claimed) |
+| **Live & Learn** | livelearn.org home: no Vietnam air-quality monitoring, data or API mentioned | – | No |
+| **Vietnam Clean Air Partnership** | No site found: `vcap.vn` is an unrelated company, `cleanair.vn` is an appliance retailer, and `vietnamcleanair.org`/`vcap.org.vn` don't resolve. **Unverified** (web search budget was exhausted this session) | – | No |
+
+### 4. Recommendation
+
+- **Best legitimate HCMC "now" today: AirGradient (2 sensors, CC BY-SA, via our proxy).** It is already implemented (`sources/airgradient.ts`), so **no new adapter was written**. Show it as a crowd estimate ("~", low-cost, EPA-corrected), never as the official 1-hr PM2.5 or VN_AQI. HCMC gets **no official number** until CEM agrees.
+- **CEM: no open "now" endpoint.** Live station data sits only behind the Barracuda WAF on `tedp.vn`/`cem.gov.vn`, which now CAPTCHAs our IP. The open `dubao.envisoft.gov.vn` GeoJSON is a province **forecast** with no stated licence. Don't ship it as "now". It could be a labelled "tomorrow's forecast" later, with permission.
+- **Next step: a permission request** to CEM (station feed + redistribution) and a courtesy/coordination note to HCMC DONRE. Also a PAM Air partner request (round 1).
+- Addresses: HCMC DONRE `snnmt@tphcm.gov.vn` (cc `ccbvmt.snnmt@tphcm.gov.vn`, HEPA). CEM: the address on `cem.gov.vn/lien-he` was **not read** (CAPTCHA). Look it up from a normal browser on another network, or go via the VEA site `vea.mae.gov.vn`.
+
+#### Draft email: CEM (English)
+
+> **Subject:** Request for access to hourly air-quality station data for a free, non-commercial public app (HazeNow)
+>
+> Dear Centre for Environmental Monitoring,
+>
+> I am the developer of HazeNow, a free, open-source (MIT) web app that shows people "what is the air like right now" using each country's official monitoring data. We already show official data for Singapore, Malaysia, Thailand and Indonesia. It has no advertising and no commercial use.
+>
+> We would like to show CEM's automatic stations for Vietnam, starting with Ho Chi Minh City and Hà Nội, with clear attribution to CEM and a link to cem.gov.vn. We found no public data service, and your portal (tedp.vn) is protected by a CAPTCHA, which we respect. We have not tried to get around it.
+>
+> May we ask:
+> 1. Is there an official feed (JSON/XML/CSV) or API for hourly station data (PM2.5 in µg/m³ and the hourly VN_AQI), with the station list and coordinates?
+> 2. Would CEM permit us to redistribute these values, with attribution, in a free public app? Are there terms we should follow (attribution wording, disclaimer, caching)?
+> 3. If access needs a key or a whitelisted IP, we would request once per hour from a single server and cache the result, so CEM receives no traffic from end users.
+>
+> We will display the official VN_AQI bands (Decision 1459/QĐ-TCMT) exactly as published, and we're happy to follow any guidance on wording. Thank you for your time.
+>
+> Kind regards,
+> [Name], HazeNow, [contact email] · [project URL]
+
+#### Draft email: HCMC Department of Agriculture and Environment (English)
+
+> **Subject:** Air-quality data for Ho Chi Minh City in a free public app (HazeNow): coordination request
+>
+> Dear Department of Agriculture and Environment of Ho Chi Minh City,
+>
+> HazeNow is a free, non-commercial, open-source app that shows residents the current air quality from official sources. For Ho Chi Minh City we would like to show official monitoring data rather than only low-cost community sensors.
+>
+> We could not find a real-time air-quality feed on the Department's website, the HEPA site (the latest air bulletin is from August 2024) or the city open-data portal (opendata.hochiminhcity.gov.vn). Could you tell us:
+> 1. whether the city operates automatic air monitoring stations of its own, beyond the CEM stations, and whether their hourly data could be shared (e.g. via the open-data portal);
+> 2. whether the Department would support our request to CEM for the two national stations in the city;
+> 3. what attribution the Department would like us to use.
+>
+> We will credit the Department as your website asks ("Ghi rõ nguồn Sở Nông nghiệp và Môi trường Thành phố Hồ Chí Minh"), and we will follow any guidance you give. Thank you.
+>
+> Kind regards,
+> [Name], HazeNow, [contact email] · [project URL]
+
+#### Bản tiếng Việt (**needs native review**)
+
+> **Tiêu đề:** Đề nghị tiếp cận dữ liệu quan trắc không khí theo giờ cho ứng dụng cộng đồng miễn phí, phi thương mại (HazeNow)
+>
+> Kính gửi Trung tâm Quan trắc môi trường miền Bắc (CEM),
+>
+> Tôi là người phát triển HazeNow, một ứng dụng web miễn phí, mã nguồn mở (giấy phép MIT), giúp người dân biết "chất lượng không khí ngay lúc này" dựa trên dữ liệu quan trắc chính thức của từng quốc gia. Ứng dụng không có quảng cáo và không nhằm mục đích thương mại.
+>
+> Chúng tôi mong muốn hiển thị dữ liệu các trạm quan trắc tự động của CEM tại Việt Nam, trước hết là TP. Hồ Chí Minh và Hà Nội, ghi rõ nguồn CEM và dẫn liên kết về cem.gov.vn. Chúng tôi chưa tìm thấy dịch vụ dữ liệu công khai. Cổng tedp.vn có cơ chế xác thực CAPTCHA; chúng tôi tôn trọng cơ chế này và không tìm cách vượt qua.
+>
+> Kính đề nghị Trung tâm cho biết:
+> 1. Có kênh cung cấp dữ liệu chính thức (JSON/XML/CSV hoặc API) cho số liệu trạm theo giờ (PM2.5 đơn vị µg/m³ và VN_AQI giờ), kèm danh sách và tọa độ trạm hay không?
+> 2. Trung tâm có đồng ý cho chúng tôi hiển thị lại các số liệu này (có ghi nguồn) trong ứng dụng công cộng miễn phí không? Có điều kiện nào cần tuân thủ (cách ghi nguồn, tuyên bố miễn trừ, lưu đệm) không?
+> 3. Nếu cần khóa truy cập hoặc đăng ký địa chỉ IP, chúng tôi chỉ truy vấn mỗi giờ một lần từ một máy chủ duy nhất và lưu đệm, nên người dùng cuối không tạo thêm tải cho hệ thống của Trung tâm.
+>
+> Chúng tôi sẽ hiển thị đúng các mức VN_AQI theo Quyết định 1459/QĐ-TCMT và sẵn sàng điều chỉnh cách diễn đạt theo hướng dẫn của Trung tâm. Trân trọng cảm ơn.
+>
+> Trân trọng,
+> [Họ tên], HazeNow, [email liên hệ] · [đường dẫn dự án]
+
+> **Tiêu đề:** Phối hợp về dữ liệu chất lượng không khí TP. Hồ Chí Minh cho ứng dụng cộng đồng miễn phí (HazeNow)
+>
+> Kính gửi Sở Nông nghiệp và Môi trường Thành phố Hồ Chí Minh,
+>
+> HazeNow là ứng dụng miễn phí, phi thương mại, mã nguồn mở, giúp người dân biết chất lượng không khí hiện tại từ các nguồn chính thức. Tại TP. Hồ Chí Minh, chúng tôi mong muốn hiển thị số liệu quan trắc chính thức thay vì chỉ dùng cảm biến cộng đồng giá rẻ.
+>
+> Chúng tôi chưa tìm thấy nguồn dữ liệu không khí theo thời gian thực trên trang của Sở, trang của Chi cục Bảo vệ môi trường (bản tin không khí gần nhất là tháng 8/2024) hay Cổng dữ liệu mở của Thành phố. Kính đề nghị Sở cho biết:
+> 1. Ngoài các trạm của CEM, Thành phố có vận hành trạm quan trắc không khí tự động riêng không, và có thể chia sẻ số liệu theo giờ (ví dụ qua Cổng dữ liệu mở) không?
+> 2. Sở có thể hỗ trợ đề nghị của chúng tôi gửi CEM đối với hai trạm quốc gia trên địa bàn Thành phố không?
+> 3. Sở mong muốn chúng tôi ghi nguồn như thế nào?
+>
+> Chúng tôi sẽ ghi rõ nguồn "Sở Nông nghiệp và Môi trường Thành phố Hồ Chí Minh" theo yêu cầu trên trang thông tin của Sở và tuân thủ mọi hướng dẫn. Trân trọng cảm ơn.
+>
+> Trân trọng,
+> [Họ tên], HazeNow, [email liên hệ] · [đường dẫn dự án]
+
+**Round-2 verdict:** HCMC stays **crowd-only (AirGradient ×2)**. The official number is **blocked pending CEM permission**. The emails above are the next action, and nothing was committed.

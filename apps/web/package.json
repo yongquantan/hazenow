@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --port 4173",
-    "cards": "node scripts/export-cards.mjs"
+    "cards": "node scripts/export-cards.mjs",
+    "test": "bun test"
   },
   "devDependencies": {
     "typescript": "^5.6.0",
