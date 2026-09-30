@@ -1,0 +1,162 @@
+[
+  {
+    "place": "Ho Chi Minh City",
+    "source": "AirGradient (public map API, map-data-int.airgradient.com/map/api/v1/measurements/current/area)",
+    "stationOrSensorIds": [860, 11611954],
+    "distanceKm": { "CMT8_860": 6.1, "SSIS_11611954": 14.1, "withinCount10km": 1, "withinCount25km": 2 },
+    "kind": "community",
+    "trust": "low-medium",
+    "notes": "CMT8 (id 860, 26.5 ug/m3) is the only sensor inside the 10 km house rule; SSIS (id 11611954, 16.6 ug/m3, 14.1 km) is corroboration only. Both AirGradient 'Small Sensor' (O-1 series, Plantower PMS5003-family), outdoor, EPA-corrected, ~1 min fresh (2026-09-30 08:02-08:03 UTC). A Sensor.Community box (id 20419, 10.658/106.724) sits 21.1 km out reading a much lower raw P2 (4.65-5.2 ug/m3, uncorrected SDS011) - too far to use, and the gap vs AirGradient is unexplained (could be distance, time-of-day, or raw-vs-corrected). No official anchor: CEM is CAPTCHA-walled (not contacted today, per hard rule) and the US Consulate AirNow monitor (HC1010001) is confirmed not reporting (dosairnowdata.org still does not resolve). No 7-30 day uptime history pulled this session (single snapshot only).",
+    "verdict": "community only (trust: low-medium) - unchanged from COVERAGE.md. Unlocked by one more live outdoor sensor within 10 km, or the CEM permission already requested in docs/sea/vietnam.md (not re-attempted today, CEM hosts are off-limits)."
+  },
+  {
+    "place": "Da Nang",
+    "source": null,
+    "stationOrSensorIds": [],
+    "distanceKm": { "nearestSameCountryCrowdKm": 598.5, "nearestSameCountryCrowdSensor": "AirGradient OceanPark (Hanoi)" },
+    "kind": null,
+    "trust": "n/a - no candidate source found",
+    "notes": "Nearest same-country crowd sensor is 598.5 km away (Hanoi). A Lao AirGradient sensor is geometrically closer (Dakcheung Secondary School, Sekong, ~119 km) but crosses the border, which is disallowed. No official station readable (CEM CAPTCHA-walled, not contacted today). Da Nang's own environment-department portal could not be located this session (4 subdomain guesses failed DNS, danang.gov.vn root 403'd for both a declared research UA and a full browser UA, WebSearch budget was already exhausted and a DuckDuckGo HTML fallback returned empty) - unverified, not confirmed absent.",
+    "verdict": "authoritative permission is the only way - CEM (cem.gov.vn), via the request already drafted in docs/sea/vietnam.md. No interim crowd fix exists today."
+  },
+  {
+    "place": "Hoi An",
+    "source": null,
+    "stationOrSensorIds": [],
+    "distanceKm": { "nearestSameCountryCrowdKm": 594.5, "nearestSameCountryCrowdSensor": "AirGradient CMT8 (HCMC)" },
+    "kind": null,
+    "trust": "n/a - no candidate source found",
+    "notes": "Nearest same-country crowd sensor is 594.5 km away (HCMC). Nearest sensor of any kind is a Lao AirGradient school sensor ~123 km away, cross-border, excluded. No official station readable (CEM, not contacted today).",
+    "verdict": "authoritative permission is the only way - CEM (cem.gov.vn). No interim crowd fix exists today."
+  },
+  {
+    "place": "Hue",
+    "source": null,
+    "stationOrSensorIds": [],
+    "distanceKm": { "nearestSameCountryCrowdKm": 532.7, "nearestSameCountryCrowdSensor": "AirGradient OceanPark (Hanoi)" },
+    "kind": null,
+    "trust": "n/a - no candidate source found",
+    "notes": "Nearest same-country crowd sensor is 532.7 km away (Hanoi). Nearest sensor of any kind is a Lao AirGradient hospital sensor ~77 km away (Samoui District Hospital, Laos), cross-border, excluded. No official station readable (CEM, not contacted today).",
+    "verdict": "authoritative permission is the only way - CEM (cem.gov.vn). No interim crowd fix exists today."
+  },
+  {
+    "place": "Nha Trang",
+    "source": null,
+    "stationOrSensorIds": [],
+    "distanceKm": { "nearestSameCountryCrowdKm": 319.2, "nearestSameCountryCrowdSensor": "AirGradient CMT8 (HCMC)" },
+    "kind": null,
+    "trust": "n/a - no candidate source found",
+    "notes": "Nearest same-country crowd sensor is 319.2 km away (HCMC). No official station readable (CEM, not contacted today).",
+    "verdict": "authoritative permission is the only way - CEM (cem.gov.vn). No interim crowd fix exists today."
+  },
+  {
+    "place": "Da Lat",
+    "source": null,
+    "stationOrSensorIds": [],
+    "distanceKm": { "nearestSameCountryCrowdKm": 233.4, "nearestSameCountryCrowdSensor": "AirGradient CMT8 (HCMC)" },
+    "kind": null,
+    "trust": "n/a - no candidate source found",
+    "notes": "Nearest same-country crowd sensor is 233.4 km away (HCMC). No official station readable (CEM, not contacted today).",
+    "verdict": "authoritative permission is the only way - CEM (cem.gov.vn). No interim crowd fix exists today."
+  },
+  {
+    "place": "Ha Long",
+    "source": null,
+    "stationOrSensorIds": [],
+    "distanceKm": { "nearestSameCountryCrowdKm": 118.0, "nearestSameCountryCrowdSensor": "AirGradient OceanPark (Hanoi)" },
+    "kind": null,
+    "trust": "n/a - no candidate source found",
+    "notes": "Nearest AirGradient sensor is 118.0 km away (Hanoi's OceanPark). A Sensor.Community box (id 77538, 20.812/106.824) is closer at 30.8 km but has no PM sensor board active today - it only reports temperature/pressure/humidity, so it can't stand in even as a weak estimate. No official station readable (CEM, not contacted today). Quang Ninh province's own environment-department portal could not be located this session (3 subdomain guesses failed DNS, quangninh.gov.vn root timed out, no working search tool) - unverified, not confirmed absent.",
+    "verdict": "authoritative permission is the only way - CEM (cem.gov.vn), or a Quang Ninh provincial feed if one exists (unverified today). No interim crowd fix exists today."
+  },
+  {
+    "place": "Sapa",
+    "source": null,
+    "stationOrSensorIds": [],
+    "distanceKm": { "nearestSameCountryCrowdKm": 248.4, "nearestSameCountryCrowdSensor": "Sensor.Community 92730 (Hanoi)" },
+    "kind": null,
+    "trust": "n/a - no candidate source found",
+    "notes": "Nearest same-country crowd sensor is 248.4 km away (Hanoi). No official station readable (CEM, not contacted today). CEM's known station list from round 1 (>=20 automatic stations) has never been confirmed to include Sapa - permission alone might not produce a station here; a new deployment may be the real fix.",
+    "verdict": "authoritative permission is the only way in principle (CEM), but coverage of Sapa specifically is unconfirmed even with permission - flag this caveat rather than promise a fix."
+  },
+  {
+    "place": "Phu Quoc",
+    "source": null,
+    "stationOrSensorIds": [],
+    "distanceKm": { "nearestSameCountryCrowdKm": 303.0, "nearestSameCountryCrowdSensor": "AirGradient CMT8 (HCMC)" },
+    "kind": null,
+    "trust": "n/a - no candidate source found",
+    "notes": "Nearest same-country crowd sensor is 303.0 km away (HCMC, mainland). Cambodian AirGradient sensors (Phnom Penh, ~179 km) are geometrically closer but cross-border, excluded. No official station readable (CEM, not contacted today), and CEM's known station list has never been confirmed to include Phu Quoc island - permission alone may not produce a station here.",
+    "verdict": "authoritative permission is the only way in principle (CEM), but island coverage is unconfirmed even with permission - a new deployment may be the real fix."
+  },
+  {
+    "place": "Phnom Penh",
+    "source": "AirGradient (public map API, map-data-int.airgradient.com/map/api/v1/measurements/current/area)",
+    "stationOrSensorIds": [1778385, 1784835],
+    "distanceKm": { "KokRoka_1778385": 14.3, "CivilEngineeringNPIC_1784835": 14.7, "withinCount10km": 0, "withinCount25km": 2 },
+    "kind": "community",
+    "trust": "low-medium",
+    "notes": "Kok Roka (14.1 ug/m3) and Civil Engineering/NPIC (13.4 ug/m3) are 0.4 km apart from each other and agree closely, both AirGradient 'Small Sensor' (O-1PST), EPA-corrected, ~1 min fresh. Both are 4-5 km past the picker point's 10 km house rule, which is why the place is correctly not_feasible today - this is a geometry problem, not a data-quality one. Cambodia's Ministry of Environment homepage (moe.gov.kh, 200, robots.txt allows all) was checked directly and via WebFetch: its only air-quality document is dated 1 April 2019, no dashboard link in nav/footer, and 5 plausible dashboard-subdomain guesses (camaqm.info, airquality.gov.kh, aqm.moe.gov.kh, data.moe.gov.kh, doe.gov.kh) all failed DNS.",
+    "verdict": "community only, blocked by geometry not data - the point in places.ts is ~14 km from an existing 2-sensor cluster near ITC/NPIC. Fixable by either one sensor closer to the centre, or a product decision to re-anchor the picker point a few km south. MoE permission is the nominal alternative but the Ministry shows no sign of building a public feed."
+  },
+  {
+    "place": "Siem Reap",
+    "source": "AirGradient (public map API) + Sensor.Community (data.sensor.community/airrohr/v1/filter/country=KH)",
+    "stationOrSensorIds": [23403781, 98715],
+    "distanceKm": { "Mondul2_AirGradient_23403781": 1.6, "SensorCommunity_98715": 2.7, "withinCount10km_AirGradient_only": 1 },
+    "kind": "community",
+    "trust": "medium",
+    "notes": "Two independent networks agree within 3 km of town: AirGradient 'Mondul 2' (EPA-corrected, 19.0 ug/m3, ~1 min fresh) and Sensor.Community 98715 (raw SDS011 P2, ~20.5 ug/m3, no RH correction, ~2 min fresh). The small gap between raw and EPA-corrected readings is consistent with normal humidity bias, not contradiction - real cross-network corroboration, which is rare in this dataset. Caveat: each network still has only one physical unit, so a single hardware fault wouldn't be caught within either network alone; the redundancy here is incidental (uncoordinated deployments), not a designed dual-sensor site. No official anchor exists (Cambodia has none) to calibrate against.",
+    "verdict": "the strongest not_feasible -> community_only upgrade candidate found in this hunt. Doesn't satisfy the letter of the '>=2 same-network AirGradient sensors within 10 km' rule (only 1 AirGradient unit), but does satisfy the spirit via cross-network agreement. Recommend a product decision on whether cross-network corroboration should count; the existing fix-line ('one more community sensor in Siem Reap') is still valid and is now half-true in a second network."
+  },
+  {
+    "place": "Sihanoukville",
+    "source": null,
+    "stationOrSensorIds": [],
+    "distanceKm": { "nearestSameCountryCrowdKm": 176.9, "nearestSameCountryCrowdSensor": "AirGradient Civil Engineering, NPIC (Phnom Penh)" },
+    "kind": null,
+    "trust": "n/a - no candidate source found",
+    "notes": "Nearest same-country crowd sensor is 176.9 km away (Phnom Penh). No government feed (Cambodia MoE re-checked today, nothing found).",
+    "verdict": "no coverage - needs a new sensor deployment or a Cambodia government feed; neither shows any sign of arriving."
+  },
+  {
+    "place": "Kampot",
+    "source": null,
+    "stationOrSensorIds": [],
+    "distanceKm": { "nearestSameCountryCrowdKm": 128.9, "nearestSameCountryCrowdSensor": "AirGradient Civil Engineering, NPIC (Phnom Penh)" },
+    "kind": null,
+    "trust": "n/a - no candidate source found",
+    "notes": "Nearest same-country crowd sensor is 128.9 km away (Phnom Penh). No government feed (Cambodia MoE re-checked today, nothing found).",
+    "verdict": "no coverage - needs a new sensor deployment or a Cambodia government feed; neither shows any sign of arriving."
+  },
+  {
+    "place": "Vientiane",
+    "source": "AirGradient (public map API; UNICEF Lao PDR schools network)",
+    "stationOrSensorIds": [12284683, 45713381, 1416066, 1089],
+    "distanceKm": { "MahosotHospital_12284683": 2.7, "SaphanthongVillage_45713381": 3.0, "UNICEFLaoPDRCO_1416066": 4.6, "SathitSecondary_1089": 6.7, "withinCount10km": 4 },
+    "kind": "community",
+    "trust": "high",
+    "notes": "4+ AirGradient sensors within 10 km today, readings 6.6-16.1 ug/m3 - a plausible urban spread with no outliers, mutually corroborating. UNICEF/MoES/MONRE Laos schools network hardware (O-1PP/O-1PST-CE family), outdoor, CC BY-SA 4.0, no key, ~1 min fresh. Laos's MONRE (monre.gov.la) is confirmed still down today - the TLS connection now resets outright, worse than the cPanel 'suspended page' seen 2026-09-28.",
+    "verdict": "unchanged from COVERAGE.md: needs_proxy / community-only, trust high. Best-attested crowd cluster in the whole VN/KH/LA scope; no action needed."
+  },
+  {
+    "place": "Luang Prabang",
+    "source": "AirGradient (public map API; UNICEF Lao PDR schools network)",
+    "stationOrSensorIds": [336533, 13874892],
+    "distanceKm": { "SantiphabSecondary_336533": 0.8, "SouphanouvongUniversity_13874892": 6.8, "withinCount10km": 2 },
+    "kind": "community",
+    "trust": "high",
+    "notes": "2 AirGradient sensors within 10 km, tight agreement (3.0 vs 2.8 ug/m3), UNICEF Laos schools network hardware, ~1 min fresh, CC BY-SA 4.0.",
+    "verdict": "unchanged from COVERAGE.md: needs_proxy / community-only, trust high. No action needed."
+  },
+  {
+    "place": "Vang Vieng",
+    "source": "AirGradient (public map API)",
+    "stationOrSensorIds": [1135],
+    "distanceKm": { "VangviengVientiane_1135": 11.5, "withinCount10km": 0 },
+    "kind": "community",
+    "trust": "n/a - single sensor, outside the 10 km rule",
+    "notes": "Same 11.5 km distance as COVERAGE.md (unchanged), 1.5 km past the 10 km house rule. Reading itself looks clean (2.4 ug/m3, consistent with today's regional low baseline) so the sensor is plausibly healthy - the blocker is purely distance, not data quality. Only 1 sensor even if the radius were relaxed, so it still wouldn't clear the '>=2 sensors' bar. Laos MONRE confirmed still down today (connection reset).",
+    "verdict": "no coverage - needs either a second sensor inside Vang Vieng town, or a product decision on whether 11.5 km is close enough to trust for a single town-sized place. That's a policy question, not resolved here."
+  }
+]

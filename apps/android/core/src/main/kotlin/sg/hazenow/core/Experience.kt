@@ -341,19 +341,54 @@ object Experience {
 
     data class TrendText(val words: String, val a11y: String?)
 
-    fun trend(history: List<HistoryPoint>, delta1h: Int): TrendText {
-        if (history.size < 2) return TrendText("Trend not available yet", null)
-        val d2 = if (history.size >= 3) history.last().pm25 - history[history.size - 3].pm25 else null
-        if (d2 != null && d2 >= FAST && d2 > delta1h && delta1h >= 0) return TrendText("Rising fast: up $d2 in 2 hours", "rising fast")
-        if (d2 != null && d2 <= -FAST && d2 < delta1h && delta1h <= 0) return TrendText("Clearing fast: down ${-d2} in 2 hours", "clearing fast")
-        return when {
-            delta1h >= FAST -> TrendText("Rising fast: up $delta1h in the last hour", "rising fast")
-            delta1h >= 5 -> TrendText("Rising: up $delta1h in the last hour", "rising")
-            delta1h <= -FAST -> TrendText("Clearing fast: down ${-delta1h} in the last hour", "clearing fast")
-            delta1h <= -5 -> TrendText("Easing: down ${-delta1h} in the last hour", "easing")
-            else -> TrendText("Steady over the last hour", "steady")
-        }
+    /** Point exactly [hours] before the latest one (by timestamp), as in packages/core/src/experience.ts. */
+    private fun hourBefore(history: List<HistoryPoint>, hours: Long): HistoryPoint? {
+        val last = HazeCore.parseInstant(history.last().time) ?: return null
+        val t = last.minusSeconds(hours * 3600)
+        return history.firstOrNull { HazeCore.parseInstant(it.time) == t }
     }
+
+    private fun wordFor(d: Int): String = when {
+        d >= FAST -> "rising fast"
+        d >= 5 -> "rising"
+        d <= -FAST -> "clearing fast"
+        d <= -5 -> "easing"
+        else -> "steady"
+    }
+
+    /**
+     * COPY §4 trend phrase, an exact port of TS `trendWords` / `trendWord` (golden: packages/core/fixtures/golden/trend.json).
+     * Previous hours are matched by timestamp (a missing hour means no trend). The 2-hour variant is used when the
+     * 2-h change is bigger and in the same direction; a steady last hour is always "Steady over the last hour".
+     * [TrendText.a11y] is the 1-hour word (TS `trendWord`), or null when there's no previous hour.
+     */
+    fun trend(history: List<HistoryPoint>): TrendText {
+        if (history.size < 2) return TrendText("Trend not available yet", null)
+        val latest = history.last()
+        val h1 = hourBefore(history, 1) ?: return TrendText("Trend not available yet", null)
+        val d1 = latest.pm25 - h1.pm25
+        val w1 = wordFor(d1)
+        if (w1 == "steady") return TrendText("Steady over the last hour", w1)
+        val d2 = hourBefore(history, 2)?.let { latest.pm25 - it.pm25 }
+        var d = d1
+        var span = "in the last hour"
+        if (d2 != null && Integer.signum(d2) == Integer.signum(d1) && abs(d2) > abs(d1)) {
+            d = d2
+            span = "in 2 hours"
+        }
+        val label = when (wordFor(d)) {
+            "rising" -> "Rising"
+            "rising fast" -> "Rising fast"
+            "easing" -> "Easing"
+            "clearing fast" -> "Clearing fast"
+            else -> "Steady"
+        }
+        return TrendText(if (d > 0) "$label: up $d $span" else "$label: down ${abs(d)} $span", w1)
+    }
+
+    /** Kept for call sites that still pass the snapshot delta; the delta is derived from [history] as in TS. */
+    @Suppress("UNUSED_PARAMETER")
+    fun trend(history: List<HistoryPoint>, delta1h: Int): TrendText = trend(history)
 
     // ---------- provenance, uncertainty, states (COPY §6, §10) ----------
 
@@ -461,7 +496,7 @@ object Experience {
         }
 
         val v = verdict(s.band, profiles)
-        val t = trend(s.history, s.trend.delta)
+        val t = trend(s.history)
         val display = s.pm25.toString()
         val estimateFor = when {
             s.locationMode == LocationMode.GPS -> placeName ?: "your spot"

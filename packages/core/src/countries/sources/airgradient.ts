@@ -6,8 +6,11 @@
  *   One SEA bbox (92–141.2 E, −11.2–28.6 N) returns every sensor in one ~140 KB call.
  * Fallback: world API (raw `pm02` + `rhum` + `model`) → EPA-extended applied here; `I-*` models are indoor.
  *   Its JSON contains stray control characters and was once truncated → parseLenientJson.
- * Excluded: OpenAQ "Reference" rows (they are Air4Thai stations, ~1 h late: use Air4Thai directly) and
- * Sensor.Community rows (SDS011 without RH correction, philippines.md).
+ * Sensor.Community rows (`dataSource: "SensorCommunity"`) are kept, tagged by their real network (`sc:` ids, ODbL
+ * attribution): they unlock Johor Bahru ("Iolite", SPS30) and Siem Reap (coverage-hunt/my-bn.md, vn-kh-la.md). Their
+ * value is taken as served (`corrected: "none"`: mostly SDS011 with no RH correction), and a row at RH ≥ 90 % is left
+ * out, because an uncorrected optical sensor over-reads in fog and very humid air (docs/sea/COMMUNITY_SENSORS.md).
+ * Excluded: OpenAQ "Reference" rows (they are Air4Thai stations, ~1 h late: use Air4Thai directly).
  * Country comes from the polygon lookup (sensors' `timezone` fields are unreliable).
  */
 import { countryAt } from "../borders.js";
@@ -25,6 +28,18 @@ export const AG_ATTRIBUTION: Attribution = {
   licence: "CC BY-SA 4.0",
   shareAlike: true,
 };
+
+/** Sensor.Community rows in the AirGradient map feed. Licence per REGIONAL.md (the database is ODbL 1.0). */
+export const SC_ATTRIBUTION: Attribution = {
+  id: "crowd.sensorcommunity",
+  text: "Community sensors: Sensor.Community contributors, ODbL 1.0",
+  url: "https://sensor.community/",
+  licence: "ODbL 1.0",
+  shareAlike: true,
+};
+
+/** Uncorrected Sensor.Community rows at or above this relative humidity (%) are left out. */
+export const SC_MAX_RH = 90;
 
 export function agAreaUrl(b: { xmin: number; ymin: number; xmax: number; ymax: number } = SEA_BBOX, base = AG_MAP_BASE): string {
   return `${base}/measurements/current/area?xmin=${b.xmin}&ymin=${b.ymin}&xmax=${b.xmax}&ymax=${b.ymax}&zoom=12&measure=pm25`;
@@ -44,19 +59,29 @@ interface AgMapRow {
 
 const isIndoorName = (n: string) => /\bindoor\b/i.test(n);
 
+/** "SensorCommunity: 94332" → "Sensor.Community #94332"; named rows keep their name. */
+function scName(r: AgMapRow): string {
+  const n = (r.locationName ?? "").trim();
+  const m = /^SensorCommunity:\s*(\d+)$/i.exec(n);
+  if (m) return `Sensor.Community #${m[1]}`;
+  return n || `Sensor.Community ${r.locationId}`;
+}
+
 export function agMapObservations(raw: unknown, countries?: readonly CountryCode[]): Observation[] {
   const rows = (raw as { data?: AgMapRow[] })?.data;
   if (!Array.isArray(rows)) return [];
   const out: Observation[] = [];
   for (const r of rows) {
-    if (r?.dataSource !== "AirGradient") continue;
+    const sc = r?.dataSource === "SensorCommunity";
+    if (r?.dataSource !== "AirGradient" && !sc) continue;
     if (!Number.isFinite(r.latitude) || !Number.isFinite(r.longitude) || typeof r.pm25 !== "number" || r.pm25 < 0) continue;
     if (!r.measuredAt || Number.isNaN(Date.parse(r.measuredAt))) continue;
+    if (sc && typeof r.rhum === "number" && r.rhum >= SC_MAX_RH) continue;
     const cc = countryAt(r.latitude, r.longitude);
     if (!cc || (countries && !countries.includes(cc))) continue;
-    const name = (r.locationName ?? `AirGradient ${r.locationId}`).trim();
+    const name = sc ? scName(r) : (r.locationName ?? `AirGradient ${r.locationId}`).trim();
     out.push({
-      stationId: `ag:${r.locationId}`,
+      stationId: `${sc ? "sc" : "ag"}:${r.locationId}`,
       name,
       country: cc,
       lat: r.latitude,
@@ -65,10 +90,10 @@ export function agMapObservations(raw: unknown, countries?: readonly CountryCode
       indoor: isIndoorName(name),
       pm25_now: Math.round(r.pm25 * 10) / 10,
       periodEnd: r.measuredAt,
-      corrected: "source",
+      corrected: sc ? "none" : "source",
       k: null,
       qc: "uncalibrated",
-      attributionId: AG_ATTRIBUTION.id,
+      attributionId: sc ? SC_ATTRIBUTION.id : AG_ATTRIBUTION.id,
     });
   }
   return out;

@@ -4,6 +4,11 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import {
   AG_ATTRIBUTION,
+  AIR4THAI_ATTRIBUTION,
+  SC_ATTRIBUTION,
+  air4thaiObservations,
+  parseAir4ThaiHistory,
+  parseAir4ThaiStations,
   BMKG_ATTRIBUTION,
   DOE_ATTRIBUTION,
   HANOI_ATTRIBUTION,
@@ -46,17 +51,27 @@ const sites = parseHanoiSites(json("vn-hanoi-site-2026-09-28.json"));
 const hanoi = (id: number) =>
   hanoiObservation(sites.find((s) => s.id === id)!, json(`vn-hanoi-dailystat-${id}-2026-09-28T17ICT.json`), json(`vn-hanoi-dailyaqi-${id}-2026-09-28T17ICT.json`), CAPTURED)!;
 
+const CROWD = [AG_ATTRIBUTION, SC_ATTRIBUTION];
+const air4thai = air4thaiObservations(
+  parseAir4ThaiStations(json("th-air4thai-aqi-2026-09-28T17ICT.json")),
+  parseAir4ThaiHistory(json("th-air4thai-history-2026-09-28T17ICT.json")),
+);
+
 const sets: Record<string, ObservationSet> = {
-  my: set("MY", [...doeObservations(json("my-doe-apims-2026-09-28T18MYT.json")), ...ag("MY")], [DOE_ATTRIBUTION, AG_ATTRIBUTION]),
+  // Thailand is live direct for its PCD stations; the preview exists for places that need the proxy's community
+  // sensors (Pai). Same 28 Sep capture as the core tests.
+  th: set("TH", [...air4thai, ...ag("TH")], [AIR4THAI_ATTRIBUTION, ...CROWD]),
+  my: set("MY", [...doeObservations(json("my-doe-apims-2026-09-28T18MYT.json")), ...ag("MY")], [DOE_ATTRIBUTION, ...CROWD]),
   id: set(
     "ID",
     [...bmkgObservations(text("id-bmkg-pm25-2026-09-28T17WIB.html"), CAPTURED), ...ispuObservations(json("id-klh-ispu-2026-09-28T17WIB.json"), CAPTURED), ...ag("ID")],
-    [BMKG_ATTRIBUTION, KLH_ATTRIBUTION, AG_ATTRIBUTION, SIPONGI_ATTRIBUTION],
+    [BMKG_ATTRIBUTION, KLH_ATTRIBUTION, ...CROWD, SIPONGI_ATTRIBUTION],
     { hotspots: sipongiHotspots(json("id-sipongi-hotspots-2026-09-28.json")), hotspotSource: "SiPongi" },
   ),
-  vn: set("VN", [hanoi(48), hanoi(49), ...ag("VN")], [HANOI_ATTRIBUTION, AG_ATTRIBUTION]),
-  ph: set("PH", ag("PH"), [AG_ATTRIBUTION]),
-  la: set("LA", ag("LA"), [AG_ATTRIBUTION]),
+  vn: set("VN", [hanoi(48), hanoi(49), ...ag("VN")], [HANOI_ATTRIBUTION, ...CROWD]),
+  ph: set("PH", ag("PH"), CROWD),
+  la: set("LA", ag("LA"), CROWD),
+  kh: set("KH", ag("KH"), CROWD),
 };
 
 mkdirSync(FX + "preview", { recursive: true });

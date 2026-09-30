@@ -48,15 +48,52 @@ describe("routes, CORS, attribution", () => {
 });
 
 describe("country endpoints (recorded live fixtures)", () => {
-  test("/v1/th/observations: 173 Air4Thai stations, 2 upstream calls", async () => {
+  test("/v1/th/observations: 173 Air4Thai stations + Thai community sensors, 3 upstream calls", async () => {
     const h = harness();
     const r = await h.get("/v1/th/observations");
     expect(r.status).toBe(200);
     expect(r.body.country).toBe("TH");
-    expect(r.body.observations).toHaveLength(173);
+    const obs = r.body.observations as { grade: string; country: string; stationId: string }[];
+    expect(obs.filter((o) => o.grade === "reference")).toHaveLength(173);
+    expect(obs.filter((o) => o.grade === "lowcost").length).toBeGreaterThan(150);
+    expect(obs.every((o) => o.country === "TH")).toBe(true); // never a Lao, Burmese or Malaysian sensor
     expect(r.body.attribution[0].id).toBe("th.pcd");
     expect(r.headers["cache-control"]).toContain("max-age=30");
-    expect(h.calls.map((c) => new URL(c.url).pathname)).toEqual(["/forweb/getAQI_JSON.php", "/forweb/getHistoryData.php"]);
+    expect(h.calls.map((c) => new URL(c.url).pathname)).toEqual([
+      "/forweb/getAQI_JSON.php",
+      "/forweb/getHistoryData.php",
+      "/map/api/v1/measurements/current/area",
+    ]);
+  });
+  test("/v1/th/observations?grade=lowcost: community sensors only, their attribution only; bad grade → 400", async () => {
+    const h = harness();
+    const r = await h.get("/v1/th/observations?grade=lowcost");
+    expect(r.status).toBe(200);
+    const obs = r.body.observations as { grade: string; stationId: string }[];
+    expect(obs.length).toBeGreaterThan(150);
+    expect(obs.every((o) => o.grade === "lowcost")).toBe(true);
+    expect(obs.some((o) => o.stationId.startsWith("sc:"))).toBe(true); // Sensor.Community rows, tagged by network
+    expect(r.body.attribution.map((a: { id: string }) => a.id).sort()).toEqual(["crowd.airgradient", "crowd.sensorcommunity"]);
+    expect((await h.get("/v1/th/observations?grade=reference")).status).toBe(400);
+  });
+  test("/v1/th/snapshot at Pai: community estimate (no PCD station within 25 km); Bangkok still official", async () => {
+    const h = harness();
+    const pai = await h.get("/v1/th/snapshot?lat=19.3587&lon=98.44");
+    expect(pai.body.snapshot.pm25Kind).toBe("crowd_estimate");
+    expect(pai.body.snapshot.stations.every((s: { stationId: string }) => !s.stationId.startsWith("th.pcd"))).toBe(true);
+    const bkk = await h.get("/v1/th/snapshot?lat=13.7563&lon=100.5018");
+    expect(bkk.body.snapshot.pm25Kind).toBe("official_1h");
+  });
+  test("/v1/kh: Cambodia served, community sensors only (Siem Reap: AirGradient + Sensor.Community)", async () => {
+    const h = harness();
+    const r = await h.get("/v1/kh/snapshot?lat=13.3671&lon=103.8448");
+    expect(r.status).toBe(200);
+    expect(r.body.snapshot.pm25Kind).toBe("crowd_estimate");
+    expect(r.body.snapshot.localBand).toBeNull();
+    const ids = r.body.snapshot.stations.map((s: { stationId: string }) => s.stationId);
+    expect(ids).toContain("ag:23403781");
+    expect(ids).toContain("sc:51718789");
+    expect(r.body.attribution.map((a: { id: string }) => a.id).sort()).toEqual(["crowd.airgradient", "crowd.sensorcommunity"]);
   });
   test("/v1/th/snapshot: coarse location, Thai verdict, official row", async () => {
     const h = harness();
@@ -105,10 +142,10 @@ describe("country endpoints (recorded live fixtures)", () => {
     expect(jb.status).toBe(409);
     expect(jb.body.country).toBe("MY");
     expect((await h.get("/v1/auto/snapshot?lat=35.68&lon=139.69")).status).toBe(404);
-    const kh = await h.get("/v1/kh/observations");
-    expect(kh.status).toBe(404);
-    expect(kh.body.status).toBe("not_feasible");
-    expect((await h.get("/v1/auto/snapshot?lat=11.5564&lon=104.9282")).body.country).toBe("KH");
+    const mm = await h.get("/v1/mm/observations");
+    expect(mm.status).toBe(404);
+    expect(mm.body.status).toBe("not_feasible");
+    expect((await h.get("/v1/auto/snapshot?lat=16.8409&lon=96.1735")).body.country).toBe("MM");
     expect((await h.get("/v1/th/snapshot?lat=91&lon=0")).status).toBe(400);
     expect((await h.get("/v1/th/snapshot?lat=13")).status).toBe(400);
   });
@@ -143,10 +180,10 @@ describe("country endpoints (recorded live fixtures)", () => {
 /* ================================================================== budget, cache, single flight */
 
 describe("fixed upstream budget regardless of users", () => {
-  test("500 client requests inside the TTL → 2 upstream calls", async () => {
+  test("500 client requests inside the TTL → 3 upstream calls (Air4Thai ×2 + AirGradient)", async () => {
     const h = harness();
     await Promise.all(Array.from({ length: 500 }, () => h.get("/v1/th/observations")));
-    expect(h.calls).toHaveLength(2);
+    expect(h.calls).toHaveLength(3);
   });
   test("single flight: concurrent requests share one upstream call", async () => {
     const h = harness();
@@ -266,7 +303,20 @@ describe("mocked upstream failures", () => {
     const w = r.body.warnings.join(" | ");
     expect(w).toMatch(/id\.klh\.ispu: unparseable JSON/);
     expect(w).toMatch(/id\.bmkg: page layout changed/);
-    expect(r.body.observations.every((o: Observation) => o.stationId.startsWith("ag:"))).toBe(true);
+    expect(r.body.observations.every((o: Observation) => o.stationId.startsWith("ag:") || o.stationId.startsWith("sc:"))).toBe(true);
+  });
+  test("Air4Thai down → the TH set says so and carries Thai sensors only; Bangkok gets a labelled estimate", async () => {
+    const h = harness({ rules: { "air4thai.pcd.go.th": "throw" } });
+    const r = await h.get("/v1/th/observations");
+    expect(r.status).toBe(200);
+    expect(r.body.officialUnavailable).toBe("PCD Air4Thai");
+    expect(r.body.observations.every((o: Observation) => o.grade === "lowcost" && o.country === "TH")).toBe(true);
+    const bkk = await h.get("/v1/th/snapshot?lat=13.7563&lon=100.5018");
+    expect(bkk.body.snapshot.pm25Kind).toBe("crowd_estimate");
+    expect(bkk.body.snapshot.notes).toContain("official_unavailable");
+    const kan = await h.get("/v1/th/snapshot?lat=14.0228&lon=99.5328"); // Kanchanaburi: no sensor in range
+    expect(kan.status).toBe(503);
+    expect(kan.body.officialUnavailable).toBe("PCD Air4Thai");
   });
   test("AirGradient map API down → world API fallback with EPA-extended correction", async () => {
     const h = harness({ rules: { "map-data-int.airgradient.com": 502 } });

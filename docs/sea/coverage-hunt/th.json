@@ -1,0 +1,117 @@
+[
+  {
+    "place": "Pai",
+    "source": "AirGradient (public world API, api.airgradient.com/public/api/v1/world/locations/measures/current)",
+    "stationOrSensorIds": [
+      68373,
+      66399,
+      66512,
+      66152,
+      66644,
+      67536,
+      58641,
+      66487,
+      66910,
+      66935,
+      66911,
+      66934,
+      66151,
+      66153,
+      66306,
+      66987,
+      66397,
+      67533,
+      66904,
+      68116,
+      67475
+    ],
+    "distanceKm": {
+      "min": 0.35,
+      "max": 8.6,
+      "withinCount10km": 21,
+      "withinCount25km": 22
+    },
+    "kind": "community",
+    "trust": "medium",
+    "notes": "21 live outdoor AirGradient sensors within 10 km of Pai (22 within 25 km), all offline:false, ~1 min old at capture (2026-09-30 08:04-08:05 UTC). Hardware: O-1PP/O-1PST (Plantower PMS5003-family, outdoor units); one sensor (locationId 58641, 'Vieng Nua, Pai') reports model:null, hardware unconfirmed. Owner types: government/civic (Immigration, NT/TOT telecom office, Border Patrol post), health (clinic, health center), education (2 schools), religious (2 temples), 1 public market, several tourism businesses (guesthouses, cottages, hot springs, art gallery) - diverse, not a single-source cluster. No usable official anchor: nearest Air4Thai station (58t, Mae Hong Son) is 49.5 km away across a mountain range in a different valley, so crowd.ts's biasFactor() correlation check is not computable here; k stays null/uncalibrated, same as PH/LA/KH crowd sensors today. Readings ranged 3.3-23.8 ug/m3, median ~6.8, consistent with the region's clean rainy-season baseline. locationId 66399 ('Pai: NT/TOT office near Pai Hospital', 23.8 ug/m3, 0.46 km) is ~3.5x the cluster median and would be flagged 'outlier' by crowd.ts's own QC rule (median>5 and value>3x median) - recommend excluding it pending a recheck. Uptime over 7-30 days NOT verified (single live snapshot only); recommend logging this cluster for >=1 week before launch. Data is CC BY-SA 4.0, no key needed - the blocker is that HazeNow's TH adapter (th.air4thai) is official-stations-only today; MY/ID/VN/PH/LA already have this same AirGradient crowd layer wired in via crowd.ts. No permission needed from AirGradient; this is an engineering/product decision, not a data-access blocker.",
+    "verdict": "community only (trust: medium) - coverable once HazeNow's Thai feed reads community sensors (no external permission required for this source)"
+  },
+  {
+    "place": "Koh Phi Phi",
+    "source": null,
+    "stationOrSensorIds": [],
+    "distanceKm": {
+      "nearestOfficial": 37.7,
+      "nearestCommunity": 50.8
+    },
+    "kind": null,
+    "trust": "n/a - no candidate source found",
+    "notes": "No Air4Thai station within 25 km (nearest: 119t Thara Public Park, Krabi, 37.7 km) and no AirGradient sensor within a usable community radius (nearest: Supalai Lake Ville Phuket, 50.8 km). No Sensor.Community location within 50 km. PurpleAir blocked (needs paid key; robots.txt disallows scraping the public map). IQAir blocked (bot/WAF checkpoint). DustBoy not checked directly for this place: its public feed needs a scraped token (excluded per brief) and its no-auth station registry (www.cmuccdc.org/api/ccdc/stations) leaks caretaker PII (excluded per thailand.md's own warning); the sanctioned keyed API was not queried for this specific place in this pass.",
+    "verdict": "no coverage - needs a PCD station on the island, or >=2 community sensors within 10 km plus HazeNow's Thai feed reading community sensors"
+  },
+  {
+    "place": "Koh Lanta",
+    "source": null,
+    "stationOrSensorIds": [],
+    "distanceKm": {
+      "nearestOfficial": 50.5,
+      "nearestCommunity": 86.1
+    },
+    "kind": null,
+    "trust": "n/a - no candidate source found",
+    "notes": "No Air4Thai station within 25 km (nearest: 119t Thara Public Park, Krabi, 50.5 km) and no AirGradient sensor within a usable community radius (nearest: Supalai Lake Ville Phuket, 86.1 km). No Sensor.Community location within 50 km. PurpleAir blocked (needs paid key; robots.txt disallows scraping the public map). IQAir blocked (bot/WAF checkpoint). DustBoy not checked directly for this place: its public feed needs a scraped token (excluded per brief) and its no-auth station registry (www.cmuccdc.org/api/ccdc/stations) leaks caretaker PII (excluded per thailand.md's own warning); the sanctioned keyed API was not queried for this specific place in this pass.",
+    "verdict": "no coverage - needs a PCD station on the island, or >=2 community sensors within 10 km plus HazeNow's Thai feed reading community sensors"
+  },
+  {
+    "place": "Koh Samui",
+    "source": null,
+    "stationOrSensorIds": [],
+    "distanceKm": {
+      "nearestOfficial": 92.3,
+      "nearestCommunity": 251.2
+    },
+    "kind": null,
+    "trust": "n/a - no candidate source found",
+    "notes": "No Air4Thai station within 25 km (nearest: 42t Environment Agency Section 14, Surat Thani, 92.3 km) and no AirGradient sensor within a usable community radius (nearest: Supalai Bella Thalang, 251.2 km). No Sensor.Community location within 50 km. PurpleAir blocked (needs paid key; robots.txt disallows scraping the public map). IQAir blocked (bot/WAF checkpoint). DustBoy not checked directly for this place: its public feed needs a scraped token (excluded per brief) and its no-auth station registry (www.cmuccdc.org/api/ccdc/stations) leaks caretaker PII (excluded per thailand.md's own warning); the sanctioned keyed API was not queried for this specific place in this pass.",
+    "verdict": "no coverage - needs a PCD station on the island, or >=2 community sensors within 10 km plus HazeNow's Thai feed reading community sensors"
+  },
+  {
+    "place": "Koh Phangan",
+    "source": null,
+    "stationOrSensorIds": [],
+    "distanceKm": {
+      "nearestOfficial": 101.6,
+      "nearestCommunity": 263.4
+    },
+    "kind": null,
+    "trust": "n/a - no candidate source found",
+    "notes": "No Air4Thai station within 25 km (nearest: 42t Environment Agency Section 14, Surat Thani, 101.6 km) and no AirGradient sensor within a usable community radius (nearest: Supalai Bella Thalang, 263.4 km). No Sensor.Community location within 50 km. PurpleAir blocked (needs paid key; robots.txt disallows scraping the public map). IQAir blocked (bot/WAF checkpoint). DustBoy not checked directly for this place: its public feed needs a scraped token (excluded per brief) and its no-auth station registry (www.cmuccdc.org/api/ccdc/stations) leaks caretaker PII (excluded per thailand.md's own warning); the sanctioned keyed API was not queried for this specific place in this pass.",
+    "verdict": "no coverage - needs a PCD station on the island, or >=2 community sensors within 10 km plus HazeNow's Thai feed reading community sensors"
+  },
+  {
+    "place": "Koh Tao",
+    "source": null,
+    "stationOrSensorIds": [],
+    "distanceKm": {
+      "nearestOfficial": 83.9,
+      "nearestCommunity": 249.4
+    },
+    "kind": null,
+    "trust": "n/a - no candidate source found",
+    "notes": "No Air4Thai station within 25 km (nearest: 118t Sports Stadium, Chumphon, 83.9 km) and no AirGradient sensor within a usable community radius (nearest: Hana, 249.4 km). No Sensor.Community location within 50 km. PurpleAir blocked (needs paid key; robots.txt disallows scraping the public map). IQAir blocked (bot/WAF checkpoint). DustBoy not checked directly for this place: its public feed needs a scraped token (excluded per brief) and its no-auth station registry (www.cmuccdc.org/api/ccdc/stations) leaks caretaker PII (excluded per thailand.md's own warning); the sanctioned keyed API was not queried for this specific place in this pass.",
+    "verdict": "no coverage - needs a PCD station on the island, or >=2 community sensors within 10 km plus HazeNow's Thai feed reading community sensors"
+  },
+  {
+    "place": "Koh Chang",
+    "source": null,
+    "stationOrSensorIds": [],
+    "distanceKm": {
+      "nearestOfficial": 29.4,
+      "nearestCommunity": 30.1
+    },
+    "kind": null,
+    "trust": "n/a - no candidate source found",
+    "notes": "No Air4Thai station within 25 km (nearest: 87t Trat Provincial Central Stadium, 29.4 km) and no AirGradient sensor within a usable community radius (nearest: Trat, 30.1 km). No Sensor.Community location within 50 km. PurpleAir blocked (needs paid key; robots.txt disallows scraping the public map). IQAir blocked (bot/WAF checkpoint). DustBoy not checked directly for this place: its public feed needs a scraped token (excluded per brief) and its no-auth station registry (www.cmuccdc.org/api/ccdc/stations) leaks caretaker PII (excluded per thailand.md's own warning); the sanctioned keyed API was not queried for this specific place in this pass. Closest near-miss of the six islands: both the official station and the single AirGradient sensor sit just outside the 25 km cutoff (29.4 km and 30.1 km respectively); the community sensor is also alone (the app's 'two sensors within 10 km' rule wouldn't be met even if the radius were relaxed).",
+    "verdict": "no coverage (closest near-miss) - needs a PCD station on the island, or >=2 community sensors within 10 km plus HazeNow's Thai feed reading community sensors"
+  }
+]

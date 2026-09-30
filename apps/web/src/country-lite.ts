@@ -18,7 +18,7 @@ export const PICKER_LITE: readonly [CountryCode, string, LiteCoverage][] = [
   ["VN", "Vietnam", "proxy"],
   ["PH", "Philippines", "proxy"],
   ["LA", "Laos", "proxy"],
-  ["KH", "Cambodia", "none"],
+  ["KH", "Cambodia", "proxy"],
   ["MM", "Myanmar", "none"],
   ["BN", "Brunei", "none"],
   ["TL", "Timor-Leste", "none"],

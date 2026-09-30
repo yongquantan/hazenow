@@ -1,0 +1,101 @@
+[
+  {
+    "place": "Cebu",
+    "source": "none",
+    "stationOrSensorIds": [],
+    "distanceKm": 110.0,
+    "kind": "community",
+    "trust": "n/a",
+    "notes": "Verified live 2026-09-30 08:0x UTC. AirGradient map API (PH-wide bbox): 0 sensors within 25 km, nearest is 'Bacolod City Araneta-Hernaez Sts' (AirGradient id 98013176) at 110 km. Sensor.Community area query (30 km radius): 0. IQAir's Cebu City page shows AQI 52 / PM2.5 9.6 explicitly sourced from a 'satellite-derived model', not a ground station -- confirms no real sensor, official or community, exists in Cebu today. USC (University of San Carlos) website has no mention of an air-quality network. DENR-EMB (air.emb.gov.ph, emb.gov.ph, and guessed regional subdomains r7.emb.gov.ph / embro7.emb.gov.ph) all return 403 (Cloudflare 'Just a moment...' challenge on the apex domain, Azure WAF on air.emb.gov.ph) or fail to resolve. No bypass attempted (per instructions)."
+  },
+  {
+    "place": "Davao",
+    "source": "AirGradient",
+    "stationOrSensorIds": ["ag:16313337"],
+    "distanceKm": 19.4,
+    "kind": "community",
+    "trust": "medium-high hardware/uptime, but out of range -- see notes",
+    "notes": "Sensor 'Illumina' (ag:16313337), 7.143752,125.625054, model unresolved in world dump but map-classified outdoor 'Small Sensor' (not flagged '(Indoor)'). 14-day history (16-30 Sep): 344/336 expected hourly buckets present (>=100% -- effectively zero downtime), only 1 zero-value hour in 336 (<0.3%), plausible diurnal range 0-65.5 ug/m3, live as of 2026-09-30T07:59Z reading 9.5 ug/m3 (raw). No official/embassy monitor within reach to cross-check agreement (EMB blocked, AirNow's Philippines embassy site is gone from today's feed -- see notes on Metro Manila context in the .md). Verdict: this is a trustworthy single sensor by uptime/plausibility standards, but it sits 19.4 km from Davao's city-centre point, outside both the 10 km community-pair rule and the 25 km official-station rule, so it cannot unlock coverage alone. One more AirGradient/community sensor within 10 km of Davao City proper (e.g. near Roxas Ave/Rizal Park) would pair with a *new* close sensor -- Illumina itself stays too far even as the second of a pair unless the new one is within 10 km of it, not just of the city point."
+  },
+  {
+    "place": "Boracay",
+    "source": "none",
+    "stationOrSensorIds": [],
+    "distanceKm": 124.3,
+    "kind": "community",
+    "trust": "n/a",
+    "notes": "Verified live 2026-09-30. AirGradient: 0 within 25 km, nearest 'President Roxas' (ag:11614748) 124.3 km. Sensor.Community: 0 within 30 km. No EMB or provincial Aklan feed found. No coverage path today except seeding 2 sensors on Boracay."
+  },
+  {
+    "place": "El Nido",
+    "source": "none",
+    "stationOrSensorIds": [],
+    "distanceKm": 319.4,
+    "kind": "community",
+    "trust": "n/a",
+    "notes": "Verified live 2026-09-30. AirGradient: 0 within 25 km, nearest 'Brooke's Point Municipal Hall' (ag:105205314, southern Palawan) 319.4 km. Sensor.Community: 0 within 30 km. No coverage path today except seeding 2 sensors in El Nido town."
+  },
+  {
+    "place": "Puerto Princesa",
+    "source": "none",
+    "stationOrSensorIds": [],
+    "distanceKm": 145.6,
+    "kind": "community",
+    "trust": "n/a",
+    "notes": "Verified live 2026-09-30. AirGradient: 0 within 25 km, nearest 'Brooke's Point Municipal Hall' (ag:105205314) 145.6 km, same province but too far. Sensor.Community: 0 within 30 km. No coverage path today except seeding 2 sensors in Puerto Princesa city."
+  },
+  {
+    "place": "Siargao",
+    "source": "none",
+    "stationOrSensorIds": [],
+    "distanceKm": 299.3,
+    "kind": "community",
+    "trust": "n/a",
+    "notes": "Verified live 2026-09-30. AirGradient: 0 within 25 km, nearest is Davao's 'Illumina' (ag:16313337) 299.3 km. Sensor.Community: 0 within 30 km. No coverage path today except seeding 2 sensors in General Luna."
+  },
+  {
+    "place": "Coron",
+    "source": "none",
+    "stationOrSensorIds": [],
+    "distanceKm": 244.7,
+    "kind": "community",
+    "trust": "n/a",
+    "notes": "Verified live 2026-09-30. AirGradient: 0 within 25 km, nearest 'Tagaytay (Neogan)' (ag:66528479) 244.7 km. Sensor.Community: 0 within 30 km. No coverage path today except seeding 2 sensors in Coron town."
+  },
+  {
+    "place": "Panglao",
+    "source": "none",
+    "stationOrSensorIds": [],
+    "distanceKm": 149.4,
+    "kind": "community",
+    "trust": "n/a",
+    "notes": "Verified live 2026-09-30. AirGradient: 0 within 25 km, nearest 'Bacolod City Araneta-Hernaez Sts' (ag:98013176) 149.4 km. Sensor.Community: 0 within 30 km. No coverage path today except seeding 2 sensors on Panglao/Bohol."
+  },
+  {
+    "place": "Yangon",
+    "source": "AirGradient",
+    "stationOrSensorIds": ["ag:11907081", "ag-world:171532"],
+    "distanceKm": 4.1,
+    "kind": "community",
+    "trust": "medium (single sensor, now plausible; was previously suspect)",
+    "notes": "IMPORTANT CHANGE since the 2026-09-28 capture in cambodia-laos-myanmar.md: the sensor was then reading a flat 0.0 (flagged 'suspect'). Re-verified live today (2026-09-30): reading 11.4 ug/m3 corrected (22.5 raw pm02, RH 61), model O-1PST firmware 3.7.0, online=false-flag not set (i.e. online), 4.1 km from Yangon's picker point. 14-day hourly history: 176/168 expected buckets present (>=100%), only 2 zero-value hours out of 176 (~1%), plausible diurnal range 5.8-41.5 ug/m3 with a normal night-time rise (23.5->41.5 ug/m3 between 22:00-00:00 UTC on 29-30 Sep) -- this looks like a real, functioning outdoor sensor, not a fault, on today's evidence. Owner/network: unattributed on the map API (generic 'AirGradient' dataSource, no operator name found); DMH (moezala.gov.mm) loads (200) but still has no air-quality content, ECD (ecd.gov.mm) still fails to resolve, so there is nothing official to cross-check agreement against. Still only 1 live sensor in the whole country, so it fails HazeNow's 2-sensor 'community only' minimum on its own. One more outdoor AirGradient/Sensor.Community sensor within 10 km of this one (central Yangon) would unlock 'Community sensors only' status -- this is now the single closest-to-coverable place in Myanmar."
+  },
+  {
+    "place": "Mandalay",
+    "source": "none",
+    "stationOrSensorIds": [],
+    "distanceKm": null,
+    "kind": "community",
+    "trust": "n/a",
+    "notes": "Verified live 2026-09-30. AirGradient (Myanmar+Thailand bbox, 286 rows total): 0 sensors in Myanmar territory near Mandalay; nearest any-network points are Thai border-town school sensors ~372 km away (cross-border, out of scope). Sensor.Community country=MM: []. No 'Purple Mandalay' or school-network public feed was found (websearch budget for this session was exhausted before this lead could be run down via search; a direct PurpleAir map check requires a key we don't have, so a Mandalay PurpleAir cluster cannot be confirmed or ruled out -- flagged unverified, not confirmed absent). No coverage path today except seeding 2 sensors in Mandalay, or an ECD/DMH data agreement (ECD site unreachable, DMH has no AQ content)."
+  },
+  {
+    "place": "Dili",
+    "source": "none",
+    "stationOrSensorIds": [],
+    "distanceKm": null,
+    "kind": "community",
+    "trust": "n/a",
+    "notes": "Verified live 2026-09-30. AirGradient map API for a Timor-Leste bbox (124,-10.5 to 127.5,-8): 0 rows total -- zero AirGradient sensors anywhere in Timor-Leste, not just near Dili. Sensor.Community country=TL and an area query both returned []. No government air-quality site could be located (guessed domains for MetMG/SAAME/etc. all failed to resolve; this is not conclusive -- Timor-Leste's actual ministry domain was not identified, flagged unverified). No coverage path today except seeding 2 sensors in Dili; this is the least-instrumented of the three countries in this hunt."
+  }
+]

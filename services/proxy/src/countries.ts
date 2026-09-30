@@ -10,6 +10,7 @@ import {
   HANOI_ATTRIBUTION,
   KLH_ATTRIBUTION,
   NEA_ATTRIBUTION,
+  SC_ATTRIBUTION,
   SIPONGI_ATTRIBUTION,
   agMapObservations,
   agWorldObservations,
@@ -41,18 +42,21 @@ import { Rings } from "./rings.js";
 import { URLS } from "./sources.js";
 import { UpstreamError, type Got, type Upstreams } from "./upstream.js";
 
-export const SERVED: CountryCode[] = ["SG", "TH", "MY", "ID", "VN", "PH", "LA"];
+export const SERVED: CountryCode[] = ["SG", "TH", "MY", "ID", "VN", "PH", "LA", "KH"];
 export const ANCHOR_RADIUS_KM = 10;
 const HOUR = 3600_000;
 
+/** Crowd attribution: AirGradient (CC BY-SA 4.0) and the Sensor.Community rows its map carries (ODbL 1.0). */
+const CROWD = [AG_ATTRIBUTION, SC_ATTRIBUTION];
 export const ATTRIBUTION: Record<string, Attribution[]> = {
   SG: [NEA_ATTRIBUTION],
-  TH: [AIR4THAI_ATTRIBUTION],
-  MY: [DOE_ATTRIBUTION, AG_ATTRIBUTION],
-  ID: [BMKG_ATTRIBUTION, KLH_ATTRIBUTION, SIPONGI_ATTRIBUTION, AG_ATTRIBUTION],
-  VN: [HANOI_ATTRIBUTION, AG_ATTRIBUTION],
-  PH: [AG_ATTRIBUTION],
-  LA: [AG_ATTRIBUTION],
+  TH: [AIR4THAI_ATTRIBUTION, ...CROWD],
+  MY: [DOE_ATTRIBUTION, ...CROWD],
+  ID: [BMKG_ATTRIBUTION, KLH_ATTRIBUTION, SIPONGI_ATTRIBUTION, ...CROWD],
+  VN: [HANOI_ATTRIBUTION, ...CROWD],
+  PH: CROWD,
+  LA: CROWD,
+  KH: CROWD,
 };
 export const ALL_ATTRIBUTION: Attribution[] = [...new Map(Object.values(ATTRIBUTION).flat().map((a) => [a.id, a])).values()];
 
@@ -83,7 +87,7 @@ export class CountryService {
     }
   }
 
-  /* -------------------------------------------------------------- crowd (shared by MY, ID, VN, PH, LA) */
+  /* -------------------------------------------------------------- crowd (shared by TH, MY, ID, VN, PH, LA, KH) */
 
   private async crowdAll(warnings: string[]): Promise<Observation[]> {
     const now = this.clock();
@@ -103,8 +107,8 @@ export class CountryService {
 
   /**
    * ARCHITECTURE_V2 §3 bias correction against the jurisdiction's anchor (nearest official station ≤ 10 km):
-   * 1-hr anchors (ID BMKG, VN Hanoi) → median hourly ratio; MY → DOE implied 24-h PM2.5 vs the sensor's 24-h mean.
-   * No anchor (PH, LA) → uncalibrated (EPA correction only).
+   * 1-hr anchors (TH Air4Thai, ID BMKG, VN Hanoi) → median hourly ratio; MY → DOE implied 24-h PM2.5 vs the sensor's
+   * 24-h mean. No anchor (PH, LA, KH) → uncalibrated (EPA correction only).
    */
   calibrate(crowd: Observation[], anchors: Observation[], kind: "1h" | "24h" | "none"): Observation[] {
     const now = this.clock();
@@ -171,6 +175,8 @@ export class CountryService {
     let observations: Observation[] = [];
     let hotspots: { lat: number; lon: number }[] | undefined;
     const adapters: string[] = [];
+    /** Set when the country's official source(s) answered nothing: the set is then community sensors only. */
+    let officialUnavailable: string | undefined;
     const crowdFor = async (anchors: Observation[], kind: "1h" | "24h" | "none") => {
       const all = await this.crowdAll(warnings);
       if (all.length) adapters.push("crowd.airgradient");
@@ -190,7 +196,10 @@ export class CountryService {
           const hist = await this.tryGet<unknown>(warnings, "th.air4thai.history", air4thaiHistoryUrl(stations.map((s) => s.stationID), now));
           observations = air4thaiObservations(stations, hist ? parseAir4ThaiHistory(hist.data) : {});
           adapters.push("th.air4thai");
-        }
+        } else officialUnavailable = "PCD Air4Thai";
+        for (const o of observations) this.rings.recordOfficial(o, now);
+        // Community sensors (coverage-hunt/th.md, Pai): the builder uses them only where no PCD station is within 25 km.
+        observations = [...observations, ...(await crowdFor(observations, "1h"))];
         break;
       }
       case "MY": {
@@ -201,6 +210,7 @@ export class CountryService {
           this.prevMy = official;
           adapters.push("my.doe");
         } else official = mergeDoeUpdate(this.prevMy, [], now);
+        if (!official.length) officialUnavailable = "DOE Malaysia";
         for (const o of official) this.rings.recordOfficial(o, now);
         official = official.map((o) => this.rings.withHistory(o));
         observations = [...official, ...(await crowdFor(official, "24h"))];
@@ -218,6 +228,7 @@ export class CountryService {
         const k = ispu ? ispuObservations(ispu.data, now) : [];
         if (k.length) adapters.push("id.klh");
         const official = [...b, ...k];
+        if (!official.length) officialUnavailable = "BMKG and KLH";
         for (const o of official) this.rings.recordOfficial(o, now);
         const withHist = official.map((o) => this.rings.withHistory(o));
         if (sip) {
@@ -244,12 +255,14 @@ export class CountryService {
           if (o) official.push(o);
         }
         if (official.length) adapters.push("vn.hanoi");
+        else officialUnavailable = "Hanoi's monitoring centre";
         observations = [...official, ...(await crowdFor(official, "1h"))];
         for (const o of official) this.rings.recordOfficial(o, now);
         break;
       }
       case "PH":
-      case "LA": {
+      case "LA":
+      case "KH": {
         observations = await crowdFor([], "none");
         break;
       }
@@ -266,6 +279,7 @@ export class CountryService {
       attribution: ATTRIBUTION[cc],
       ...(hotspots ? { hotspots, hotspotSource: SIPONGI_ATTRIBUTION.text.replace(/^Hotspots: /, "") } : {}),
       ...(warnings.length ? { warnings } : {}),
+      ...(officialUnavailable ? { officialUnavailable } : {}),
     };
   }
 }

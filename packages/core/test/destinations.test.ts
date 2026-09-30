@@ -57,9 +57,18 @@ const bmkg29 = bmkgObservations(readFileSync(FX + "id-bmkg-pm25-2026-09-29T01WIB
 const ispu29 = ispuObservations(json("id-klh-ispu-2026-09-29T01WIB.json"), CAP);
 const crowd29 = crowdQc(agMapObservations(json("ag-map-sea-2026-09-28T1806Z.json")), CAP).filter(usableCrowd);
 
-const OFFICIAL: Partial<Record<CountryCode, Observation[]>> = { TH: th29, MY: doeAll, ID: [...bmkg29, ...ispu29] };
-/** Countries whose feed carries community sensors (services/proxy SERVED minus direct-only TH/SG). */
-const CROWD_FEED: CountryCode[] = ["MY", "ID", "VN", "PH", "LA"];
+/**
+ * Outages found by the 2026-09-30 coverage hunt (coverage-hunt/id.md): KLH ISPU Badung Sempidi has had no data since
+ * 29 Sep 10:00 WITA, so the builder's offline rule (> 24 h) drops it. The 29 Sep capture predates the outage.
+ */
+const OFFLINE_30SEP = new Set(["id.klh:KABUPATEN_BADUNG"]);
+const OFFICIAL: Partial<Record<CountryCode, Observation[]>> = {
+  TH: th29,
+  MY: doeAll,
+  ID: [...bmkg29, ...ispu29].filter((o) => !OFFLINE_30SEP.has(o.stationId)),
+};
+/** Countries whose feed carries community sensors (services/proxy SERVED minus SG; TH's comes through the proxy too). */
+const CROWD_FEED: CountryCode[] = ["TH", "MY", "ID", "VN", "PH", "LA", "KH"];
 
 const within = (p: CityPlace, list: Observation[], km: number) => list.filter((o) => haversineKm(p, o) <= km);
 const reported24h = (o: Observation) =>
@@ -70,8 +79,7 @@ const reported24h = (o: Observation) =>
 function derive(p: CityPlace): string {
   const off = within(p, (OFFICIAL[p.country] ?? []).filter(reported24h), DESTINATION_RADIUS_KM);
   const crowd = within(p, crowd29.filter((o) => o.country === p.country), 10);
-  if (p.country === "TH") return off.length ? "Live now (direct)" : "Not available yet";
-  if (p.country === "KH") return "Not available yet";
+  if (p.country === "TH" && off.length) return "Live now (direct)";
   if (off.length) return "Needs proxy";
   if (crowd.length >= 2 && CROWD_FEED.includes(p.country)) return "Community sensors only";
   return "Not available yet";
@@ -91,11 +99,11 @@ function coverageTable(): Map<string, string> {
 const popular = PLACES.filter((p) => p.popular);
 
 describe("destinations: catalogue", () => {
-  test("52 new destinations, 74 in the Popular subgroup; the 45 cities are unchanged", () => {
+  test("52 new destinations, 74 in the Popular subgroup; 46 cities (Pangkalan Bun added 30 Sep)", () => {
     expect(DESTINATIONS.length).toBe(52);
     expect(popular.length).toBe(74);
-    expect(CITIES.length).toBe(45);
-    expect(PLACES.length).toBe(45 + 52);
+    expect(CITIES.length).toBe(46);
+    expect(PLACES.length).toBe(46 + 52);
   });
 
   test("the founder's list is all there", () => {
@@ -226,9 +234,9 @@ describe("destinations: status follows COVERAGE.md and the live capture", () => 
 
   test("available destinations build a snapshot from their own country only, never beyond the radius", () => {
     const sets: Partial<Record<CountryCode, ObservationSet>> = {
-      TH: { country: "TH", adapters: [], fetchedAt: "", observations: th29, attribution: [AIR4THAI_ATTRIBUTION] },
+      TH: { country: "TH", adapters: [], fetchedAt: "", observations: [...th29, ...crowd29], attribution: [AIR4THAI_ATTRIBUTION] },
     };
-    const all = { MY: [...doe29, ...crowd29], ID: [...bmkg29, ...ispu29, ...crowd29], VN: crowd29, PH: crowd29, LA: crowd29 } as const;
+    const all = { MY: [...doe29, ...crowd29], ID: [...bmkg29, ...ispu29, ...crowd29], VN: crowd29, PH: crowd29, LA: crowd29, KH: crowd29 } as const;
     for (const [cc, obs] of Object.entries(all)) {
       sets[cc as CountryCode] = { country: cc as CountryCode, adapters: [], fetchedAt: "", observations: [...obs], attribution: [] };
     }

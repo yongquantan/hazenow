@@ -1,6 +1,6 @@
 /**
  * Per-country registry: status, sources, time zone, language, default place, chip scale.
- * Status follows docs/sea/COVERAGE.md (verified live 2026-09-28).
+ * Status follows docs/sea/COVERAGE.md (verified live 2026-09-28; coverage hunt 2026-09-30).
  */
 import { CHIP_SCALE } from "./scales.js";
 import type { CountryCode, CoverageStatus } from "./types.js";
@@ -27,7 +27,7 @@ export const COUNTRIES: Record<CountryCode, CountryInfo> = {
   SG: C({ code: "SG", name: "Singapore", utcOffset: 8, languages: ["en", "zh", "ms", "ta"], status: "live_direct", adapters: ["sg.nea"],
     defaultPlace: { name: "Singapore", lat: 1.35735, lon: 103.82 }, nowNumber: "NEA 1-hr PM2.5 (5 regions)" }),
   TH: C({ code: "TH", name: "Thailand", utcOffset: 7, languages: ["th", "en"], status: "live_direct", adapters: ["th.air4thai"],
-    defaultPlace: { name: "Bangkok", lat: 13.7563, lon: 100.5018 }, nowNumber: "PCD Air4Thai 1-hr PM2.5 (173 stations incl. 68 BMA)" }),
+    defaultPlace: { name: "Bangkok", lat: 13.7563, lon: 100.5018 }, nowNumber: "PCD Air4Thai 1-hr PM2.5 (173 stations incl. 68 BMA); community sensors (via the proxy) only where no PCD station is within 25 km, e.g. Pai" }),
   MY: C({ code: "MY", name: "Malaysia", utcOffset: 8, languages: ["ms", "en"], status: "needs_proxy", adapters: ["my.proxy"],
     defaultPlace: { name: "Kuala Lumpur", lat: 3.139, lon: 101.6869 }, nowNumber: "No official 1-hr PM2.5; AirGradient estimate where sensors exist, DOE API (24-hr based) as the band" }),
   ID: C({ code: "ID", name: "Indonesia", utcOffset: 7, languages: ["id", "en"], status: "needs_proxy", adapters: ["id.proxy"],
@@ -38,8 +38,8 @@ export const COUNTRIES: Record<CountryCode, CountryInfo> = {
     defaultPlace: { name: "Metro Manila", lat: 14.5995, lon: 120.9842 }, nowNumber: "Community sensors only (AirGradient), DENR DAO 2020-14 categories" }),
   LA: C({ code: "LA", name: "Laos", utcOffset: 7, languages: ["lo", "th", "en"], status: "needs_proxy", adapters: ["la.proxy"],
     defaultPlace: { name: "Vientiane", lat: 17.9757, lon: 102.6331 }, nowNumber: "Community sensors only (AirGradient / UNICEF schools); no national scale" }),
-  KH: C({ code: "KH", name: "Cambodia", utcOffset: 7, languages: ["km", "en"], status: "not_feasible", adapters: [],
-    defaultPlace: { name: "Phnom Penh", lat: 11.5564, lon: 104.9282 }, nowNumber: "None (2–4 community sensors, no government feed)" }),
+  KH: C({ code: "KH", name: "Cambodia", utcOffset: 7, languages: ["km", "en"], status: "needs_proxy", adapters: ["kh.proxy"],
+    defaultPlace: { name: "Siem Reap", lat: 13.3671, lon: 103.8448 }, nowNumber: "Community sensors only (AirGradient + Sensor.Community, Siem Reap); no government feed, no national scale" }),
   MM: C({ code: "MM", name: "Myanmar", utcOffset: 6.5, languages: ["my", "en"], status: "not_feasible", adapters: [],
     defaultPlace: { name: "Yangon", lat: 16.8409, lon: 96.1735 }, nowNumber: "None (1 suspect sensor, no government feed)" }),
   BN: C({ code: "BN", name: "Brunei", utcOffset: 8, languages: ["ms", "en"], status: "not_feasible", adapters: [],

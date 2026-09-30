@@ -9,7 +9,10 @@
  *      ratio IQR ≤ 0.5, k in [0.5, 2.0] (outside → drop the sensor).
  *    - 24-h anchor (MY DOE, inverted API): anchor 24-h mean / sensor 24-h mean over ≥18 hourly buckets (malaysia.md).
  *    - No anchor (PH, LA, KH): k = null, "uncalibrated"; the value is shown as an estimate with a wider range.
- * 3. QC: indoor, stale (> 15 min), zero-with-busy-neighbours, > 3× neighbour median.
+ * 3. QC: indoor, stale (> 15 min), zero-with-busy-neighbours, and the cluster outlier rule: a sensor more than 3× the
+ *    median of its cluster (the sensors within 10 km, itself included) is dropped when the cluster has at least 4
+ *    sensors and the sensor is at least 10 µg/m³ above that median (a noise floor, so clean-air jitter near zero is
+ *    never flagged). Generic: it is what drops Pai's NT/TOT unit (23.8 vs a median of 6.8, coverage-hunt/th.md).
  */
 import { haversineKm } from "../math.js";
 import type { Observation } from "./types.js";
@@ -69,6 +72,11 @@ export function biasFactor24h(anchor24h: number | null, sensorHourly: readonly n
 }
 
 export const CROWD_MAX_AGE_MIN = 15;
+/** Cluster outlier rule (see header, step 3). */
+export const OUTLIER_CLUSTER_KM = 10;
+export const OUTLIER_MIN_CLUSTER = 4;
+export const OUTLIER_FACTOR = 3;
+export const OUTLIER_FLOOR = 10;
 
 /**
  * QC flags for a list of crowd observations (mutates copies, returns them). Only `qc: "ok"` / "uncalibrated"
@@ -81,17 +89,28 @@ export function crowdQc(obs: readonly Observation[], now: number): Observation[]
     else if ((now - Date.parse(o.periodEnd)) / 60_000 > CROWD_MAX_AGE_MIN) o.qc = "stale";
   }
   const live = out.filter((o) => o.qc !== "indoor" && o.qc !== "stale" && o.qc !== "erratic");
+  const val = (o: Observation) => o.pm25_now ?? o.pm25_1h;
   for (const o of live) {
-    const v = o.pm25_now ?? o.pm25_1h;
+    const v = val(o);
     if (v === null || v === undefined) continue;
     const neigh = live
-      .filter((n) => n !== o && haversineKm(o, n) <= 10)
-      .map((n) => n.pm25_now ?? n.pm25_1h)
+      .filter((n) => n !== o && haversineKm(o, n) <= OUTLIER_CLUSTER_KM)
+      .map(val)
       .filter((x): x is number => typeof x === "number")
       .sort((a, b) => a - b);
+    // Cluster rule: ≥ 4 sensors (itself included), > 3× the cluster median and ≥ 10 µg/m³ above it.
+    const cluster = [...neigh, v].sort((a, b) => a - b);
+    if (cluster.length >= OUTLIER_MIN_CLUSTER) {
+      const cm = quantile(cluster, 0.5);
+      if (v > OUTLIER_FACTOR * cm && v - cm >= OUTLIER_FLOOR) {
+        o.qc = "outlier";
+        continue;
+      }
+    }
     if (neigh.length < 2) continue;
     const med = quantile(neigh, 0.5);
-    if ((v === 0 && med > 5) || (med > 5 && v > 3 * med) || (v > 15 && v * 3 < med)) o.qc = "outlier";
+    // Stuck at zero while the neighbours are busy, or far below them.
+    if ((v === 0 && med > 5) || (v > 15 && v * 3 < med)) o.qc = "outlier";
   }
   return out;
 }

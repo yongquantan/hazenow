@@ -242,7 +242,7 @@ object ShareCards {
         Band.VERY_HIGH -> "Minimise all outdoor activity." to "Avoid all outdoor activity."
     }
 
-    private fun trendWord(s: Snapshot) = Experience.trend(s.history, s.trend.delta).a11y
+    private fun trendWord(s: Snapshot) = Experience.trend(s.history).a11y
 
     /** "Elevated, and rising." / "Normal right now." */
     fun nowHeadline(s: Snapshot): String {
@@ -252,7 +252,7 @@ object ShareCards {
 
     /** "up 36 in 2 hours" / "steady over the last hour" / "" */
     fun trendDetail(s: Snapshot): String {
-        val t = Experience.trend(s.history, s.trend.delta)
+        val t = Experience.trend(s.history)
         if (t.a11y == null) return ""
         val i = t.words.indexOf(": ")
         return (if (i >= 0) t.words.substring(i + 2) else t.words).replaceFirst(Regex("^Steady"), "steady")

@@ -16,6 +16,9 @@
  *  4. Chip: the jurisdiction's scale (scales.ts). basis "pm25_1h" classifies the big number; "official_index"
  *     classifies the published index. No scale → no chip, no level.
  *  5. Stale: observedAt older than 2 h 15 min. Stations older than that are dropped while fresher ones exist.
+ *  0. Quality screens first (quality.ts): a station offline for more than 24 h, or with an implausible reading
+ *     (outside 0–1000 µg/m³, or a rise of more than 400 in an hour), is left out entirely. Notes "offline_dropped"
+ *     (a reference station ≤ 25 km that would have been the nearest) and "implausible_dropped" (any station ≤ 60 km) let the client say so calmly.
  *  6. query.withinKm (catalogue destinations): nothing beyond that radius is used for the number, the index row or the
  *     stations list, and freshness is judged inside it (a stale station next door beats a fresh one 60 km away).
  */
@@ -23,10 +26,12 @@ import { STALE_AFTER_MS } from "../constants.js";
 import { haversineKm, isValidReading, roundHalfUp, trend } from "../math.js";
 import type { HistoryPoint, LatLon, RegionReading } from "../types.js";
 import { usableCrowd } from "./crowd.js";
+import { screenObservations } from "./quality.js";
 import { msToIso } from "./time.js";
 import { COUNTRIES } from "./registry.js";
 import { CHIP_SCALE, classifyIndex, classifyPm25, getScale, levelBand, toLocalBand, whoMultiple } from "./scales.js";
 import type {
+  CountryCode,
   CountryQuery,
   CountrySnapshot,
   HotspotContext,
@@ -43,6 +48,14 @@ export const CROWD_RADIUS_KM = 10;
 export const SNAP_KM = 0.5;
 export const HOTSPOT_RADIUS_KM = 100;
 const HOUR = 3600_000;
+
+/** The official source failed and nothing else is in range: show the last cached reading, or a calm "can't reach" state. */
+export class OfficialUnavailableError extends Error {
+  constructor(public country: CountryCode, public source: string) {
+    super(`${source} isn't responding and no community sensor is in range`);
+    this.name = "OfficialUnavailableError";
+  }
+}
 
 export class NoCountryDataError extends Error {
   constructor(message = "No usable observations for this location") {
@@ -119,8 +132,11 @@ export function buildCountrySnapshot(set: ObservationSet, query: CountryQuery = 
   const cc = set.country;
   const meta = COUNTRIES[cc];
   const notes: string[] = [];
-  const obs = set.observations.filter((o) => o.country === cc);
-  if (obs.length !== set.observations.length) notes.push("other_country_dropped");
+  if (set.officialUnavailable) notes.push("official_unavailable");
+  const own = set.observations.filter((o) => o.country === cc);
+  if (own.length !== set.observations.length) notes.push("other_country_dropped");
+  const screened = screenObservations(own, t);
+  const obs = screened.kept;
 
   // Where are we?
   let point: LatLon;
@@ -136,6 +152,11 @@ export function buildCountrySnapshot(set: ObservationSet, query: CountryQuery = 
     locationMode = "region";
     notes.push("default_place");
   }
+
+  // Only worth saying when the silent station would have been the nearest one (Bangkok has 78: one silent isn't news).
+  const nearestKept = Math.min(Infinity, ...obs.filter((o) => o.grade === "reference").map((o) => haversineKm(point, o)));
+  if (screened.offline.some((o) => o.grade === "reference" && haversineKm(point, o) <= Math.min(OFFICIAL_PREFERRED_KM, nearestKept))) notes.push("offline_dropped");
+  if (screened.implausible.some((o) => haversineKm(point, o) <= OFFICIAL_MAX_KM)) notes.push("implausible_dropped");
 
   const ranked = (list: Observation[]): Ranked[] =>
     list.map((o) => ({ o, d: haversineKm(point, o) })).sort((a, b) => a.d - b.d || a.o.stationId.localeCompare(b.o.stationId));
@@ -195,6 +216,7 @@ export function buildCountrySnapshot(set: ObservationSet, query: CountryQuery = 
     publishedAt = newest.o.publishedAt ?? observedAt;
   } else {
     const any = ranked(preferFresh(near(obs)))[0] ?? ranked(preferFresh(obs))[0];
+    if (!any && set.officialUnavailable) throw new OfficialUnavailableError(cc, set.officialUnavailable);
     if (!any) throw new NoCountryDataError(`No observations for ${cc}`);
     observedAt = any.o.periodEnd;
     publishedAt = any.o.publishedAt ?? observedAt;
@@ -208,6 +230,8 @@ export function buildCountrySnapshot(set: ObservationSet, query: CountryQuery = 
   else if (withIndex[0] && withIndex[0].d <= OFFICIAL_MAX_KM) officialStation = withIndex[0];
   else if (withIndex[0]) notes.push("official_far");
   if (officialStation) official = officialStation.o.official ?? null;
+  // Official source down and nothing honest to show here: the client falls back to its cache (never a far sensor).
+  if (kind === null && !officialStation && set.officialUnavailable) throw new OfficialUnavailableError(cc, set.officialUnavailable);
   if (officialStation && kind === null) {
     observedAt = officialStation.o.periodEnd;
     publishedAt = officialStation.o.publishedAt ?? observedAt;
@@ -234,7 +258,17 @@ export function buildCountrySnapshot(set: ObservationSet, query: CountryQuery = 
         bandBasis = "official_index";
       }
     }
+    // A community estimate with no official index to band it (Pai, Bangkok while Air4Thai is down): the authority's
+    // category for the estimate, so the headline can still answer "is it OK to be out?" (flagged, shown as an estimate).
+    if (!localBand && kind === "crowd_estimate" && pm25 !== null) {
+      const b = classifyPm25(scaleId, pm25);
+      if (b) {
+        localBand = toLocalBand(scaleId, b);
+        bandBasis = "pm25_1h";
+      }
+    }
   }
+  const bandFromEstimate = !!localBand && bandBasis === "pm25_1h" && kind === "crowd_estimate";
   const level = localBand?.level ?? null;
 
   // History at the spot (same stations, same method), plus the authority's 24-h line where it exists.
@@ -312,6 +346,7 @@ export function buildCountrySnapshot(set: ObservationSet, query: CountryQuery = 
     level,
     localBand,
     bandBasis,
+    bandFromEstimate,
     official,
     pm25Kind: kind,
     pm25_24h,

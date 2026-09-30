@@ -2,7 +2,7 @@
  * Place catalogue for the country picker (docs/sea/COVERAGE.md).
  * - CITIES: the major cities, verified 2026-09-28.
  * - DESTINATIONS: popular tourist, weekend-trip and expat places, verified live 2026-09-29 (COVERAGE.md "Popular
- *   destinations"). A destination is only available when an official station is within 25 km or community sensors
+ *   destinations"), updated from the 2026-09-30 coverage hunt (docs/sea/coverage-hunt/). A destination is only available when an official station is within 25 km or community sensors
  *   are within 10 km, in the same country. Nothing farther is stretched to cover it (`withinKm`), and a far place says
  *   "Not available yet" with what would fix it.
  * Each place carries its coverage status; blocked places carry a plain-language reason for a calm "Not available yet"
@@ -31,6 +31,11 @@ export interface CityPlace {
   crowdOnly?: boolean;
   /** For a place that isn't available yet: what would fix it ("Two community sensors in Tanah Rata"). */
   fix?: string;
+  /**
+   * One calm line about this place's data, shown under the reading: a caveat ("the nearest PCD station is 50 km away")
+   * or a known source we can't show yet ("university sensors exist here").
+   */
+  note?: string;
 }
 
 interface Extra {
@@ -39,6 +44,7 @@ interface Extra {
   region?: string;
   crowdOnly?: boolean;
   fix?: string;
+  note?: string;
 }
 
 export const slugOf = (name: string) =>
@@ -51,6 +57,7 @@ const P = (country: CountryCode, name: string, lat: number, lon: number, status:
   if (extra.region) c.region = extra.region;
   if (extra.crowdOnly) c.crowdOnly = true;
   if (extra.fix) c.fix = extra.fix;
+  if (extra.note) c.note = extra.note;
   return c;
 };
 
@@ -88,18 +95,29 @@ export const CITIES: readonly CityPlace[] = [
   P("MY", "Kota Kinabalu", 5.9804, 116.0735, "needs_proxy", undefined, { popular: true, aliases: ["KK"], region: "Sabah" }),
 
   P("ID", "Jakarta", -6.2088, 106.8456, "needs_proxy"),
-  P("ID", "Surabaya", -7.2575, 112.7521, "needs_proxy"),
-  P("ID", "Bandung", -6.9175, 107.6191, "needs_proxy", undefined, { popular: true }),
+  P("ID", "Surabaya", -7.2575, 112.7521, "needs_proxy", undefined, {
+    note: "Community sensors run by ITS (Institut Teknologi Sepuluh Nopember) and others exist in Surabaya, but they're only published through IQAir, which we can't show. We're asking ITS directly.",
+  }),
+  P("ID", "Bandung", -6.9175, 107.6191, "needs_proxy", undefined, {
+    popular: true,
+    note: "Community sensors exist in Bandung, including one at ITB's campus, but they're only published through IQAir, which we can't show. We're asking ITB directly.",
+  }),
   P("ID", "Medan", 3.5952, 98.6722, "needs_proxy"),
   P("ID", "Palembang", -2.9761, 104.7754, "needs_proxy"),
   P("ID", "Jambi", -1.6101, 103.6131, "needs_proxy"),
   P("ID", "Pekanbaru", 0.5071, 101.4478, "needs_proxy"),
   P("ID", "Pontianak", -0.0263, 109.3425, "needs_proxy"),
   P("ID", "Palangka Raya", -2.2161, 113.9135, "needs_proxy"),
-  P("ID", "Balikpapan", -1.2379, 116.8529, "needs_proxy"),
+  // BMKG hourly station "Pangkalanbun" (pm25_pkn2), in the existing BMKG feed since 29 Sep 2026 (coverage-hunt/id.md).
+  P("ID", "Pangkalan Bun", -2.6848, 111.6219, "needs_proxy", undefined, { aliases: ["Pangkalanbun", "Kotawaringin Barat"], region: "Central Kalimantan" }),
+  P("ID", "Balikpapan", -1.2379, 116.8529, "needs_proxy", undefined, {
+    note: "Two community sensors run by Nafas are within 8 km of Balikpapan. We'll show them once Nafas confirms we may, until then it's ISPU's 24-hr index only.",
+  }),
   P("ID", "Samarinda", -0.5022, 117.1536, "needs_proxy"),
   P("ID", "Makassar", -5.1477, 119.4327, "needs_proxy"),
-  P("ID", "Denpasar", -8.6705, 115.2126, "needs_proxy", undefined, { popular: true, aliases: ["Bali"], region: "Bali" }),
+  // Bali's only official monitor (ISPU Badung Sempidi) is offline since 29 Sep 2026 10:00 WITA (coverage-hunt/id.md), so
+  // Bali shows community sensors only until it's back (the builder drops a station silent for > 24 h on its own).
+  P("ID", "Denpasar", -8.6705, 115.2126, "needs_proxy", undefined, { popular: true, crowdOnly: true, aliases: ["Bali"], region: "Bali" }),
   P("ID", "Batam", 1.0456, 104.0305, "needs_proxy", undefined, { popular: true, aliases: ["Nongsa", "Batam Centre"], region: "Riau Islands" }),
 
   P("VN", "Hanoi", 21.0285, 105.8542, "needs_proxy", undefined, { popular: true, aliases: ["Ha Noi"] }),
@@ -116,10 +134,10 @@ export const CITIES: readonly CityPlace[] = [
   P("LA", "Luang Prabang", 19.8856, 102.1347, "needs_proxy", undefined, { popular: true, crowdOnly: true, aliases: ["Luang Phrabang"] }),
 
   P("KH", "Phnom Penh", 11.5564, 104.9282, "not_feasible",
-    "Cambodia doesn't publish live air-quality readings yet, and there are only a couple of community sensors, too far out to estimate the city."),
-  P("KH", "Siem Reap", 13.3671, 103.8448, "not_feasible",
-    "Cambodia doesn't publish live air-quality readings yet, and one community sensor isn't enough for an honest estimate.",
-    { popular: true, aliases: ["Angkor", "Angkor Wat"], fix: "One more community sensor in Siem Reap, and a way to read Cambodia's sensors (HazeNow has no Cambodia feed yet)." }),
+    "Cambodia doesn't publish live air-quality readings yet, and the two community sensors near Phnom Penh are 14 km from the centre, too far out to estimate the city.",
+    { fix: "One community sensor within 10 km of the centre (two sit 14 km south, near ITC)." }),
+  // Two networks agree here: AirGradient "Mondul 2" 1.6 km and Sensor.Community 2.7 km (coverage-hunt/vn-kh-la.md).
+  P("KH", "Siem Reap", 13.3671, 103.8448, "needs_proxy", undefined, { popular: true, crowdOnly: true, aliases: ["Angkor", "Angkor Wat"] }),
   P("MM", "Yangon", 16.8409, 96.1735, "not_feasible",
     "Myanmar has no public air-quality feed, and the only community sensor nearby reads zero, which looks faulty."),
   P("MM", "Mandalay", 21.9588, 96.0891, "not_feasible", "Myanmar has no public air-quality feed, and there are no community sensors here."),
@@ -141,15 +159,19 @@ const TH_FAR = (km: number, station: string) =>
  * Distances in the reasons are from the point given here.
  */
 export const DESTINATIONS: readonly CityPlace[] = [
-  // Indonesia · Bali (AirGradient community sensors + KLH ISPU Badung Sempidi; no BMKG 1-hr station on Bali)
-  D("ID", "Canggu", -8.6478, 115.1385, "needs_proxy", { region: "Bali", aliases: ["Bali", "Pererenan", "Berawa", "Echo Beach"] }),
-  D("ID", "Seminyak", -8.6913, 115.1683, "needs_proxy", { region: "Bali", aliases: ["Bali", "Kerobokan", "Umalas", "Petitenget"] }),
-  D("ID", "Kuta", -8.718, 115.1686, "needs_proxy", { region: "Bali", aliases: ["Bali", "Legian", "Tuban"] }),
-  D("ID", "Sanur", -8.6878, 115.262, "needs_proxy", { region: "Bali", aliases: ["Bali"] }),
-  D("ID", "Ubud", -8.5069, 115.2625, "needs_proxy", { region: "Bali", aliases: ["Bali"] }),
-  D("ID", "Jimbaran", -8.7907, 115.16, "needs_proxy", { region: "Bali", aliases: ["Bali"] }),
-  D("ID", "Nusa Dua", -8.8008, 115.2317, "needs_proxy", {
-    region: "Bali", aliases: ["Bali", "Tanjung Benoa"], fix: "One community sensor in Nusa Dua would add an hourly number (today it gets ISPU's 24-hr index only).",
+  // Indonesia · Bali (AirGradient community sensors + KLH ISPU Badung Sempidi; no BMKG 1-hr station on Bali).
+  // `crowdOnly` while Sempidi is offline (see Denpasar); drop it again when Sempidi reports.
+  D("ID", "Canggu", -8.6478, 115.1385, "needs_proxy", { region: "Bali", crowdOnly: true, aliases: ["Bali", "Pererenan", "Berawa", "Echo Beach"] }),
+  D("ID", "Seminyak", -8.6913, 115.1683, "needs_proxy", { region: "Bali", crowdOnly: true, aliases: ["Bali", "Kerobokan", "Umalas", "Petitenget"] }),
+  D("ID", "Kuta", -8.718, 115.1686, "needs_proxy", { region: "Bali", crowdOnly: true, aliases: ["Bali", "Legian", "Tuban"] }),
+  D("ID", "Sanur", -8.6878, 115.262, "needs_proxy", { region: "Bali", crowdOnly: true, aliases: ["Bali"] }),
+  D("ID", "Ubud", -8.5069, 115.2625, "needs_proxy", { region: "Bali", crowdOnly: true, aliases: ["Bali"] }),
+  D("ID", "Jimbaran", -8.7907, 115.16, "needs_proxy", { region: "Bali", crowdOnly: true, aliases: ["Bali"] }),
+  // Offline since 29 Sep 2026 10:00 WITA (coverage-hunt/id.md). The builder also drops any station silent > 24 h.
+  D("ID", "Nusa Dua", -8.8008, 115.2317, "not_feasible", {
+    region: "Bali", aliases: ["Bali", "Tanjung Benoa"],
+    ...far("Nusa Dua's only official monitor, ISPU Badung (Sempidi), has been offline since 29 Sep, and the nearest community sensor is 10.4 km away, just past the 10 km we trust.",
+      "Sempidi coming back online, or one community sensor in Nusa Dua."),
   }),
   D("ID", "Uluwatu", -8.8291, 115.0849, "needs_proxy", { region: "Bali", crowdOnly: true, aliases: ["Bali", "Bingin", "Padang Padang", "Pecatu"] }),
   D("ID", "Bintan", 1.183, 104.348, "not_feasible", {
@@ -186,10 +208,10 @@ export const DESTINATIONS: readonly CityPlace[] = [
   // Malaysia (DOE APIMS: 24-hr based API, no 1-hr PM2.5)
   D("MY", "Batu Ferringhi", 5.471, 100.246, "needs_proxy", { region: "Penang", aliases: ["Penang"] }),
   D("MY", "Langkawi", 6.35, 99.8, "needs_proxy", { aliases: ["Pantai Cenang", "Kuah"] }),
-  D("MY", "Cameron Highlands", 4.47, 101.377, "not_feasible", {
+  D("MY", "Cameron Highlands", 4.47, 101.377, "needs_permission", {
     aliases: ["Cameron", "Tanah Rata", "Brinchang"],
-    ...far("The nearest DOE station is in Ipoh, 34 km away and 1,400 m lower, so it can't stand for the highlands. There are no community sensors here yet.",
-      "Two community sensors in Tanah Rata."),
+    ...far("Malaysia's weather service (MET Malaysia) measures PM2.5 every hour in Cameron Highlands, but only publishes it as a week-old chart. We need MET Malaysia's permission for a live feed. DOE's nearest station is in Ipoh, 34 km away and 1,400 m lower.",
+      "A live feed from MET Malaysia's Cameron Highlands monitor (or two community sensors in Tanah Rata)."),
   }),
   D("MY", "Genting Highlands", 3.4236, 101.7932, "not_feasible", {
     aliases: ["Genting", "Resorts World Genting"],
@@ -202,34 +224,35 @@ export const DESTINATIONS: readonly CityPlace[] = [
   }),
   D("MY", "Port Dickson", 2.5225, 101.7963, "needs_proxy", { aliases: ["PD"] }),
 
-  // Thailand (PCD Air4Thai, direct. HazeNow's Thai feed is official stations only)
+  // Thailand (PCD Air4Thai, direct; community sensors through the proxy, only where no PCD station is within 25 km)
   D("TH", "Patong", 7.8961, 98.2966, "live_direct", { region: "Phuket", aliases: ["Phuket", "Kata", "Karon"] }),
   D("TH", "Krabi", 8.0863, 98.9063, "live_direct", { aliases: ["Krabi Town"] }),
   D("TH", "Ao Nang", 8.0321, 98.8229, "live_direct", { region: "Krabi", aliases: ["Krabi", "Railay"] }),
   D("TH", "Koh Phi Phi", 7.7407, 98.7784, "not_feasible", {
-    region: "Krabi", aliases: ["Ko Phi Phi", "Phi Phi"], ...far(TH_FAR(38, "in Krabi town"), "A PCD station on Phi Phi Don (or community sensors, once HazeNow's Thai feed reads them)."),
+    region: "Krabi", aliases: ["Ko Phi Phi", "Phi Phi"], ...far(TH_FAR(38, "in Krabi town"), "A PCD station on Phi Phi Don (or two community sensors within 10 km)."),
   }),
   D("TH", "Koh Lanta", 7.625, 99.079, "not_feasible", {
-    region: "Krabi", aliases: ["Ko Lanta", "Lanta"], ...far(TH_FAR(51, "in Krabi town"), "A PCD station on Koh Lanta (or community sensors, once HazeNow's Thai feed reads them)."),
+    region: "Krabi", aliases: ["Ko Lanta", "Lanta"], ...far(TH_FAR(51, "in Krabi town"), "A PCD station on Koh Lanta (or two community sensors within 10 km)."),
   }),
   D("TH", "Koh Samui", 9.53, 100.06, "not_feasible", {
-    aliases: ["Ko Samui", "Samui", "Chaweng", "Lamai"], ...far(TH_FAR(92, "in Surat Thani"), "A PCD station on Samui (or community sensors, once HazeNow's Thai feed reads them)."),
+    aliases: ["Ko Samui", "Samui", "Chaweng", "Lamai"], ...far(TH_FAR(92, "in Surat Thani"), "A PCD station on Samui (or two community sensors within 10 km)."),
   }),
   D("TH", "Koh Phangan", 9.738, 100.013, "not_feasible", {
-    aliases: ["Ko Phangan", "Ko Pha-ngan", "Phangan"], ...far(TH_FAR(102, "in Surat Thani"), "A PCD station on Koh Phangan (or community sensors, once HazeNow's Thai feed reads them)."),
+    aliases: ["Ko Phangan", "Ko Pha-ngan", "Phangan"], ...far(TH_FAR(102, "in Surat Thani"), "A PCD station on Koh Phangan (or two community sensors within 10 km)."),
   }),
   D("TH", "Koh Tao", 10.0956, 99.8404, "not_feasible", {
-    aliases: ["Ko Tao"], ...far(TH_FAR(84, "in Chumphon"), "A PCD station on Koh Tao (or community sensors, once HazeNow's Thai feed reads them)."),
+    aliases: ["Ko Tao"], ...far(TH_FAR(84, "in Chumphon"), "A PCD station on Koh Tao (or two community sensors within 10 km)."),
   }),
   D("TH", "Hua Hin", 12.5684, 99.9577, "live_direct"),
-  D("TH", "Pai", 19.3587, 98.44, "not_feasible", {
-    ...far("Pai has about 20 community sensors, but HazeNow only reads PCD's official stations in Thailand today, and the nearest is in Mae Hong Son, 50 km away.",
-      "Adding community sensors to HazeNow's Thai feed (through our server) would cover Pai."),
+  // ~20 AirGradient sensors within 10 km, no PCD station within 25 km (coverage-hunt/th.md).
+  D("TH", "Pai", 19.3587, 98.44, "needs_proxy", {
+    crowdOnly: true,
+    note: "Pai's nearest PCD station is in Mae Hong Son, 50 km away over the mountains, so these sensors can't be checked against an official reading.",
   }),
   D("TH", "Ayutthaya", 14.3532, 100.5689, "live_direct"),
   D("TH", "Kanchanaburi", 14.0228, 99.5328, "live_direct"),
   D("TH", "Koh Chang", 12.05, 102.33, "not_feasible", {
-    aliases: ["Ko Chang"], ...far(TH_FAR(29, "in Trat"), "A PCD station on Koh Chang (or community sensors, once HazeNow's Thai feed reads them)."),
+    aliases: ["Ko Chang"], ...far(TH_FAR(29, "in Trat"), "A PCD station on Koh Chang (or two community sensors within 10 km)."),
   }),
 
   // Vietnam (CEM CAPTCHA-walled; AirGradient only)
@@ -253,9 +276,9 @@ export const DESTINATIONS: readonly CityPlace[] = [
   D("PH", "Siargao", 9.7836, 126.1569, "not_feasible", { aliases: ["General Luna", "Cloud 9"], ...far(PH_NONE("Siargao"), "Two community sensors in General Luna.") }),
   D("PH", "Panglao", 9.58, 123.75, "not_feasible", { region: "Bohol", aliases: ["Bohol", "Alona Beach"], ...far(PH_NONE("Bohol"), "Two community sensors on Panglao.") }),
 
-  // Cambodia (no feed) and Laos (AirGradient / UNICEF schools)
-  D("KH", "Sihanoukville", 10.6093, 103.5296, "not_feasible", { aliases: ["Kampong Som", "Koh Rong"], ...far(KH_NONE, "A way to read Cambodia's sensors, plus two sensors in Sihanoukville.") }),
-  D("KH", "Kampot", 10.6104, 104.1815, "not_feasible", { aliases: ["Kep"], ...far(KH_NONE, "A way to read Cambodia's sensors, plus two sensors in Kampot.") }),
+  // Cambodia (no government feed; community sensors through the proxy) and Laos (AirGradient / UNICEF schools)
+  D("KH", "Sihanoukville", 10.6093, 103.5296, "not_feasible", { aliases: ["Kampong Som", "Koh Rong"], ...far(KH_NONE, "Two community sensors in Sihanoukville.") }),
+  D("KH", "Kampot", 10.6104, 104.1815, "not_feasible", { aliases: ["Kep"], ...far(KH_NONE, "Two community sensors in Kampot.") }),
   D("LA", "Vang Vieng", 18.9235, 102.4478, "not_feasible", {
     ...far("The nearest community sensor is 11.5 km out of town, just past the 10 km we trust for an estimate, and Laos publishes no official readings.",
       "Two community sensors in Vang Vieng town."),

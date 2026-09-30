@@ -1,0 +1,545 @@
+[
+  {
+    "name": "tampines-2026-09-30-4pm (live: down 8 in 1 h, down 10 in 2 h)",
+    "history": [
+      {
+        "time": "2026-09-30T13:00:00+08:00",
+        "pm25": 56
+      },
+      {
+        "time": "2026-09-30T14:00:00+08:00",
+        "pm25": 49
+      },
+      {
+        "time": "2026-09-30T15:00:00+08:00",
+        "pm25": 47
+      },
+      {
+        "time": "2026-09-30T16:00:00+08:00",
+        "pm25": 39
+      }
+    ],
+    "expected": {
+      "words": "Easing: down 10 in 2 hours",
+      "word": "easing"
+    }
+  },
+  {
+    "name": "single point",
+    "history": [
+      {
+        "time": "2026-09-30T16:00:00+08:00",
+        "pm25": 100
+      }
+    ],
+    "expected": {
+      "words": "Trend not available yet",
+      "word": null
+    }
+  },
+  {
+    "name": "empty",
+    "history": [],
+    "expected": {
+      "words": "Trend not available yet",
+      "word": null
+    }
+  },
+  {
+    "name": "steady +2",
+    "history": [
+      {
+        "time": "2026-09-30T15:00:00+08:00",
+        "pm25": 100
+      },
+      {
+        "time": "2026-09-30T16:00:00+08:00",
+        "pm25": 102
+      }
+    ],
+    "expected": {
+      "words": "Steady over the last hour",
+      "word": "steady"
+    }
+  },
+  {
+    "name": "steady 0",
+    "history": [
+      {
+        "time": "2026-09-30T14:00:00+08:00",
+        "pm25": 90
+      },
+      {
+        "time": "2026-09-30T15:00:00+08:00",
+        "pm25": 90
+      },
+      {
+        "time": "2026-09-30T16:00:00+08:00",
+        "pm25": 90
+      }
+    ],
+    "expected": {
+      "words": "Steady over the last hour",
+      "word": "steady"
+    }
+  },
+  {
+    "name": "steady +4 boundary",
+    "history": [
+      {
+        "time": "2026-09-30T15:00:00+08:00",
+        "pm25": 100
+      },
+      {
+        "time": "2026-09-30T16:00:00+08:00",
+        "pm25": 104
+      }
+    ],
+    "expected": {
+      "words": "Steady over the last hour",
+      "word": "steady"
+    }
+  },
+  {
+    "name": "steady -4 boundary",
+    "history": [
+      {
+        "time": "2026-09-30T15:00:00+08:00",
+        "pm25": 104
+      },
+      {
+        "time": "2026-09-30T16:00:00+08:00",
+        "pm25": 100
+      }
+    ],
+    "expected": {
+      "words": "Steady over the last hour",
+      "word": "steady"
+    }
+  },
+  {
+    "name": "rising +5 boundary",
+    "history": [
+      {
+        "time": "2026-09-30T15:00:00+08:00",
+        "pm25": 100
+      },
+      {
+        "time": "2026-09-30T16:00:00+08:00",
+        "pm25": 105
+      }
+    ],
+    "expected": {
+      "words": "Rising: up 5 in the last hour",
+      "word": "rising"
+    }
+  },
+  {
+    "name": "rising +19",
+    "history": [
+      {
+        "time": "2026-09-30T15:00:00+08:00",
+        "pm25": 100
+      },
+      {
+        "time": "2026-09-30T16:00:00+08:00",
+        "pm25": 119
+      }
+    ],
+    "expected": {
+      "words": "Rising: up 19 in the last hour",
+      "word": "rising"
+    }
+  },
+  {
+    "name": "rising fast +20 boundary",
+    "history": [
+      {
+        "time": "2026-09-30T15:00:00+08:00",
+        "pm25": 100
+      },
+      {
+        "time": "2026-09-30T16:00:00+08:00",
+        "pm25": 120
+      }
+    ],
+    "expected": {
+      "words": "Rising fast: up 20 in the last hour",
+      "word": "rising fast"
+    }
+  },
+  {
+    "name": "rising fast +30 1h",
+    "history": [
+      {
+        "time": "2026-09-30T15:00:00+08:00",
+        "pm25": 100
+      },
+      {
+        "time": "2026-09-30T16:00:00+08:00",
+        "pm25": 130
+      }
+    ],
+    "expected": {
+      "words": "Rising fast: up 30 in the last hour",
+      "word": "rising fast"
+    }
+  },
+  {
+    "name": "easing -5 boundary",
+    "history": [
+      {
+        "time": "2026-09-30T15:00:00+08:00",
+        "pm25": 105
+      },
+      {
+        "time": "2026-09-30T16:00:00+08:00",
+        "pm25": 100
+      }
+    ],
+    "expected": {
+      "words": "Easing: down 5 in the last hour",
+      "word": "easing"
+    }
+  },
+  {
+    "name": "easing -19",
+    "history": [
+      {
+        "time": "2026-09-30T15:00:00+08:00",
+        "pm25": 119
+      },
+      {
+        "time": "2026-09-30T16:00:00+08:00",
+        "pm25": 100
+      }
+    ],
+    "expected": {
+      "words": "Easing: down 19 in the last hour",
+      "word": "easing"
+    }
+  },
+  {
+    "name": "clearing fast -20 boundary",
+    "history": [
+      {
+        "time": "2026-09-30T15:00:00+08:00",
+        "pm25": 120
+      },
+      {
+        "time": "2026-09-30T16:00:00+08:00",
+        "pm25": 100
+      }
+    ],
+    "expected": {
+      "words": "Clearing fast: down 20 in the last hour",
+      "word": "clearing fast"
+    }
+  },
+  {
+    "name": "clearing fast -30 1h",
+    "history": [
+      {
+        "time": "2026-09-30T15:00:00+08:00",
+        "pm25": 130
+      },
+      {
+        "time": "2026-09-30T16:00:00+08:00",
+        "pm25": 100
+      }
+    ],
+    "expected": {
+      "words": "Clearing fast: down 30 in the last hour",
+      "word": "clearing fast"
+    }
+  },
+  {
+    "name": "rising 2h bigger (rising fast in 2 hours)",
+    "history": [
+      {
+        "time": "2026-09-30T14:00:00+08:00",
+        "pm25": 79
+      },
+      {
+        "time": "2026-09-30T15:00:00+08:00",
+        "pm25": 103
+      },
+      {
+        "time": "2026-09-30T16:00:00+08:00",
+        "pm25": 117
+      }
+    ],
+    "expected": {
+      "words": "Rising fast: up 38 in 2 hours",
+      "word": "rising"
+    }
+  },
+  {
+    "name": "steady 1h (+4) even though 2h is +10",
+    "history": [
+      {
+        "time": "2026-09-30T14:00:00+08:00",
+        "pm25": 90
+      },
+      {
+        "time": "2026-09-30T15:00:00+08:00",
+        "pm25": 96
+      },
+      {
+        "time": "2026-09-30T16:00:00+08:00",
+        "pm25": 100
+      }
+    ],
+    "expected": {
+      "words": "Steady over the last hour",
+      "word": "steady"
+    }
+  },
+  {
+    "name": "rising 2h bigger (rising in 2 hours)",
+    "history": [
+      {
+        "time": "2026-09-30T14:00:00+08:00",
+        "pm25": 90
+      },
+      {
+        "time": "2026-09-30T15:00:00+08:00",
+        "pm25": 96
+      },
+      {
+        "time": "2026-09-30T16:00:00+08:00",
+        "pm25": 102
+      }
+    ],
+    "expected": {
+      "words": "Rising: up 12 in 2 hours",
+      "word": "rising"
+    }
+  },
+  {
+    "name": "easing 2h bigger",
+    "history": [
+      {
+        "time": "2026-09-30T14:00:00+08:00",
+        "pm25": 120
+      },
+      {
+        "time": "2026-09-30T15:00:00+08:00",
+        "pm25": 112
+      },
+      {
+        "time": "2026-09-30T16:00:00+08:00",
+        "pm25": 105
+      }
+    ],
+    "expected": {
+      "words": "Easing: down 15 in 2 hours",
+      "word": "easing"
+    }
+  },
+  {
+    "name": "clearing fast 2h",
+    "history": [
+      {
+        "time": "2026-09-30T14:00:00+08:00",
+        "pm25": 150
+      },
+      {
+        "time": "2026-09-30T15:00:00+08:00",
+        "pm25": 130
+      },
+      {
+        "time": "2026-09-30T16:00:00+08:00",
+        "pm25": 118
+      }
+    ],
+    "expected": {
+      "words": "Clearing fast: down 32 in 2 hours",
+      "word": "easing"
+    }
+  },
+  {
+    "name": "back to 2h-ago level (d2 = 0) -> last hour",
+    "history": [
+      {
+        "time": "2026-09-30T14:00:00+08:00",
+        "pm25": 100
+      },
+      {
+        "time": "2026-09-30T15:00:00+08:00",
+        "pm25": 110
+      },
+      {
+        "time": "2026-09-30T16:00:00+08:00",
+        "pm25": 100
+      }
+    ],
+    "expected": {
+      "words": "Easing: down 10 in the last hour",
+      "word": "easing"
+    }
+  },
+  {
+    "name": "2h same magnitude as 1h -> last hour",
+    "history": [
+      {
+        "time": "2026-09-30T14:00:00+08:00",
+        "pm25": 100
+      },
+      {
+        "time": "2026-09-30T15:00:00+08:00",
+        "pm25": 100
+      },
+      {
+        "time": "2026-09-30T16:00:00+08:00",
+        "pm25": 90
+      }
+    ],
+    "expected": {
+      "words": "Easing: down 10 in the last hour",
+      "word": "easing"
+    }
+  },
+  {
+    "name": "sign flip (down 1h, up 2h) -> last hour",
+    "history": [
+      {
+        "time": "2026-09-30T14:00:00+08:00",
+        "pm25": 80
+      },
+      {
+        "time": "2026-09-30T15:00:00+08:00",
+        "pm25": 110
+      },
+      {
+        "time": "2026-09-30T16:00:00+08:00",
+        "pm25": 100
+      }
+    ],
+    "expected": {
+      "words": "Easing: down 10 in the last hour",
+      "word": "easing"
+    }
+  },
+  {
+    "name": "2h smaller than 1h -> last hour",
+    "history": [
+      {
+        "time": "2026-09-30T14:00:00+08:00",
+        "pm25": 95
+      },
+      {
+        "time": "2026-09-30T15:00:00+08:00",
+        "pm25": 90
+      },
+      {
+        "time": "2026-09-30T16:00:00+08:00",
+        "pm25": 100
+      }
+    ],
+    "expected": {
+      "words": "Rising: up 10 in the last hour",
+      "word": "rising"
+    }
+  },
+  {
+    "name": "steady 1h even though 2h is big",
+    "history": [
+      {
+        "time": "2026-09-30T14:00:00+08:00",
+        "pm25": 60
+      },
+      {
+        "time": "2026-09-30T15:00:00+08:00",
+        "pm25": 98
+      },
+      {
+        "time": "2026-09-30T16:00:00+08:00",
+        "pm25": 100
+      }
+    ],
+    "expected": {
+      "words": "Steady over the last hour",
+      "word": "steady"
+    }
+  },
+  {
+    "name": "gap: previous hour missing",
+    "history": [
+      {
+        "time": "2026-09-30T14:00:00+08:00",
+        "pm25": 100
+      },
+      {
+        "time": "2026-09-30T16:00:00+08:00",
+        "pm25": 120
+      }
+    ],
+    "expected": {
+      "words": "Trend not available yet",
+      "word": null
+    }
+  },
+  {
+    "name": "gap: 2 hours ago missing -> last hour only",
+    "history": [
+      {
+        "time": "2026-09-30T13:00:00+08:00",
+        "pm25": 50
+      },
+      {
+        "time": "2026-09-30T15:00:00+08:00",
+        "pm25": 100
+      },
+      {
+        "time": "2026-09-30T16:00:00+08:00",
+        "pm25": 110
+      }
+    ],
+    "expected": {
+      "words": "Rising: up 10 in the last hour",
+      "word": "rising"
+    }
+  },
+  {
+    "name": "long history, latest easing",
+    "history": [
+      {
+        "time": "2026-09-30T09:00:00+08:00",
+        "pm25": 30
+      },
+      {
+        "time": "2026-09-30T10:00:00+08:00",
+        "pm25": 40
+      },
+      {
+        "time": "2026-09-30T11:00:00+08:00",
+        "pm25": 60
+      },
+      {
+        "time": "2026-09-30T12:00:00+08:00",
+        "pm25": 90
+      },
+      {
+        "time": "2026-09-30T13:00:00+08:00",
+        "pm25": 120
+      },
+      {
+        "time": "2026-09-30T14:00:00+08:00",
+        "pm25": 140
+      },
+      {
+        "time": "2026-09-30T15:00:00+08:00",
+        "pm25": 130
+      },
+      {
+        "time": "2026-09-30T16:00:00+08:00",
+        "pm25": 122
+      }
+    ],
+    "expected": {
+      "words": "Easing: down 18 in 2 hours",
+      "word": "easing"
+    }
+  }
+]

@@ -313,6 +313,19 @@ If shown, it lives **in the detail sheet only**, never on the main screen, widge
 | Location outside Singapore | (verdict for nearest region) | You seem to be outside Singapore. Showing NEA's {Region} station, the closest. |
 | Location loading | (verdict for last region) | Finding your spot… |
 
+**Southeast Asia (SPEC v2.0), official source down or slow** (every upstream request times out after ~8 s):
+
+| state | headline area | line under the number / detail |
+|---|---|---|
+| Official source down, community sensors in range | Verdict for the estimate, prefixed "Estimate: …" (never "No official reading near here.") | **{Country}'s official data isn't responding right now · community sensors estimate** (e.g. "Thailand's official data isn't responding right now · community sensors estimate") |
+| Official source down, nothing in range, cached reading | Verdict from the cached reading (stale rules apply) | Can't reach {Country}'s official data right now. Showing the last reading we got, from {time} ({age}). |
+| Official source down, nothing in range, no cache | Can't reach {Country}'s official data right now | We'll try again in a few minutes. [Try again] |
+| Community estimate, no official station within 25 km | Verdict for the estimate, "Estimate: …" | No official reading near here · community sensors estimate |
+| Community estimate, no national scale (KH, LA, MM, TL) | WHO-guidance verdict (§20) | There's no official air-quality scale here · community sensors estimate |
+
+"No official reading near here." and "There's no official air-quality scale here." are only ever the small line under the
+number, never the headline. With no number at all, the headline is "Can't say for here right now."
+
 Never show `-1`, `null`, `NaN`, or an empty number with a band colour.
 A stale reading keeps its band chip, and the chip gets the outline style plus the word "(old)".
 
@@ -499,3 +512,25 @@ add on its own line: "A community sensor nearby reads 104 µg/m³ right now. It'
 (`adviceBand`): severity 0 → none, 1–2 → Elevated, 3 → High, 4 → Very High, and never below High from the "Unhealthy"
 equivalent up (so "Check here before a long run" never appears there). Same profile filters: masks never first, no N95 for
 kids. The Very High "call 995" line uses the local emergency number (TH 1669, MY 999, ID 112, VN 115, PH 911).
+
+### 20.1 Community estimates and WHO-guidance verdicts (founder-approved defaults, 30 Sep 2026)
+
+SPEC principle 1: the headline always answers "is it OK to be out?".
+
+- **Community estimate, in a country with an official scale (TH, MY, ID, VN, PH):** the estimate is mapped to that
+  authority's category and gets the category's normal verdict, prefixed **"Estimate: "** ("Estimate: fine to be out.").
+  Compact surfaces use **"Est. "** ("Est. fine to be out"). Thai: "ค่าประมาณ: " (draft). The chip shows the category with a
+  small **"estimate"** tag; its note reads "{Agency} category, applied to the community-sensor estimate". The lines
+  underneath stay: "Community sensors · estimate · range a–b" and, where true, "There's no official station within 25 km
+  to check these sensors against, so this is an estimate, not a measurement."
+- **No official scale at all (KH, LA, MM, TL):** a verdict from WHO 2021 guidance on the hourly estimate, labelled as such.
+  Chip: **"WHO guide: {low | moderate | high | very high}"** with the "estimate" tag. The "{x}× the WHO daily guideline."
+  line stays.
+
+| hourly estimate (µg/m³) | headline | compact | chip |
+|---|---|---|---|
+| under 25 | Likely fine to be out. | Likely fine | WHO guide: low |
+| 25 – under 50 | Likely OK. Sensitive people, go easy. | Likely OK | WHO guide: moderate |
+| 50 – under 100 | Go easy outdoors for now. | Go easy outdoors | WHO guide: high |
+| 100 and up | Limit time outside for now. | Limit time outside | WHO guide: very high |
+

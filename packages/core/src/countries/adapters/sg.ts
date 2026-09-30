@@ -108,7 +108,7 @@ export const sgAdapter: CountryAdapter = {
   attribution: [NEA_ATTRIBUTION],
   async fetchObservations(ctx = {}): Promise<ObservationSet> {
     const now = ctx.now ?? Date.now();
-    const raw = await fetchRaw({ fetch: ctx.fetch as never, now, signal: ctx.signal });
+    const raw = await fetchRaw({ fetch: ctx.fetch as never, now, signal: ctx.signal, timeoutMs: ctx.timeoutMs });
     return {
       country: "SG",
       adapters: ["sg.nea"],
@@ -122,6 +122,7 @@ export const sgAdapter: CountryAdapter = {
       fetch: ctx.fetch as never,
       now: ctx.now,
       signal: ctx.signal,
+      timeoutMs: ctx.timeoutMs,
       lat: query.lat,
       lon: query.lon,
       region: query.station?.replace(/^sg\.nea:/, ""),

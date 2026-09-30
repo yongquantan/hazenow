@@ -33,6 +33,7 @@ import {
   countryPreviewCard,
   countryShareText,
   countryVerdict,
+  whoVerdictBand,
   defaultCity,
   findCity,
   isObservationSet,
@@ -75,13 +76,13 @@ const snapAt = (cc: CountryCode, city: string) => {
 /* ================================================================== places */
 
 describe("places (COVERAGE.md)", () => {
-  test("45 cities, the same status totals as COVERAGE.md", () => {
-    expect(CITIES.length).toBe(45);
+  test("46 cities, the same status totals as COVERAGE.md", () => {
+    expect(CITIES.length).toBe(46);
     const n = (st: string) => CITIES.filter((c) => c.status === st).length;
     expect(n("live_direct")).toBe(10);
-    expect(n("needs_proxy")).toBe(25);
+    expect(n("needs_proxy")).toBe(27); // + Pangkalan Bun (BMKG), Siem Reap (community sensors)
     expect(n("needs_permission")).toBe(4);
-    expect(n("not_feasible")).toBe(6);
+    expect(n("not_feasible")).toBe(5);
   });
 
   test("every blocked city carries a reason; every covered city doesn't need one", () => {
@@ -119,7 +120,7 @@ describe("places (COVERAGE.md)", () => {
   test("defaultCity follows the registry", () => {
     expect(defaultCity("TH").name).toBe("Bangkok");
     expect(defaultCity("MY").name).toBe("Kuala Lumpur");
-    expect(defaultCity("KH").name).toBe("Phnom Penh");
+    expect(defaultCity("KH").name).toBe("Siem Reap");
   });
 
   test("data mode: TH live; proxied countries preview without a proxy, live with one; blocked cities unavailable", () => {
@@ -134,7 +135,7 @@ describe("places (COVERAGE.md)", () => {
   });
 
   test("preview sets are valid ObservationSets for their own country", () => {
-    for (const cc of ["my", "id", "vn", "ph", "la"]) {
+    for (const cc of ["th", "my", "id", "vn", "ph", "la", "kh"]) {
       const s = preview(cc);
       expect(isObservationSet(s, cc.toUpperCase() as CountryCode)).toBe(true);
       expect(s.warnings?.[0]).toContain("Preview");
@@ -225,13 +226,15 @@ describe("countryDisplay", () => {
     expect(d.official!.text).toMatch(/^KLH ISPU \(24-hr\): 142 · Unhealthy$/);
   });
 
-  test("Vientiane: no national scale, no chip, WHO line", () => {
+  test("Vientiane: no national scale → WHO-guide chip (estimate), WHO verdict, WHO line", () => {
     const { s } = snapAt("LA", "vientiane");
     const d = countryDisplay(s, { placeName: "Vientiane", viewerOffsetHours: 8 });
-    expect(d.chip).toBeNull();
+    expect(d.chip?.en).toMatch(/^WHO guide: (low|moderate|high|very high)$/);
+    expect(d.chip?.estimate).toBe(true);
     expect(d.official).toBeNull();
     expect(d.whoLine).toMatch(/× the WHO daily guideline\.$/);
-    expect(countryVerdict(s).headline).toBe("There's no official air-quality scale here.");
+    expect(d.numberSub).toBe("There's no official air-quality scale here · community sensors estimate");
+    expect(countryVerdict(s).headline).toBe(whoVerdictBand(s.pm25!).en);
   });
 
   test("officialRow keeps a verbatim word when the scale doesn't know it", () => {

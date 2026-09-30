@@ -35,7 +35,7 @@ object Format {
      * `{shareUrl}` is appended only when there is one.
      */
     fun shareText(s: Snapshot, shareUrl: String? = null): String {
-        val trend = Experience.trend(s.history, s.trend.delta).a11y ?: "steady"
+        val trend = Experience.trend(s.history).a11y ?: "steady"
         val psi = s.officialPsi24h?.toString() ?: "not available right now"
         val base = "Air near me right now: ${s.band.label} (PM2.5 ${s.pm25}), $trend. NEA 24-hr PSI: $psi. Data: NEA via data.gov.sg."
         return if (shareUrl.isNullOrBlank()) base else "$base $shareUrl"

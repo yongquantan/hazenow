@@ -2,7 +2,8 @@
  * SPEC v2.0 — Southeast Asia on the web. Singapore never goes through this file: its v1 page in main.ts is untouched.
  *
  * Data modes (per city, see sea.cityMode):
- * - live: Thailand direct from Air4Thai (CORS *), or MY/ID/VN/PH/LA through the proxy when VITE_PROXY_URL is set.
+ * - live: Thailand direct from Air4Thai (CORS *) plus its community sensors through the proxy, or MY/ID/VN/PH/LA/KH
+ *   through the proxy when VITE_PROXY_URL is set.
  * - preview: proxied countries with no proxy → the recorded 28 Sep 2026 captures, clearly ribboned, never shared.
  * - unavailable: needs permission / not feasible → a calm "Not available yet" with COVERAGE.md's reason.
  * Location never leaves the device: TH fetches the station list, proxied countries fetch /v1/{cc}/observations,
@@ -140,7 +141,7 @@ const NEUTRAL = "#8FA3AD";
 export function chipHtml(c: import("hazenow").sea.ChipModel, old = false, size = 14): string {
   return `<span class="chip chip-sea${old ? " is-old" : ""}" style="--chip:${esc(c.color)}">${bandShape(c.shape, c.color, size, { outline: old })}${esc(c.en)}${
     c.local ? ` <span class="chip-local" lang="${esc(c.lang)}">${esc(c.local)}</span>` : ""
-  }${old ? " (old)" : ""}</span>`;
+  }${old ? " (old)" : ""}${c.estimate ? ` <span class="chip-est">estimate</span>` : ""}</span>`;
 }
 
 export function officialHtml(o: import("hazenow").sea.OfficialRowModel, explainer: string | null): string {
@@ -162,6 +163,8 @@ export interface CountryViewCtx {
   now: number;
   offline: boolean;
   locNote: string | null;
+  /** The live fetch failed and `s` is the last cached snapshot: say so, with its age (COPY §10). */
+  fetchError?: "official" | "api" | null;
 }
 
 function ageText(iso: string, now: number): string {
@@ -236,8 +239,19 @@ export function countryNowHtml(x: CountryViewCtx): string {
 
   ${d.provenance ? `<p class="prov">${esc(tidyStation(s.range && d.kindLabel ? d.provenance.replace(/ · range \d+–\d+/, "") : d.provenance))} · <span>${esc(preview ? "recorded" : ageText(s.observedAt, x.now))}</span></p>` : ""}
   ${x.locNote ? `<p class="flag">${esc(x.locNote)}</p>` : ""}
-  ${old && !preview ? `<p class="flag" role="status">${esc(`${sea.mainAgency(s)} hasn't posted a newer reading. This one is from ${sea.stationTime(s.observedAt, s.country, viewerOffset(), w.point.lon)}.`)}</p>` : ""}
+  ${
+    x.fetchError
+      ? `<p class="flag" role="status">${esc(
+          x.fetchError === "official"
+            ? sea.officialDownCopy(s.country, s.observedAt, x.now, viewerOffset()).cachedLine!
+            : `Can't reach the data right now. Showing the last reading we got, from ${sea.stationTime(s.observedAt, s.country, viewerOffset(), w.point.lon)} (${ageText(s.observedAt, x.now)}).`,
+        )}</p>`
+      : ""
+  }
+  ${old && !preview && !x.fetchError ? `<p class="flag" role="status">${esc(`${sea.mainAgency(s)} hasn't posted a newer reading. This one is from ${sea.stationTime(s.observedAt, s.country, viewerOffset(), w.point.lon)}.`)}</p>` : ""}
   ${s.notes.includes("nearest_far") ? `<p class="flag">The nearest official station is far from ${esc(placeName)}, so treat this as a rough guide.</p>` : ""}
+  ${d.notices.map((n) => `<p class="flag">${esc(n)}</p>`).join("")}
+  ${city.note ? `<p class="fine place-note">${esc(city.note)}</p>` : ""}
 
   ${
     acts.length
@@ -317,7 +331,7 @@ function tidyName(raw: string): string {
 
 export function attributionHtml(s: CountrySnapshot): string {
   return `<p class="sea-attrib">${s.attribution
-    .map((a) => `<a href="${esc(a.url)}" rel="noopener" target="_blank">${esc(a.text)}</a>${a.shareAlike && !/CC BY-SA/.test(a.text) ? " (CC BY-SA 4.0)" : ""}`)
+    .map((a) => `<a href="${esc(a.url)}" rel="noopener" target="_blank">${esc(a.text)}</a>${a.shareAlike && !a.text.includes(a.licence) ? ` (${esc(a.licence)})` : ""}`)
     .join(" · ")}</p>`;
 }
 
@@ -351,8 +365,10 @@ export function unavailableHtml(w: CityWhere): string {
 }
 
 export function noDataHtml(w: CityWhere, error: string | null): string {
-  const [h, p] =
-    error === "offline"
+  const down = error === "official" ? sea.officialDownCopy(w.country) : null;
+  const [h, p] = down
+    ? [down.title, down.line]
+    : error === "offline"
       ? ["Can't load the air reading", "You're offline. Connect to see the latest reading."]
       : error === "nodata"
         ? ["No reading near here right now", "There's no official station or community sensor close enough for an honest number."]
@@ -403,7 +419,9 @@ function cityRow(c: CityPlace, current: CityWhere | null, extra = ""): string {
 export function cityListHtml(cc: CountryCode, current: CityWhere | null): string {
   const note =
     cc === "TH"
-      ? "Live from PCD's Air4Thai."
+      ? PROXY_URL
+        ? "Live from PCD's Air4Thai. Community sensors (Pai) through the HazeNow server."
+        : "Live from PCD's Air4Thai. Community sensors (Pai) are a preview until our server is up."
       : sea.COUNTRIES[cc].status === "needs_proxy"
         ? PROXY_URL
           ? "Live through the HazeNow server."

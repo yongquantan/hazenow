@@ -78,7 +78,7 @@ export const GUESS_DEFAULT_PLACE: Readonly<Record<CountryCode, string>> = {
   VN: "hanoi",
   PH: "metro-manila",
   LA: "vientiane",
-  KH: "phnom-penh",
+  KH: "siem-reap",
   MM: "yangon",
   BN: "bandar-seri-begawan",
   TL: "dili",

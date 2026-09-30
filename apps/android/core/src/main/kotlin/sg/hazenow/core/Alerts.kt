@@ -99,7 +99,7 @@ object Alerts {
             val peak = st.overnightPeak!!
             st = st.copy(band = cur, overnightPeak = null)
             if (wantsRise(peak, prefs) && st.sentToday < DAILY_CAP) {
-                val trend = Experience.trend(s.history, s.trend.delta).a11y ?: "steady"
+                val trend = Experience.trend(s.history).a11y ?: "steady"
                 val alert = BandAlert(
                     "Overnight air update",
                     "The haze reached ${peak.label} overnight. Now: ${s.band.label}, PM2.5 ${s.pm25}, $trend. $verdict",

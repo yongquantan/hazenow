@@ -95,6 +95,12 @@ export interface ObservationSet {
   hotspotSource?: string;
   /** Upstream problems, stated plainly ("id.bmkg: HTTP 403, serving 14:00 data"). */
   warnings?: string[];
+  /**
+   * The country's official source failed or timed out ("PCD Air4Thai"). The set then carries only what still answered
+   * (usually community sensors); the builder notes "official_unavailable", and with nothing in range throws
+   * OfficialUnavailableError so the client shows its last cached reading or a calm "Can't reach … official data" state.
+   */
+  officialUnavailable?: string;
 }
 
 export interface LocalBand {
@@ -143,6 +149,8 @@ export interface CountrySnapshot extends Omit<Snapshot, "pm25" | "band" | "insta
   localBand: LocalBand | null;
   /** What the chip describes: the 1-hr number itself, or the authority's (24-h / NowCast) index. */
   bandBasis: "pm25_1h" | "official_index" | "none";
+  /** The chip classifies a community-sensor estimate, not an official number: show it with an "estimate" tag. */
+  bandFromEstimate?: boolean;
   official: OfficialIndex | null;
   pm25Kind: "official_1h" | "crowd_estimate" | null;
   /** Authority's 24-h mean PM2.5 at your spot (chart line). */
@@ -156,7 +164,11 @@ export interface CountrySnapshot extends Omit<Snapshot, "pm25" | "band" | "insta
   whoMultiple: number | null;
   hotspots?: HotspotContext | null;
   attribution: Attribution[];
-  /** Machine-readable flags: "no_official_1h", "crowd_only", "nearest_far", "official_far", "stale_stations_dropped". */
+  /**
+   * Machine-readable flags: "no_official_1h", "crowd_only", "nearest_far", "official_far", "stale_stations_dropped",
+   * "offline_dropped" (a station ≤ 25 km silent for > 24 h), "implausible_dropped" (a reading ≤ 60 km failed the
+   * plausibility guard, quality.ts).
+   */
   notes: string[];
 }
 
@@ -190,6 +202,8 @@ export interface AdapterContext {
   /** Base URL of services/proxy (HAZENOW_EDGE), e.g. "https://edge.hazenow.app". Required for proxied adapters. */
   proxyBase?: string;
   signal?: AbortSignal;
+  /** Per-request upstream timeout, ms (default 8 s, net.ts). */
+  timeoutMs?: number;
   /** Point of interest; direct adapters use it to fetch only the nearest stations' history. Never sent to the proxy. */
   near?: { lat: number; lon: number };
 }

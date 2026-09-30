@@ -30,6 +30,8 @@ import {
   classifyPm25,
   countryAt,
   countryVerdict,
+  countryDisplay,
+  whoVerdictBand,
   createThAdapter,
   crowdQc,
   doeObservations,
@@ -565,12 +567,14 @@ describe("Vietnam: Hanoi moitruongthudo", () => {
     expect(o.pm25_1h).toBe(11);
     expect(o.official).toMatchObject({ name: "VN_AQI", value: 34, category: "Tốt", averaging: "nowcast" });
   });
-  test("HCMC: crowd number but no official station → no band, 'No official reading near here.'", () => {
+  test("HCMC: crowd number, no official station → VN_AQI category for the estimate, 'Estimate: …' headline", () => {
     const ag = crowdQc(agMapObservations(AG_MAP, ["VN"]), NOW);
     const s = buildCountrySnapshot(set("VN", [obsFor(48), ...ag]), { lat: 10.8231, lon: 106.6297 }, NOW);
     expect(s.pm25Kind).toBe("crowd_estimate");
-    expect(s.band).toBeNull();
-    expect(countryVerdict(s).headline).toBe("No official reading near here.");
+    expect(s.bandFromEstimate).toBe(true);
+    expect(s.localBand?.scaleId).toBe("vn_aqi");
+    expect(countryVerdict(s).headline).toMatch(/^Estimate: /);
+    expect(countryDisplay(s).numberSub).toBe("No official reading near here · community sensors estimate");
   });
   test("Hanoi snapshot: chip from the published VN_AQI", () => {
     const s = buildCountrySnapshot(set("VN", [obsFor(48), obsFor(49)], [HANOI_ATTRIBUTION]), { lat: 21.0285, lon: 105.8542 }, NOW);
@@ -584,9 +588,10 @@ describe("Vietnam: Hanoi moitruongthudo", () => {
 /* ================================================================== crowd countries (PH, LA) */
 
 describe("AirGradient crowd (PH, LA)", () => {
-  test("map API: AirGradient only (no OpenAQ duplicates of Air4Thai, no Sensor.Community), country by polygon", () => {
+  test("map API: AirGradient + Sensor.Community (no OpenAQ duplicates of Air4Thai), country by polygon", () => {
     const all = agMapObservations(AG_MAP);
-    expect(all.every((o) => o.stationId.startsWith("ag:"))).toBe(true);
+    expect(all.every((o) => o.stationId.startsWith("ag:") || o.stationId.startsWith("sc:"))).toBe(true);
+    expect(all.some((o) => o.stationId.startsWith("sc:"))).toBe(true);
     const n = (cc: string) => all.filter((o) => o.country === cc).length;
     expect(n("LA")).toBeGreaterThan(100);
     expect(n("PH")).toBeGreaterThan(15);
@@ -610,13 +615,14 @@ describe("AirGradient crowd (PH, LA)", () => {
     expect(s.official).toBeNull();
     expect(s.attribution).toEqual([AG_ATTRIBUTION]);
   });
-  test("Vientiane: no national scale → no chip, no level, WHO line instead of a verdict", () => {
+  test("Vientiane: no national scale → no authority chip or level; a WHO-guidance verdict, and the WHO line", () => {
     const ag = crowdQc(agMapObservations(AG_MAP, ["LA"]), NOW);
     const s = buildCountrySnapshot(set("LA", ag), { lat: 17.9757, lon: 102.6331 }, NOW);
     expect(s.pm25).not.toBeNull();
     expect([s.band, s.level, s.localBand, s.bandBasis]).toEqual([null, null, null, "none"]);
     const v = countryVerdict(s);
-    expect(v.headline).toBe("There's no official air-quality scale here.");
+    expect(v.whoBased).toBe(true);
+    expect(v.headline).toBe(whoVerdictBand(s.pm25!).en);
     expect(v.secondLine).toBe(`${s.whoMultiple}× the WHO daily guideline.`);
   });
 });
@@ -646,7 +652,7 @@ describe("proxied adapters (MY, ID, VN, PH, LA)", () => {
   test("registry: adapters and statuses agree with COVERAGE.md", () => {
     expect(Object.entries(COUNTRIES).map(([k, v]) => [k, v.status])).toEqual([
       ["SG", "live_direct"], ["TH", "live_direct"], ["MY", "needs_proxy"], ["ID", "needs_proxy"], ["VN", "needs_proxy"],
-      ["PH", "needs_proxy"], ["LA", "needs_proxy"], ["KH", "not_feasible"], ["MM", "not_feasible"], ["BN", "not_feasible"], ["TL", "not_feasible"],
+      ["PH", "needs_proxy"], ["LA", "needs_proxy"], ["KH", "needs_proxy"], ["MM", "not_feasible"], ["BN", "not_feasible"], ["TL", "not_feasible"],
     ]);
     for (const [cc, a] of Object.entries(ADAPTERS)) {
       if (!a) continue;

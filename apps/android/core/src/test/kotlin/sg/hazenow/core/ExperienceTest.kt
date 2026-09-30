@@ -1,5 +1,10 @@
 package sg.hazenow.core
 
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -115,16 +120,27 @@ class ExperienceTest {
         assertEquals("Very High band (251 and above).", Experience.anchor(Band.VERY_HIGH))
     }
 
-    @Test fun trendPhrases() {
-        fun h(vararg v: Int) = v.mapIndexed { i, x -> HistoryPoint("t$i", x) }
-        fun t(d: Int, vararg v: Int) = Experience.trend(h(*v), d)
-        assertEquals(Experience.TrendText("Steady over the last hour", "steady"), t(4, 100, 104))
-        assertEquals(Experience.TrendText("Rising: up 5 in the last hour", "rising"), t(5, 100, 105))
-        assertEquals(Experience.TrendText("Rising fast: up 20 in the last hour", "rising fast"), t(20, 100, 120))
-        assertEquals(Experience.TrendText("Easing: down 19 in the last hour", "easing"), t(-19, 119, 100))
-        assertEquals(Experience.TrendText("Clearing fast: down 20 in the last hour", "clearing fast"), t(-20, 120, 100))
-        assertEquals(Experience.TrendText("Rising fast: up 38 in 2 hours", "rising fast"), t(14, 79, 103, 117))
-        assertEquals(Experience.TrendText("Trend not available yet", null), t(0, 100))
+    /**
+     * Cross-platform golden: packages/core/fixtures/golden/trend.json is generated from the TS reference
+     * (scripts/make-golden-trend.ts) and read by the TS, Kotlin and Swift tests alike.
+     */
+    @Test fun trendGolden() {
+        val raw = javaClass.classLoader.getResource("golden/trend.json")!!.readText()
+        val cases = HazeApi.json.parseToJsonElement(raw).jsonArray
+        assertTrue(cases.size >= 20)
+        for (c in cases) {
+            val o = c.jsonObject
+            val name = o["name"]!!.jsonPrimitive.content
+            val history = o["history"]!!.jsonArray.map {
+                HistoryPoint(it.jsonObject["time"]!!.jsonPrimitive.content, it.jsonObject["pm25"]!!.jsonPrimitive.int)
+            }
+            val exp = o["expected"]!!.jsonObject
+            val t = Experience.trend(history)
+            assertEquals(exp["words"]!!.jsonPrimitive.content, t.words, name)
+            assertEquals(exp["word"]!!.jsonPrimitive.contentOrNull, t.a11y, name)
+        }
+        // The live Tampines case that exposed the drift.
+        assertTrue(cases.any { it.jsonObject["expected"]!!.jsonObject["words"]!!.jsonPrimitive.content == "Easing: down 10 in 2 hours" })
     }
 
     @Test fun secondLines() {
@@ -146,10 +162,10 @@ class ExperienceTest {
         assertEquals("NEA 24-hr PSI: 81 (Moderate)", i.officialPsiLabel)
         assertEquals("Rising fast: up 38 in 2 hours", i.trendWords)
         assertEquals(
-            "Calm play outside is OK. Skip running games for now. For you + kids. PM2.5 117, Elevated, rising fast.",
+            "Calm play outside is OK. Skip running games for now. For you + kids. PM2.5 117, Elevated, rising.",
             i.accessibility,
         )
-        assertEquals("PM2.5 117, Elevated, rising fast, measured 4pm", i.compactAccessibility)
+        assertEquals("PM2.5 117, Elevated, rising, measured 4pm", i.compactAccessibility)
     }
 
     @Test fun insightGpsBlendedShowsNumericRange() {

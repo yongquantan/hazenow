@@ -1,0 +1,142 @@
+[
+  {
+    "place": "Kuala Lumpur / Klang Valley",
+    "source": "DOE APIMS (24-hr API index, official baseline) + AirGradient map API (crowd 1-hr est.)",
+    "stationOrSensorIds": ["my.doe:CA15W", "my.doe:CA16W", "ag:110009290", "ag:956", "ag:98500617", "ag:108254583", "ag:1087", "ag:98066951", "ag:52094943"],
+    "distanceKm": { "nearestOfficial": 5.0, "nearestCommunity": 3.1, "withinCount10km": 7, "withinCount25km": 7 },
+    "kind": "community",
+    "trust": "medium-high (re-confirmed, unchanged from malaysia.md's 28 Sep cross-check)",
+    "notes": "No change since COVERAGE.md's 2026-09-28/29 capture. Re-verified live today: 7 AirGradient sensors in the Klang Valley (KLCC 63.4, Taman Tun Dr. Ismail 57.4, Mont Kiara 59.6, Setapak 45.2, Setia Eco Park 62.2, Enviro Exceltech 52.7, Sejati Residences Cyberjaya 58.4 ug/m3, all EPA-corrected, ~1 min old at 2026-09-30 08:01-08:02 UTC = 16:01-16:02 MYT). DOE Batu Muda (CA15W) API=160 'Unhealthy' -> implied 24-hr PM2.5 ~73 ug/m3 today, in the same range as the crowd cluster (52-64), consistent with malaysia.md's original within-15% cross-check. Already the best-covered MY city; no new source found or needed.",
+    "verdict": "coverable now via proxy (already shipping design; no change)"
+  },
+  {
+    "place": "Johor Bahru",
+    "source": "DOE APIMS (Larkin, official baseline, unchanged) + NEW: Sensor.Community sensor 'Iolite' (via AirGradient's aggregator map API, not HazeNow's own crowd adapter yet)",
+    "stationOrSensorIds": ["my.doe:CA33J", "my.doe:CA34J", "sensor.community:94332 (AirGradient map locationId 121978516, 'Iolite')"],
+    "distanceKm": { "nearestOfficial": 0.6, "nearestCommunity": 9.9, "withinCount10km": 1, "withinCount25km": 2 },
+    "kind": "community",
+    "trust": "medium: good hardware and a strong 24-hr cross-check, but only 1 sensor (below the app's own 2-sensor floor for a standalone crowd verdict), short history, and not yet wired into HazeNow's adapter",
+    "notes": "NEW today: Sensor.Community location id 94332 ('Iolite', SPS30 optical + SHT30 temp/RH, exact_location=1, outdoor) sits at 1.5812,103.7365, 9.9 km from JB centre - just inside the 10 km 'now number' radius for the first time (Eco Botanic, the only previously-known sensor, is 14.9 km out, outside 10 km). Verified via AirGradient's map API (locationId 121978516, dataSource='SensorCommunity') and cross-checked against data.sensor.community's own filter=country:MY endpoint (same coordinates, id 94332, SPS30/SHT30 sensor types) - both agree. History (AirGradient map's hourly history endpoint, 2026-09-28T14:00Z to 2026-09-30T07:00Z): 42/42 hourly buckets present, 100% uptime over its known life (first seen only ~42 h before capture, so long-term uptime is unverified). Last-24h mean 85.6 ug/m3 vs Larkin's (CA33J, API=162) implied 24-hr DOE PM2.5 of ~76.8 ug/m3 and Pasir Gudang's (CA34J, API=164) ~80.7 ug/m3 - within 6-11%, a real cross-check pass. Both Iolite and Eco Botanic show a steep, correlated drop in the last 1-2 h before capture (Iolite 89->20.6 ug/m3 hourly 01:00-07:00 UTC; Eco Botanic raw pm02 5.7 ug/m3 at 08:08 UTC vs a corrected pm25 of 1.7), consistent with a real local rain/clearing event, not a fault, since both independent sensors moved together. BLOCKER: HazeNow's own agMapObservations() (packages/core/src/countries/sources/airgradient.ts) filters `r.dataSource !== 'AirGradient'` and drops every Sensor.Community row from the map API response, so Iolite is visible in the raw upstream payload but not ingested by the current adapter code. This is an engineering gap (a filter to relax or a second adapter branch for Sensor.Community), not a permissions problem - Sensor.Community is ODbL, CORS *, no key.",
+    "verdict": "coverable via proxy once the adapter reads Sensor.Community rows too (small code change, no external permission needed); today's live picture is unchanged (24-hr DOE index only, no now number)"
+  },
+  {
+    "place": "Penang (George Town) / Batu Ferringhi",
+    "source": "DOE APIMS (Minden, 24-hr index only)",
+    "stationOrSensorIds": ["my.doe:CA08P"],
+    "distanceKm": { "nearestOfficial": 6.8, "nearestCommunity": 113.4 },
+    "kind": "official-24h",
+    "trust": "n/a - no community candidate found",
+    "notes": "Re-checked live today: 0 AirGradient and 0 Sensor.Community sensors in a tight bbox around George Town/Batu Ferringhi (100.1-100.5E, 5.2-5.6N) and in the wider MY+BN sweep - unchanged from the 28-29 Sep capture. Nearest AirGradient sensor is still SM Sains Tuanku Syed Putra in Kangar, Perlis, 113 km away (irrelevant). MET Malaysia's 4 TEOM PM2.5 stations (see Cameron Highlands / Kuching below) do not include Penang. No Penang state environmental portal with a live AQ feed was found (penang.gov.my resolves but has no AQ section found in this pass; greenpenang.gov.my and ipenang.my do not resolve - DNS failure, not a live site to check). DOE Minden (CA08P) was mid-hour-update (null) at first poll, 77 'Moderate' by API=77 at the complete poll (16:00 MYT).",
+    "verdict": "no change: 24-hr DOE index only. What would fix it: 1-2 community sensors in George Town or Batu Ferringhi (none exist today)."
+  },
+  {
+    "place": "Ipoh",
+    "source": "DOE APIMS (Tasek Ipoh, 24-hr index only)",
+    "stationOrSensorIds": ["my.doe:CA11A"],
+    "distanceKm": { "nearestOfficial": 4.6, "nearestCommunity": null },
+    "kind": "official-24h",
+    "trust": "n/a - no community candidate found",
+    "notes": "Re-checked live today: 0 AirGradient/Sensor.Community sensors within a tight Ipoh bbox (100.9-101.25E, 4.4-4.8N) or the wider sweep - unchanged. No MET Malaysia TEOM station in or near Ipoh (MET's 4 stations are Cameron Highlands, Kuching, Petaling Jaya, Lembah Danum - none in Perak). DOE Tasek Ipoh (CA11A): API=63 'Moderate' at 16:00 MYT today.",
+    "verdict": "no change: 24-hr DOE index only. What would fix it: 1-2 community sensors in Ipoh (none exist today)."
+  },
+  {
+    "place": "Malacca",
+    "source": "DOE APIMS (Bandaraya Melaka, 24-hr index only)",
+    "stationOrSensorIds": ["my.doe:CA28M"],
+    "distanceKm": { "nearestOfficial": 0.8, "nearestCommunity": null },
+    "kind": "official-24h",
+    "trust": "n/a - no community candidate found",
+    "notes": "Re-checked live today: 0 AirGradient/Sensor.Community sensors within a tight Malacca bbox (102.1-102.4E, 2.0-2.4N) or the wider sweep - unchanged. No MET TEOM station nearby. DOE Bandaraya Melaka (CA28M): API=125 'Unhealthy' at 16:00 MYT today - one of the worse readings in the country right now.",
+    "verdict": "no change: 24-hr DOE index only. What would fix it: 1-2 community sensors in Malacca city (none exist today)."
+  },
+  {
+    "place": "Kuching",
+    "source": "DOE APIMS (Kuching, 24-hr index only, baseline unchanged) + NEW candidate: MET Malaysia (Jabatan Meteorologi Malaysia) TEOM PM2.5 station, Kuching - a genuine hourly official reading, but not accessible live today",
+    "stationOrSensorIds": ["my.doe:CA65Q", "met.gov.my:TEOM-Kuching (no stable id published; delivered only as a weekday-named PDF chart, no station code visible)"],
+    "distanceKm": { "nearestOfficial": 3.4, "nearestCommunity": null },
+    "kind": "official-1h",
+    "trust": "unverified - the station exists and MET explicitly measures hourly PM2.5 there, but it is (a) not live (published as a weekly-lagged PDF, ~7 days stale at any moment) and (b) currently offline: every sampled day-file this week says 'Tiada data untuk Stesen Kuching disebabkan oleh masalah teknikal sehingga diberitahu kelak' (no data for Kuching Station due to a technical fault, until further notice)",
+    "notes": "MAJOR FINDING for Sarawak's worst-haze city: met.gov.my/pencerapan/zarah-terampai-teom-pm-10 (discovered from the official nav menu, 'Sains Atmosfera > Zarah Terampai (TEOM PM-10/PM-2.5)') links to 7 PDFs, one per weekday name (Isnin..Ahad), each an hourly PM2.5 bar chart 'Kepekatan Purata Setiap Jam Zarah Terampai Bagi Bandar-Bandar Utama di Malaysia' for exactly 4 TEOM stations nationwide: Cameron Highlands, Kuching, Petaling Jaya and Lembah Danum (Sabah). This is a SEPARATE agency and a SEPARATE, genuinely-hourly PM2.5 measurement (TEOM = Tapered Element Oscillating Microbalance), independent of DOE's 24-hr API index. Fetched all 7 PDFs live today (2026-09-30): all last-modified simultaneously at 2026-09-29T16:32 UTC (a weekly batch refresh), and the 'Rabu'/'Khamis' (Wed/Thu) files show data dated 23/24 September 2026 - i.e. last week's Wed/Thu, confirming a ~6-7 day publish lag, not a live feed. Every sampled file (Rabu, Khamis checked in full) carries the same note: Kuching's own TEOM station has been down 'due to a technical fault, until further notice.' So even the stale archive has nothing for Kuching right now. DOE APIMS Kuching (CA65Q) today: API=58 'Moderate' at 16:00 MYT (much calmer than the 28 Sep episode where IPD Serian hit 158; all 13 Sarawak stations read Good/Moderate today). AirGradient/Sensor.Community: still 0 sensors within 25 km of Kuching, re-confirmed today.",
+    "verdict": "authoritative permission is the only way for a true 1-hr number here - email Jabatan Meteorologi Malaysia (met.gov.my) to ask for (1) real-time/API access to the Kuching TEOM feed instead of the weekly PDF, and (2) the status of the technical fault. Until then, coverage stays exactly as today: DOE's 24-hr index only (needs_proxy, unchanged)."
+  },
+  {
+    "place": "Kota Kinabalu",
+    "source": "DOE APIMS (Kota Kinabalu, 24-hr index only)",
+    "stationOrSensorIds": ["my.doe:CA50S"],
+    "distanceKm": { "nearestOfficial": 11.4, "nearestCommunity": 50.0 },
+    "kind": "official-24h",
+    "trust": "n/a - nearest community sensor (Tambulaung, Sabah) is 50 km out, well past the 25 km rule",
+    "notes": "Re-checked live today: 0 AirGradient/Sensor.Community sensors within a tight KK bbox (115.9-116.3E, 5.8-6.1N). The nearest AirGradient sensor anywhere in Sabah is still 'Tambulaung' (2539/154357), 50.0 km from KK, unchanged from COVERAGE.md. Note: Tambulaung's reading is no longer 0.0 (previously flagged 'suspect'/possibly faulty in malaysia.md's 28 Sep capture) - it read 3.8-5.7 ug/m3 today across both AirGradient endpoints, which looks like a real, working sensor now, but it's still too far to help KK. MET Malaysia's 4th TEOM station, Lembah Danum, is in the Danum Valley Conservation Area, ~180 km inland from KK (deep rainforest research station, not a city monitor) - does not help KK either, distance not computed in detail since it is obviously outside any usable radius. DOE Kota Kinabalu (CA50S): API=53 'Moderate' at 16:00 MYT today.",
+    "verdict": "no change: 24-hr DOE index only. What would fix it: 1-2 community sensors in KK city (Tambulaung, 50 km out, no longer reads zero but is still too far to count)."
+  },
+  {
+    "place": "Langkawi",
+    "source": "DOE APIMS (Langkawi, 24-hr index only)",
+    "stationOrSensorIds": ["my.doe:CA02K"],
+    "distanceKm": { "nearestOfficial": 0.8, "nearestCommunity": 46.8 },
+    "kind": "official-24h",
+    "trust": "n/a - nearest community sensor is 46.8 km away on the mainland (Kangar, Perlis), well past the 25 km rule",
+    "notes": "Re-checked live today: 0 AirGradient/Sensor.Community sensors within a tight Langkawi bbox. Nearest AirGradient sensor is still SM Sains Tuanku Syed Putra in Kangar, Perlis (on the mainland, across water), 46.8 km away - unchanged from COVERAGE.md's 47 km figure. DOE Langkawi (CA02K): API=87 'Moderate' at 16:00 MYT today.",
+    "verdict": "no change: 24-hr DOE index only. What would fix it: 1-2 community sensors on Langkawi island itself."
+  },
+  {
+    "place": "Cameron Highlands",
+    "source": "NEW candidate: MET Malaysia (Jabatan Meteorologi Malaysia) TEOM PM2.5 station, Cameron Highlands - genuinely hourly, right at the destination, but not accessible live today",
+    "stationOrSensorIds": ["met.gov.my:TEOM-CameronHighlands (no stable id published; weekday-named PDF chart only)"],
+    "distanceKm": { "nearestOfficial_DOE": 34.0, "nearestOfficial_MET": 0, "nearestCommunity": null },
+    "kind": "official-1h",
+    "trust": "unverified - the station and the hourly PM2.5 measurement exist and are exactly where they're needed, but the only public output is a chart image inside a PDF, published on a ~6-7 day lag, with no numeric labels on the Cameron Highlands panel specifically (unlike the Petaling Jaya panel, which does print a 'Max: NN.NN' label per bar)",
+    "notes": "This is the most consequential finding for Malaysia: Cameron Highlands is currently 'not_feasible' in places.ts with the stated reason 'the nearest DOE station is 34 km away and 1,400 m lower, so it can't stand for the highlands' - but MET Malaysia runs an actual TEOM PM2.5 instrument in Cameron Highlands itself (one of only 4 in the country: Cameron Highlands, Kuching, Petaling Jaya, Lembah Danum). Found via met.gov.my's own navigation ('Pencerapan > Sains Atmosfera > Zarah Terampai (TEOM PM-10/PM-2.5)') -> 7 PDFs (https://www.met.gov.my/data/bsapa/PM2.5-<Weekday>.pdf), one slot per weekday name, refreshed as a batch (all 7 files last-modified 2026-09-29T16:32 UTC). Today's 'Khamis' (Thursday) file, fetched live, shows a Cameron Highland chart dated 24 September 2026 with hourly bars ~0.4-6.9 ug/m3 (a 3-hour rolling average overlay) - very clean air, plausible for a highland tea-plantation town, but 6 days stale and with no per-bar numeric labels to extract precisely (the Petaling Jaya panel on the same PDF does print 'Max: NN.NN' per hour, so the underlying data clearly has per-hour numbers - MET's chart generator just doesn't always render the label). No AirGradient/Sensor.Community sensor within a tight Tanah Rata/Brinchang bbox today (0 rows) - unchanged.",
+    "verdict": "authoritative permission is the only way - email Jabatan Meteorologi Malaysia (met.gov.my) to ask for (1) real-time/API access to the Cameron Highlands TEOM feed instead of the weekly PDF, and (2) numeric (not just chart) hourly values. This would be a genuine official-1h source, a first for Malaysia outside the DOE system. Until then, Cameron Highlands should move from 'not feasible' to 'needs permission' in the app's own language, since the honest story is now 'the data exists, we know who to ask' rather than 'nothing exists here.'"
+  },
+  {
+    "place": "Genting Highlands",
+    "source": "none found",
+    "stationOrSensorIds": [],
+    "distanceKm": { "nearestOfficial_DOE": 26.5, "nearestCommunity": 31.1 },
+    "kind": null,
+    "trust": "n/a - no candidate source found",
+    "notes": "Re-checked live today: DOE Batu Muda (CA15W), 26.5 km away, stays just outside the 25 km rule (unchanged from the 27 km figure in places.ts). Nearest AirGradient sensor (KLCC) is 31.1 km away, also outside any usable radius, and it's a lowland KL reading anyway - can't stand for a hilltop resort ~1,000 m higher. MET Malaysia's 4 TEOM stations do not include Genting. No other network (Sensor.Community, PurpleAir readable without a key, MET) found anything closer.",
+    "verdict": "no coverage. What would fix it: 2 community sensors at Genting itself (none exist today), or a DOE/MET station on the hilltop - a lowland station can't stand for it regardless of distance."
+  },
+  {
+    "place": "Desaru",
+    "source": "DOE APIMS (Kota Tinggi, 24-hr index only)",
+    "stationOrSensorIds": ["my.doe:CA36J"],
+    "distanceKm": { "nearestOfficial": 3.9, "nearestCommunity": 58.2 },
+    "kind": "official-24h",
+    "trust": "n/a - nearest community sensor (Iolite, JB) is 58 km away",
+    "notes": "Re-checked live today: 0 AirGradient/Sensor.Community sensors within a tight Desaru bbox (104.05-104.35E, 1.4-1.7N). Even the new JB-area 'Iolite' Sensor.Community sensor is 58.2 km away - too far. DOE Kota Tinggi (CA36J): API=155 'Unhealthy' at 16:00 MYT today - Johor is one of the worst-affected states right now.",
+    "verdict": "no change: 24-hr DOE index only. What would fix it: 1-2 community sensors in Desaru itself."
+  },
+  {
+    "place": "Tioman",
+    "source": "none found",
+    "stationOrSensorIds": [],
+    "distanceKm": { "nearestOfficial_DOE": 83.0, "nearestCommunity": null },
+    "kind": null,
+    "trust": "n/a - no candidate source found",
+    "notes": "Re-checked live today: DOE Rompin, 83 km away on the mainland, unchanged. No AirGradient/Sensor.Community sensor within a tight Tioman bbox or anywhere in coastal Pahang east of the mainland. This is an island, so no lowland mainland station (even inside 25 km) should be used for it anyway.",
+    "verdict": "no coverage. What would fix it: 2 community sensors at Tekek or Air Batang (ABC) on the island (none exist today), or a DOE station on Tioman."
+  },
+  {
+    "place": "Port Dickson",
+    "source": "DOE APIMS (Port Dickson, 24-hr index only)",
+    "stationOrSensorIds": ["my.doe:CA25N"],
+    "distanceKm": { "nearestOfficial": 12.0, "nearestCommunity": 71.2 },
+    "kind": "official-24h",
+    "trust": "n/a - nearest community sensor (KLCC) is 71 km away",
+    "notes": "Re-checked live today: 0 AirGradient/Sensor.Community sensors within a tight Port Dickson bbox (101.65-101.95E, 2.35-2.65N). DOE Port Dickson (CA25N): API=95 'Moderate' at 16:00 MYT today.",
+    "verdict": "no change: 24-hr DOE index only. What would fix it: 1-2 community sensors in Port Dickson."
+  },
+  {
+    "place": "Bandar Seri Begawan",
+    "source": "JASTRe PSI (image only, no numeric feed) - unusable; AirGradient Belait sensor too far to help",
+    "stationOrSensorIds": ["ag:111346730 (Belait, too far)"],
+    "distanceKm": { "nearestOfficial": null, "nearestCommunity": 85.2 },
+    "kind": null,
+    "trust": "n/a - JASTRe publishes no numbers at all, only a JPEG; the one Brunei community sensor is 85 km away in a different district",
+    "notes": "Re-checked live today: JASTRe (env.gov.bn) is still image-only, confirmed via its own WordPress REST media API - 4 new PSI images today alone (07:26, 09:31, 11:19, 14:39 BNT), latest read live: Brunei-Muara 38, Belait 22, Temburong 19, Tutong 33, all 'Good' at 2:00 pm. Still no JSON/CSV anywhere on env.gov.bn, mod.gov.bn or data.gov.bn (re-checked: 0 AQ datasets on data.gov.bn). Sensor.Community country=BN still returns []. PurpleAir/IQAir need keys (403/400, unchanged). The one AirGradient sensor in Brunei ('Belait', locationId 111346730) reads a plausible 4.9-6.7 ug/m3 today, broadly consistent with Belait's own 'Good' PSI of 22 (unlike the 28 Sep capture's mismatch of PSI 50 vs sensor <3 ug/m3) - a better agreement this time, but it's 85 km from BSB and in a different administrative district, so it cannot stand for the capital under the no-stretch/no-cross-district-substitute reading of the 25 km rule.",
+    "verdict": "authoritative permission is the only way for a numeric product - email JASTRe (Jabatan Alam Sekitar, Taman dan Rekreasi, under the Ministry of Development) for the PSI methodology and a machine-readable feed (even a CSV next to the image). In parallel, seed 2 community sensors in BSB itself (UBD/UTB partnership, per brunei.md) - Belait's 85 km distance rules it out today."
+  }
+]

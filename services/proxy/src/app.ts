@@ -12,6 +12,7 @@
  */
 import {
   COUNTRIES,
+  OfficialUnavailableError,
   SCALES,
   buildCountrySnapshot,
   countryAt,
@@ -27,6 +28,14 @@ import type { Cache } from "./cache.js";
 import { ALL_ATTRIBUTION, ATTRIBUTION, CountryService, NoDataForCountry, SERVED } from "./countries.js";
 import { TOTAL_BUDGET_PER_HOUR, URLS } from "./sources.js";
 import { UpstreamError, type Upstreams } from "./upstream.js";
+import type { ObservationSet } from "../../../packages/core/src/countries/index.js";
+
+/** The set's community sensors only, with their attribution (for the direct Thai adapter). */
+export function lowcostOnly(set: ObservationSet): ObservationSet {
+  const observations = set.observations.filter((o) => o.grade === "lowcost");
+  const ids = new Set(observations.map((o) => o.attributionId));
+  return { ...set, observations, attribution: set.attribution.filter((a) => ids.has(a.id)), hotspots: undefined, hotspotSource: undefined };
+}
 
 export interface Req {
   method: string;
@@ -78,6 +87,7 @@ export function createApp(deps: AppDeps) {
   const startedAt = deps.startedAt ?? clock();
   const hits = new Map<string, { windowStart: number; n: number }>();
   const serialised = new WeakMap<object, string>();
+  const serialisedLowcost = new WeakMap<object, string>();
 
   function rateLimited(ip: string | undefined): number | null {
     if (!ip || limit <= 0) return null;
@@ -188,10 +198,17 @@ export function createApp(deps: AppDeps) {
         if (!(cc in COUNTRIES)) return err(404, `Unknown country ${ccRaw}`);
         if (!SERVED.includes(cc))
           return err(404, `${COUNTRIES[cc].name} is not covered yet: ${COUNTRIES[cc].nowNumber}`, [], { status: COUNTRIES[cc].status });
+        // ?grade=lowcost: community sensors only (the direct Thai adapter reads Air4Thai itself and only needs these).
+        const grade = u.searchParams.get("grade");
+        if (grade !== null && grade !== "lowcost") return err(400, "grade must be lowcost");
         try {
           const set = await deps.service.observations(cc);
-          let body = serialised.get(set);
-          if (!body) serialised.set(set, (body = JSON.stringify({ ...set, generatedAt: new Date(clock()).toISOString() })));
+          const cache = grade ? serialisedLowcost : serialised;
+          let body = cache.get(set);
+          if (!body) {
+            const out = grade ? lowcostOnly(set) : set;
+            cache.set(set, (body = JSON.stringify({ ...out, generatedAt: new Date(clock()).toISOString() })));
+          }
           return { ...json(200, null), body };
         } catch (e) {
           return failure(e, cc);
@@ -226,6 +243,7 @@ export function createApp(deps: AppDeps) {
   function failure(e: unknown, cc: CountryCode): Res {
     if (e instanceof NoDataForCountry) return err(503, e.message, ATTRIBUTION[cc] ?? [], { warnings: e.warnings }, { "retry-after": "60" });
     if (e instanceof UpstreamError) return err(502, e.message, ATTRIBUTION[cc] ?? []);
+    if (e instanceof OfficialUnavailableError) return err(503, e.message, ATTRIBUTION[cc] ?? [], { officialUnavailable: e.source }, { "retry-after": "60" });
     return err(500, "Internal error", ATTRIBUTION[cc] ?? []);
   }
 }

@@ -126,7 +126,8 @@ interface State {
   /** Country shown in the place sheet's picker. */
   sheetCountry: CountryCode;
   fromCache: boolean;
-  error: "offline" | "api" | "nodata" | null;
+  /** "official": the country's official source failed or timed out (sea.OfficialUnavailableError). */
+  error: "offline" | "api" | "nodata" | "official" | null;
   loading: boolean;
   locating: boolean;
   locNote: string | null;
@@ -254,10 +255,18 @@ async function refreshCountry(w: CityWhere): Promise<void> {
       state.csnap = null;
       state.error = null;
     } else {
+      // Never hang or blank: the last reading we had, re-judged for staleness and marked with its age.
       const cached = state.csnap ?? store.get<CountrySnapshot | null>(ccacheKey(), null);
-      state.csnap = cached;
+      state.csnap = cached ? C!.sea.cachedCountrySnapshot(cached, Date.now()) : null;
       state.fromCache = !!cached;
-      state.error = !navigator.onLine ? "offline" : (e as Error)?.name === "NoCountryDataError" ? "nodata" : "api";
+      const name = (e as Error)?.name;
+      state.error = !navigator.onLine
+        ? "offline"
+        : name === "NoCountryDataError"
+          ? "nodata"
+          : name === "OfficialUnavailableError" || (w.country === "TH" && name !== "ProxyError")
+            ? "official"
+            : "api";
       console.warn("[hazenow]", (e as Error)?.message);
     }
   } finally {
@@ -987,7 +996,11 @@ function statusText() {
   }
   if (state.loading) return `<span class="dot-live is-busy" aria-hidden="true"></span>Checking for a new reading…`;
   if (!state.online) return `<span class="dot-live is-off" aria-hidden="true"></span>You're offline.`;
-  if (state.error && state.where.kind === "city") return state.error === "nodata" ? "" : `<span class="dot-live is-off" aria-hidden="true"></span>Can't reach the data right now. We'll try again in a few minutes.`;
+  if (state.error && state.where.kind === "city") {
+    if (state.error === "nodata") return "";
+    const line = state.error === "official" && C ? C.sea.officialDownCopy(state.where.country).statusLine : "Can't reach the data right now. We'll try again in a few minutes.";
+    return `<span class="dot-live is-off" aria-hidden="true"></span>${esc(line)}`;
+  }
   if (state.error) return `<span class="dot-live is-off" aria-hidden="true"></span>Can't reach NEA's data right now. We'll try again in a few minutes.`;
   if (MOCK) return `<span class="dot-live" aria-hidden="true"></span>Mock scenario “${esc(MOCK)}”. Clock frozen at ${formatSgtTime(nowMs())}.`;
   if (state.lastChecked && state.nextCheck)
@@ -1042,6 +1055,7 @@ function countryMainView(w: CityWhere): string {
       now: Date.now(),
       offline: state.fromCache && state.error === "offline",
       locNote: state.locNote,
+      fetchError: state.fromCache && (state.error === "official" || state.error === "api") ? state.error : null,
     });
     colB = `${countryChartHtml(cs, w.point.lon)}${stationsHtml(cs, w)}`;
   }
@@ -1136,6 +1150,7 @@ function applyTheme() {
     const cs = state.csnap;
     if (!C || !cs || state.cmode === "unavailable") {
       root.style.setProperty("--band", "#8FA3AD");
+      delete root.dataset.who;
       root.style.setProperty("--haze", "0");
       root.style.setProperty("--veil", "5%");
       root.dataset.band = "normal";
@@ -1143,13 +1158,18 @@ function applyTheme() {
       return;
     }
     const h = cs.pm25 === null ? 0 : hazeLevel(cs.pm25);
-    root.style.setProperty("--band", cs.localBand?.color ?? "#8FA3AD");
+    // No authority scale: the WHO-guide tone (calm blues) drives the chip, veil and logo dot; the headline stays ink.
+    const who = !cs.localBand && cs.pm25 !== null ? C.sea.countryDisplay(cs).chip : null;
+    root.style.setProperty("--band", cs.localBand?.color ?? who?.color ?? "#8FA3AD");
+    if (who) root.dataset.who = "1";
+    else delete root.dataset.who;
     root.style.setProperty("--haze", h.toFixed(3));
     root.style.setProperty("--veil", `${(5 + h * 11).toFixed(1)}%`);
     root.dataset.band = C.sea.adviceBand(cs) ?? "normal";
     document.title = `${cs.pm25 ?? "–"}${cs.localBand ? ` ${cs.localBand.labelEn}` : ""} · ${placeLabelOf(state.where)} · HazeNow`;
     return;
   }
+  delete root.dataset.who;
   if (!s) return;
   const info = bandInfo(s.band);
   const h = hazeLevel(s.pm25);

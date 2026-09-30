@@ -1,0 +1,245 @@
+[
+  {
+    "place": "Nusa Dua (Bali)",
+    "source": "KLH ISPU, id_stasiun KABUPATEN_BADUNG (Kabupaten Badung Sempidi)",
+    "stationOrSensorIds": ["KABUPATEN_BADUNG"],
+    "distanceKm": 23,
+    "kind": "official-24h",
+    "trust": "medium",
+    "notes": "The ONLY official-ish anchor for the whole Nusa Dua/Uluwatu/Denpasar cluster is currently OFFLINE. Verified live 2026-09-30 08:05 UTC via getStations (station absent from the 111-row list, was 117 rows / present on 2026-09-29) and getDetail/stasiun/KABUPATEN_BADUNG directly: waktu_24 has real hourly stamps through 2026-09-29 10:00 WITA then jumps to 2026-09-30 12:00-15:00 WITA with pm25=null and no pm25_24_rev tail values - a genuine multi-hour-to-day outage, not a mis-tagged timezone. When it was last live (29 Sep) it sat 23 km from Nusa Dua, already outside AirGradient's crowd-estimate radius. Downgrade Nusa Dua from 'Needs proxy (24-hr only)' to 'no official line available today'; re-check before shipping. This is an outage, not a structural gap - the fix is monitoring station uptime, not a new sensor."
+  },
+  {
+    "place": "Nusa Dua (Bali)",
+    "source": "AirGradient world API, locationId 110114222 'Cactus House'",
+    "stationOrSensorIds": [110114222],
+    "distanceKm": 10.4,
+    "kind": "community",
+    "trust": "medium",
+    "notes": "Nearest live outdoor AirGradient to Nusa Dua's point in places.ts, verified 2026-09-30 08:05 UTC (model O-1PST, offline:false, pm02 40.5, ~2 min old). It sits 0.4 km outside the 10 km crowd-estimate radius the SPEC uses, so it still can't stand alone for a 'now' number under the current 25 km/10 km rule. 23 sensors total are within 25 km (Segara Ayu Denpasar 13.5 km, Madas/Padang2 Uluwatu ~14 km, Kulat Black Palms 14.9 km, Suluban 15.9 km), all live and outdoor, all clustered around Denpasar/Uluwatu rather than Nusa Dua proper. Owner: private business (Cactus House, a cafe/venue) - single contributor, location precision good (named venue). No official station is live today to cross-check against (see the KABUPATEN_BADUNG outage entry). Verdict for Nusa Dua stands as 'not available yet' until either the ISPU station recovers or a sensor lands within 10 km of the town itself."
+  },
+  {
+    "place": "Labuan Bajo",
+    "source": "KLH ISPU, id_stasiun KABUPATEN_MANGGARAI_BARAT (Kabupaten Manggarai Barat Wae Kalamb)",
+    "stationOrSensorIds": ["KABUPATEN_MANGGARAI_BARAT"],
+    "distanceKm": 0.7,
+    "kind": "official-24h",
+    "trust": "high",
+    "notes": "Confirmed live 2026-09-30 08:05 UTC, waktu 2026-09-30 15:00 WITA, a_pm25 11.84 (Baik). Unchanged from the 29 Sep capture - still the only official anchor, still 0.7 km from town, still 24-hr only (no BMKG station on Flores). Checked AirGradient map API (whole-Indonesia bbox) and world API, plus Sensor.Community's area filter at 30 km: zero community sensors near Labuan Bajo in any of the three. IQAir not checked for this specific town (budget). Verdict unchanged: 'coverable now (via proxy), 24-hr index only.' What unlocks an hourly number: one community sensor in town (the existing official 24-hr line lets a single sensor be cross-checked, unlike community-only places which need two)."
+  },
+  {
+    "place": "Mataram (Lombok)",
+    "source": "none found",
+    "stationOrSensorIds": [],
+    "distanceKm": null,
+    "kind": "community",
+    "trust": "low",
+    "notes": "No official station (KLH ISPU getStations, 111 rows, zero in Nusa Tenggara Barat; BMKG, 26 rows, none on Lombok) and no community sensor within 25 km in AirGradient (map API whole-ID bbox, zoom 12, 85 rows total, none in NTB) or Sensor.Community (area filter, 50 km radius, zero results), verified live 2026-09-30. Checked IQAir's public city page (not an API call, just the page): 'no community or station air quality monitors specifically listed for Mataram,' satellite-model estimate only, with an open invitation for someone to install the first AirVisual monitor. Verdict: 'no coverage exists.' What would unlock it: two community sensors in Mataram (AirGradient or a Nafas deployment), since there is no official station to cross-check a single sensor against."
+  },
+  {
+    "place": "Senggigi (Lombok)",
+    "source": "none found",
+    "stationOrSensorIds": [],
+    "distanceKm": null,
+    "kind": "community",
+    "trust": "low",
+    "notes": "Same three checks as Mataram (KLH ISPU, BMKG, AirGradient, Sensor.Community), same result: nothing on Lombok. Verdict: 'no coverage exists.' What would unlock it: two community sensors in Senggigi."
+  },
+  {
+    "place": "Gili Trawangan",
+    "source": "none found",
+    "stationOrSensorIds": [],
+    "distanceKm": null,
+    "kind": "community",
+    "trust": "low",
+    "notes": "Same checks, same result. An island with no grid power reliability makes a solar/battery AirGradient deployment harder than the mainland Lombok towns - worth flagging to whoever chases the fix. Verdict: 'no coverage exists.'"
+  },
+  {
+    "place": "Kuta (Lombok)",
+    "source": "none found",
+    "stationOrSensorIds": [],
+    "distanceKm": null,
+    "kind": "community",
+    "trust": "low",
+    "notes": "Same checks, same result (also checked as 'Mandalika' - nothing). Verdict: 'no coverage exists.'"
+  },
+  {
+    "place": "Bintan / Lagoi (Riau Islands)",
+    "source": "BMKG, nama_file pm25_btm2.xml (Batam)",
+    "stationOrSensorIds": ["id.bmkg:pm25_btm2"],
+    "distanceKm": 25.5,
+    "kind": "official-1h",
+    "trust": "high",
+    "notes": "Recomputed live 2026-09-30 08:05 UTC: BMKG Batam is 25.5 km from the Lagoi point in places.ts (was 26 km on 29 Sep - the 25 km no-stretch rule still excludes it, by half a kilometre). Zero AirGradient (map + world API) and zero Sensor.Community sensors anywhere in the Riau Islands. Verdict unchanged: 'no coverage exists' under the withinKm:25 destination rule. What would unlock it: two community sensors at Lagoi (the fix text is accurate) - a single sensor could also work IF it lands within 25 km of the Batam BMKG station, since that would let Bintan borrow Batam's official reading as a cross-check the way Labuan Bajo does with its ISPU station, but the honest fix today is standalone community sensors, not stretching Batam's 1-hr station across open water."
+  },
+  {
+    "place": "Tanjung Pinang (Riau Islands)",
+    "source": "BMKG, nama_file pm25_btm2.xml (Batam)",
+    "stationOrSensorIds": ["id.bmkg:pm25_btm2"],
+    "distanceKm": 44.2,
+    "kind": "official-1h",
+    "trust": "high",
+    "notes": "44.2 km from BMKG Batam (unchanged from 29 Sep's 44 km), well outside any reasonable radius, and zero community sensors found (same checks as Bintan). Verdict: 'no coverage exists.' What would unlock it: two community sensors in Tanjung Pinang."
+  },
+  {
+    "place": "Batam",
+    "source": "BMKG, nama_file pm25_btm2.xml (Batam)",
+    "stationOrSensorIds": ["id.bmkg:pm25_btm2"],
+    "distanceKm": 13.7,
+    "kind": "official-1h",
+    "trust": "high",
+    "notes": "Confirmed live today (2026-09-30 08:05 UTC): JAM 13 WIB, PM2.5 34.8, Sedang. This is a correction to the brief, not a new gap - Batam already has a genuine 1-hr official reading (BMKG, 13.7 km) and is listed 'Needs proxy' / '1-hr' in COVERAGE.md's city table, not '24-hr only.' No closer official or community source found (zero AirGradient/Sensor.Community sensors near Batam). No further action needed here beyond deploying the existing proxy."
+  },
+  {
+    "place": "Yogyakarta",
+    "source": "BMKG, nama_file pm25_yky.xml (Sleman)",
+    "stationOrSensorIds": ["id.bmkg:pm25_yky"],
+    "distanceKm": 7.4,
+    "kind": "official-1h",
+    "trust": "high",
+    "notes": "Confirmed live today: JAM 13 WIB, PM2.5 27.8, Sedang, 7.4 km - unchanged from the existing capture. Another correction, not a new gap: Yogyakarta already has a real 1-hr BMKG reading. New but not useful: IQAir's community page lists exactly one station for Yogyakarta, 'Hotel Amaranta Prambanan' (a hotel near the Prambanan temple complex, east of the city and well outside the urban core) - one station isn't enough on its own and BMKG Sleman already covers the city better. Not pursued further."
+  },
+  {
+    "place": "Bandung",
+    "source": "KLH ISPU, id_stasiun KABUPATEN_BANDUNGBB (Kabupaten Bandung Barat Saguling)",
+    "stationOrSensorIds": ["KABUPATEN_BANDUNGBB"],
+    "distanceKm": 14.8,
+    "kind": "official-24h",
+    "trust": "high",
+    "notes": "Confirmed live today: a_pm25 29.57, 14.8 km, unchanged. No BMKG station within 100+ km of Bandung. NEW: IQAir's community page for Bandung lists 6 stations from 5 contributors - 'Jl. Ganesha No.10' (this is ITB's - Institut Teknologi Bandung's - main campus address, so likely an ITB-affiliated or campus-adjacent monitor), 'Setra Duta' and 'Setra Duta 2' (a residential estate in north Bandung), 'Ateson Home Bandung', and 'idsMED - BDG - Setrasari' (idsMED is a medical-supply/mask company that sponsors AirVisual-network monitors in several Indonesian cities). These are IQAir/AirVisual-platform community devices: IQAir's ToS require a paid API key and forbid redistribution without one (same block noted for Jakarta-adjacent checks in indonesia.md), so their live values, hardware model, and uptime could not be verified today - only their existence and rough names, via IQAir's public web page, not its API. Could not confirm whether these are also on PurpleAir's public map (PurpleAir's own API returned 403 ApiKeyMissingError today, confirming no key-free path)."
+  },
+  {
+    "place": "Bandung",
+    "source": "IQAir community network (web page only, not machine-readable without a paid key)",
+    "stationOrSensorIds": ["VALUESTREAM-SS22-MASAGO", "Ateson Home Bandung", "Setra Duta 2", "Jl. Ganesha No.10", "Setra Duta", "idsMED - BDG - Setrasari"],
+    "distanceKm": null,
+    "kind": "community",
+    "trust": "low",
+    "notes": "Trust is low only because it's UNVERIFIED, not because the sensors look bad: existence is confirmed via IQAir's own city page (6 stasiun dari 5 contributors), but hardware, outdoor/indoor flag, precise coordinates, freshness, and any correlation with the Saguling ISPU station are all unknown without API access. 'Jl. Ganesha No.10' is worth a direct email to ITB rather than IQAir, since that address is ITB's own campus - there is a real chance this is a university-run instrument that ITB would share directly. Verdict for Bandung: 'authoritative permission is the only way' for the crowd layer (ask IQAir for a data-sharing/API arrangement, or approach ITB directly about the Ganesha station); the KLH 24-hr line remains 'coverable now (via proxy)' on its own."
+  },
+  {
+    "place": "Surabaya",
+    "source": "KLH ISPU, id_stasiun KABUPATEN_MOJOKERTO (Kabupaten Mojokerto Mojosari)",
+    "stationOrSensorIds": ["KABUPATEN_MOJOKERTO"],
+    "distanceKm": 35.0,
+    "kind": "official-24h",
+    "trust": "medium",
+    "notes": "Confirmed live today: a_pm25 28.37, 35.0 km - still outside the 25 km no-stretch rule, unchanged from COVERAGE.md's '0 official <=25km.' No BMKG station on the whole east-Java/Surabaya axis. Verdict for the official line stands: 'no official coverage exists' within the radius; the fix would be a KLH station inside Surabaya city limits (several exist in the province, e.g. Kota Mojokerto Magersari 41.7 km, Kota Pasuruan 40+ km, but none inside the metro)."
+  },
+  {
+    "place": "Surabaya",
+    "source": "IQAir community network (web page only, not machine-readable without a paid key)",
+    "stationOrSensorIds": ["ITS Geomatics", "SAQI Keputih Permai", "Graha Surabaya Barat", "ITS Teknik Lingkungan", "idsMED - SBY - Pucang"],
+    "distanceKm": null,
+    "kind": "community",
+    "trust": "low",
+    "notes": "NEW source. IQAir's Surabaya page lists 5 stations from 4 contributors, verified 2026-09-30 via the public web page (not the API - no key was used or bypassed). Two of the five are named for ITS (Institut Teknologi Sepuluh Nopember, a public university) - 'ITS Geomatics' and 'ITS Teknik Lingkungan' (Environmental Engineering) - which reads like genuine departmental instrumentation, not a hobbyist device. Tried direct subdomain guesses for an ITS-run public feed (saqi.its.ac.id, airquality.its.ac.id, udara.its.ac.id) - none resolved, so no lower-friction path was found today; a real search would likely find the right ITS department page but the web-search budget for this session was exhausted before I could run it. 'SAQI' (Keputih Permai) is an unexplained acronym, possibly 'Surabaya Air Quality Index' - another lead for direct outreach. Hardware, outdoor/indoor status, precision and uptime are all unverified (IQAir blocks non-keyed access). Verdict: 'authoritative permission is the only way' - contact ITS's Geomatics or Environmental Engineering department directly (a university is normally the easiest of all owner types to reach for a free data-sharing agreement), or get an IQAir API key."
+  },
+  {
+    "place": "Makassar",
+    "source": "BMKG, nama_file pm25_mrs.xml (Maros)",
+    "stationOrSensorIds": ["id.bmkg:pm25_mrs"],
+    "distanceKm": 22.6,
+    "kind": "official-1h",
+    "trust": "high",
+    "notes": "Confirmed live today: JAM 13 WIB, PM2.5 47.3, Sedang, 22.6 km - unchanged. Correction, not a gap: Makassar already has a real 1-hr BMKG reading via Maros and is 'Needs proxy'/'1-hr' in COVERAGE.md's city table, not '24-hr only.' No KLH ISPU station found anywhere in South Sulawesi in today's 111-row list (0 within 60 km)."
+  },
+  {
+    "place": "Makassar",
+    "source": "AirGradient world API, locationId (Antang - Nafas)",
+    "stationOrSensorIds": ["Antang - Nafas"],
+    "distanceKm": 6.3,
+    "kind": "community",
+    "trust": "low",
+    "notes": "One Nafas-operated AirGradient (model O-1PS, outdoor) 6.3 km from Makassar's point, live and fresh (2026-09-30 08:03 UTC). Not in the EPA-corrected map API (same Nafas/map-API gap indonesia.md already flagged for Balikpapan) so only raw pm02 is available; would need the EPA correction applied manually. One sensor isn't enough to stand alone even where an official station exists nearby - it can supplement Maros as a rough cross-check once Nafas licensing is settled (unverified, same caveat as elsewhere in this network), but doesn't change Makassar's verdict, which is already fine via BMKG."
+  },
+  {
+    "place": "Medan",
+    "source": "BMKG, nama_file pm25_mdn2.xml (Medan)",
+    "stationOrSensorIds": ["id.bmkg:pm25_mdn2"],
+    "distanceKm": 19.7,
+    "kind": "official-1h",
+    "trust": "high",
+    "notes": "Confirmed live today: JAM 13 WIB, PM2.5 50.5, Sedang, 19.7 km - unchanged, already 1-hr/needs-proxy per COVERAGE.md."
+  },
+  {
+    "place": "Medan",
+    "source": "KLH ISPU, id_stasiun DLH_MEDAN_01 / DLH_MEDAN_02 / DLH_MEDAN_03",
+    "stationOrSensorIds": ["DLH_MEDAN_01", "DLH_MEDAN_02", "DLH_MEDAN_03"],
+    "distanceKm": 5.9,
+    "kind": "official-24h",
+    "trust": "medium",
+    "notes": "NEW: three Medan city (DLH = Dinas Lingkungan Hidup Kota Medan) stations in today's KLH getStations pull, much closer than BMKG Medan - 5.9, 6.5 and 7.2 km from the city point. This raises Medan's official-station count from COVERAGE.md's '1 BMKG + 2 ISPU' baseline (which already implied 2 ISPU stations existed, so this mostly confirms and pins down which three they are, by exact id/distance, rather than being a wholly new discovery). Readings today: DLH_MEDAN_01 a_pm25=1.04 (very low, plausible for a clean pocket but worth a sanity check), DLH_MEDAN_02 a_pm25=0 (per indonesia.md's documented convention, a_pm25:'0' almost always means MISSING data on an otherwise-live station, not 'zero pollution' - treat as no-data, not clean air), DLH_MEDAN_03 a_pm25=80.28 (Tidak Sehat, plausible and closest in magnitude to BMKG Medan's 50.5 1-hr reading, given the 24-hr/1-hr averaging difference the two networks already show elsewhere in Indonesia). No code change is required since the existing KLH adapter already ingests every row from getStations automatically - this entry documents that the DLH Medan stations exist and are close, and flags DLH_MEDAN_02's a_pm25=0 as a likely data-quality fault to watch for, not a genuine reading."
+  },
+  {
+    "place": "Balikpapan",
+    "source": "KLH ISPU, id_stasiun BALIKPAPAN_BB / BALIKPAPAN (Balikpapan Baru / Sepinggan)",
+    "stationOrSensorIds": ["BALIKPAPAN_BB", "BALIKPAPAN"],
+    "distanceKm": 0.7,
+    "kind": "official-24h",
+    "trust": "high",
+    "notes": "Confirmed live today, unchanged from COVERAGE.md: 3 ISPU stations near Balikpapan, nearest (Balikpapan Baru) 0.7 km, a_pm25 29.45 today. No BMKG within 90 km (Samarinda). Status stands as 'Needs proxy, 24-hr only' for the official line - see the next entry for a possible crowd upgrade."
+  },
+  {
+    "place": "Balikpapan",
+    "source": "AirGradient world API, locationId 77270 'Gunung Sari Ilir - Nafas' and 77242 'Karang Joang - Nafas'",
+    "stationOrSensorIds": [77270, 77242],
+    "distanceKm": 3.7,
+    "kind": "community",
+    "trust": "medium",
+    "notes": "NEW and the closest thing to a 'newly coverable' place found in this pass. Two Nafas-operated AirGradient Open Air (model O-1PS, single Plantower PMS5003, outdoor) units, both live and very fresh at capture (2026-09-30 08:02-08:03 UTC, offline:false): Gunung Sari Ilir 3.7 km (raw pm02 32.3, rhum 53%) and Karang Joang 7.4 km (raw pm02 9.0, rhum 47%). Both are within 10 km, which is the SPEC's threshold for a community 'now' estimate - this is the first time in this pass that number clears the bar for a place currently marked '24-hr only.' Caveats that keep trust at medium, not high: (1) neither sensor appears in AirGradient's EPA-corrected map API (checked a tight bbox around Balikpapan - zero results), only in the raw world API, so the app would need to apply its own EPA PM2.5 correction using rhum before showing a number, exactly as indonesia.md's existing gotchas describe; (2) Nafas's data-sharing licence for its AirGradient-hosted devices is unverified (same open question noted for Jakarta/Malang/Bali Nafas sensors); (3) owner type is a professional Indonesian air-quality company (Nafas), not an individual, which is a positive trust signal, but Nafas itself has no public terms page found; (4) cross-check against the official line: Gunung Sari Ilir's raw pm02 (32.3) sits close to Balikpapan Baru's 24-hr a_pm25 (29.45), a reasonable agreement given the different averaging windows (instant vs 24-hr mean); Karang Joang's 9.0 is much lower, plausible for a quieter northern suburb rather than a fault, but not independently confirmed; (5) uptime/history over 7-30 days was not checked (would need repeated polling, out of scope for a single pass) - recommend logging both for at least a week before trusting them for a public 'now' estimate. Verdict: 'coverable via proxy, pending Nafas permission' for the crowd 1-hr estimate; the KLH 24-hr line is already 'coverable now' on its own."
+  },
+  {
+    "place": "Palangka Raya",
+    "source": "BMKG, nama_file pm25_pr2.xml (Palangkaraya) and KLH ISPU id_stasiun PALANGKARAYA",
+    "stationOrSensorIds": ["id.bmkg:pm25_pr2", "PALANGKARAYA"],
+    "distanceKm": 3.7,
+    "kind": "official-1h",
+    "trust": "medium",
+    "notes": "Data-quality flag, not a new source. Both networks read extreme values today (BMKG 1-hr JAM 13 = 793.8 ug/m3, 'Berbahaya'; KLH 24-hr a_pm25 = 1372.89, off the P.14/2020 scale entirely). The two independent networks agreeing on 'extremely severe' is some cross-check evidence this isn't a single-sensor glitch, but 1372.89 as a 24-HOUR MEAN is implausibly high even for a severe fire episode and should be treated with real caution - either a genuine catastrophic local event today, or reference-grade optical/beta-attenuation instruments saturating or drifting at very high concentration (a known failure mode). Recommend the app show a capped/range value with a data-quality note rather than the raw number if this recurs, and flag for a human check before trusting it as a headline figure. Not one of the target 'not available yet' places (Palangka Raya is already 'needs proxy'/1-hr and unaffected in status), included here because it's a Kalimantan town and the anomaly is worth surfacing."
+  },
+  {
+    "place": "Pangkalanbun (Kotawaringin Barat, Central Kalimantan)",
+    "source": "BMKG, nama_file pm25_pkn2.xml (Pangkalanbun)",
+    "stationOrSensorIds": ["id.bmkg:pm25_pkn2"],
+    "distanceKm": 0,
+    "kind": "official-1h",
+    "trust": "high",
+    "notes": "NEW BMKG station not named anywhere in indonesia.md's existing station list (which named 17 Sumatra/Kalimantan stations but not this one). Confirmed live today in the 26-row BMKG pull: JAM 13 WIB, PM2.5 239.8, Sangat Tidak Sehat, lat -2.704, lon 111.676 (Pangkalan Bun, Kotawaringin Barat regency, Central Kalimantan - a genuine fire-belt town, not currently in places.ts as a named destination). BMKG's station roster changes hour to hour (indonesia.md already documents 23-26 rows across different captures), so this may be a station that rotates in and out rather than a brand-new install, but it is a real, additional 1-hr anchor in an under-covered part of Kalimantan and worth adding to places.ts if Pangkalanbun/Kotawaringin Barat is ever added as a destination. Not one of the explicitly requested target places, flagged as a bonus find per the 'Riau/Kalimantan towns' instruction."
+  },
+  {
+    "place": "(regional) Nafas own data portal",
+    "source": "data.nafas.id",
+    "stationOrSensorIds": [],
+    "distanceKm": null,
+    "kind": "community",
+    "trust": "low",
+    "notes": "Checked live 2026-09-30: nafas.co.id redirects to nafas.com/id-en (the indoor-air subscription business, as indonesia.md already found); api.nafas.co.id does not resolve. NEW: data.nafas.id resolves (HTTP 200) but is a literal 'Coming Soon' placeholder page - confirms indonesia.md's 'no public API found' verdict still holds today, but also shows Nafas is actively building one. Worth re-checking this URL periodically and worth mentioning in any outreach email to Nafas, since it suggests they are already planning the kind of open data release HazeNow would want."
+  },
+  {
+    "place": "(regional) PurpleAir",
+    "source": "api.purpleair.com/v1/sensors",
+    "stationOrSensorIds": [],
+    "distanceKm": null,
+    "kind": "community",
+    "trust": "low",
+    "notes": "Confirmed today: v1 API returns HTTP 403 'ApiKeyMissingError' with no key (unchanged from indonesia.md). The legacy no-key map endpoint (www.purpleair.com/json) now 302-redirects to an 'over quota' page and is dead. Could not get even a sensor COUNT for Indonesia without a key, since PurpleAir's public map itself requires the same keyed API under the hood and there is no separate count-only endpoint. Respected robots/ToS - did not attempt to scrape the interactive map."
+  },
+  {
+    "place": "(regional) OpenAQ v3",
+    "source": "api.openaq.org/v3/locations?iso=ID",
+    "stationOrSensorIds": [],
+    "distanceKm": null,
+    "kind": "official-1h",
+    "trust": "low",
+    "notes": "Not re-tested live this pass (indonesia.md already confirmed HTTP 401 without a key, and OpenAQ v3 requires a free-tier API key for all endpoints as of their 2023+ migration). Noted per the brief's instruction to flag that a key is required. OpenAQ's Indonesia coverage is understood to be a mirror of Air4Thai-style reference data plus some AirGradient/community feeds already reachable directly, so it would mostly be a convenience aggregator rather than a new primary source for Indonesia specifically."
+  },
+  {
+    "place": "(regional) US Embassy Jakarta / AirNow",
+    "source": "files.airnowtech.org/airnow/2026/20260930/HourlyData_2026093006.dat and _07.dat",
+    "stationOrSensorIds": [],
+    "distanceKm": null,
+    "kind": "official-1h",
+    "trust": "low",
+    "notes": "Re-checked live today (06:00 and 07:00 UTC hourly files, both 200 OK): zero rows mentioning Jakarta in either file. Confirms indonesia.md's 'Active' but 'no rows reporting' finding still holds - the embassy/consulate monitors are still not publishing today. Not one of the target places (Jakarta already has other coverage), included because the brief explicitly asked to check AirNow."
+  }
+]

@@ -185,7 +185,7 @@ class HazeCoreTest {
             Format.shareText(s),
         )
         val w = snap(Selection.Region("west"))
-        assertTrue(Format.shareText(w, "https://x.test").endsWith("rising fast. NEA 24-hr PSI: 81. Data: NEA via data.gov.sg. https://x.test"))
+        assertTrue(Format.shareText(w, "https://x.test").endsWith("rising. NEA 24-hr PSI: 81. Data: NEA via data.gov.sg. https://x.test"))
         // SPEC v1.2 §1: no Instant PSI, no "lagging" in user-facing text.
         assertFalse("Instant" in Format.shareText(s) || "lagging" in Format.shareText(s) || "Unhealthy" in Format.shareText(s))
     }

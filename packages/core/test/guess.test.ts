@@ -28,7 +28,7 @@ describe("guessCountry: every SEA time zone", () => {
     ["Asia/Saigon", "VN", "hanoi"],
     ["Asia/Manila", "PH", "metro-manila"],
     ["Asia/Vientiane", "LA", "vientiane"],
-    ["Asia/Phnom_Penh", "KH", "phnom-penh"],
+    ["Asia/Phnom_Penh", "KH", "siem-reap"],
     ["Asia/Yangon", "MM", "yangon"],
     ["Asia/Rangoon", "MM", "yangon"],
     ["Asia/Brunei", "BN", "bandar-seri-begawan"],
@@ -81,7 +81,7 @@ describe("guessCountry: Asia/Bangkok is shared by TH, VN, LA and KH", () => {
   test("a language for a country outside the zone doesn't move it (ms → still TH, low)", () =>
     expect(g("Asia/Bangkok", ["ms-MY"])).toMatchObject({ country: "TH", confidence: "low" }));
   test("the connection settles it", () => {
-    expect(g("Asia/Bangkok", ["en"], "KH")).toMatchObject({ country: "KH", confidence: "high", place: "phnom-penh" });
+    expect(g("Asia/Bangkok", ["en"], "KH")).toMatchObject({ country: "KH", confidence: "high", place: "siem-reap" });
     expect(g("Asia/Bangkok", ["en"], "TH")).toMatchObject({ country: "TH", confidence: "high" });
     // The connection beats the language within the zone's countries.
     expect(g("Asia/Bangkok", ["vi"], "LA").country).toBe("LA");
@@ -174,10 +174,12 @@ describe("startPlace", () => {
     expect(mm.place.country).toBe("TH");
     expect(["live_direct", "needs_proxy"]).toContain(mm.place.status);
     expect(startPlace(g("Asia/Brunei")).place.id).toBe("kota-kinabalu");
-    for (const tz of ["Asia/Phnom_Penh", "Asia/Dili"]) {
-      const s = startPlace(g(tz));
-      expect(s.notCoveredFrom).not.toBeNull();
-      expect(["live_direct", "needs_proxy"]).toContain(s.place.status);
-    }
+    const tl = startPlace(g("Asia/Dili"));
+    expect(tl.notCoveredFrom).toBe("TL");
+    expect(["live_direct", "needs_proxy"]).toContain(tl.place.status);
+    // Cambodia is covered in Siem Reap now (community sensors), so it starts there, not across a border.
+    const kh = startPlace(g("Asia/Phnom_Penh"));
+    expect(kh.notCoveredFrom).toBeNull();
+    expect(kh.place.id).toBe("siem-reap");
   });
 });

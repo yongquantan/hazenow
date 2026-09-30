@@ -304,8 +304,12 @@ adapter (per source) → Observation[] → ObservationSet (per country) → buil
   (`pm25_1h`|`official_index`|`none`), `official {scaleId, name, value, category, averaging, param, agency}`,
   `pm25Kind` (`official_1h`|`crowd_estimate`|null), `pm25_24h`, `nearest`, `stations`, `range`, `whoMultiple`,
   `hotspots`, `attribution[]`, `notes[]`. `pm25` and `band` become **nullable** outside SG. `instantPsi` exists only for SG.
-- Coverage today: SG and TH are direct (clients call the authority). MY, ID, VN (Hanoi), PH and LA go through the proxy.
-  KH, MM, BN and TL are not covered.
+- Coverage today: SG and TH are direct (clients call the authority). MY, ID, VN (Hanoi), PH, LA and KH (Siem Reap,
+  community sensors only) go through the proxy, and so do TH's community sensors (`/v1/th/observations?grade=lowcost`, used
+  only where no PCD station is within 25 km, e.g. Pai). MM, BN and TL are not covered.
+- Quality screens (`quality.ts`, before everything else): a station silent for > 24 h is offline and left out; a PM2.5 value
+  outside 0–1000 µg/m³ or a rise of > 400 in an hour is left out with "A station reading looked wrong and was left out."
+  Crowd QC adds the cluster outlier rule (> 3× the median of ≥ 4 sensors within 10 km, and ≥ 10 µg/m³ above it).
 
 ## 2. Transport and privacy
 
@@ -389,8 +393,12 @@ where the authority publishes a 24-h concentration (TH, MY inverted from a PM2.5
 - **MY, ID, VN, PH:** COPY.md matrix via the level-mapped `band`, until `COPY.<cc>.md` exists. When the chip is an index
   and the hour is well above the 24-h mean, the second line says so ("Nearby sensors read higher than the 24-hour average…"
   for crowd). Stale uses the station-local time.
-- **No chip:** LA/KH/MM/TL show "There's no official air-quality scale here." + the WHO line. A country with a scale but
-  nothing official nearby (e.g. HCMC today) shows "No official reading near here."
+- **The headline always answers "is it OK to be out?"** (principle 1, amended 30 Sep 2026, COPY.md §10 and §20.1):
+  a community estimate in a country with a scale gets that authority's category for the estimate and its verdict,
+  prefixed "Estimate: " (chip tagged "estimate", `bandFromEstimate: true`). LA/KH/MM/TL get a WHO-2021-guidance verdict
+  (four bands: < 25, 25–50, 50–100, ≥ 100 µg/m³) and a "WHO guide: …" chip, plus the WHO line. "There's no official
+  air-quality scale here." and "No official reading near here." are only the small line under the number. When the
+  official source is down, that line is "{Country}'s official data isn't responding right now · community sensors estimate".
 - Actions: `actions(band, profile)` from v1.2 (masks never first; never N95 for kids). No actions when `band` is null.
 - Words stay calm: "for now", no banned words. "Berbahaya"/"Merbahaya" appear only as the authority's band name, never
   in a headline.
@@ -480,7 +488,7 @@ Only the user's own pick is persisted. Until they pick, every launch re-guesses 
 ## 3. `startPlace(guess) → {place, notCoveredFrom, outside, fromZone}`
 
 The suggested place if covered (`live_direct`/`needs_proxy`), else the country default, else the **nearest covered major city**
-(MM→Chiang Mai, KH→Pattaya, BN→Kota Kinabalu, TL→Makassar) with `notCoveredFrom` set. `country: null` → Singapore, `outside: true`.
+(MM→Chiang Mai, BN→Kota Kinabalu, TL→Makassar; KH now starts in Siem Reap, its default) with `notCoveredFrom` set. `country: null` → Singapore, `outside: true`.
 
 ## 4. UX (all clients)
 

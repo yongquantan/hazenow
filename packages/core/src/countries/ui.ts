@@ -5,12 +5,13 @@
  * UI language is English. The authority's own word is carried beside the English (small), never instead of it.
  */
 import { formatSgtTime } from "../format.js";
+import { STALE_AFTER_MS } from "../constants.js";
 import { trendWord, type Profile } from "../experience.js";
 import { CREDIT, trendDetail, type NowCard, type PreviewCard } from "../share.js";
-import { classifyIndex, classifyPm25, getScale } from "./scales.js";
+import { CHIP_SCALE, classifyIndex, classifyPm25, getScale } from "./scales.js";
 import { COUNTRIES } from "./registry.js";
 import { msToIso } from "./time.js";
-import { countryVerdict, formatLocalTime, NO_SCALE_COPY } from "./verdicts.js";
+import { countryVerdict, formatLocalTime, NO_SCALE_COPY, whoVerdictBand } from "./verdicts.js";
 import { NOT_AVAILABLE_COPY, type CityPlace } from "./places.js";
 import type { CountryCode, CountrySnapshot, LocalBand } from "./types.js";
 
@@ -113,6 +114,8 @@ export interface ChipModel {
   shape: LocalBand["shape"];
   /** "PCD category for the 24-hr Thai AQI" / "BMKG category for this hour's PM2.5" */
   basisNote: string;
+  /** The category is for a community-sensor estimate (or WHO guidance), not an official number: show a small "estimate" tag. */
+  estimate: boolean;
 }
 
 export interface OfficialRowModel {
@@ -148,7 +151,58 @@ export interface CountryDisplay {
    * "A community sensor nearby reads 104 µg/m³ right now." Shown as its own calm line, never blended into the index.
    */
   sensorLine: string | null;
+  /**
+   * Calm one-line notes, in order: no official anchor for a community estimate, a station left out as implausible,
+   * a nearby station offline for over a day. Empty when there's nothing to say.
+   */
+  notices: string[];
   attribution: { text: string; url: string }[];
+}
+
+/** "Thailand's official data", "the Philippines' official data". */
+export function officialDataOf(cc: CountryCode): string {
+  const n = cc === "PH" ? "the Philippines" : COUNTRIES[cc].name;
+  return `${n.endsWith("s") ? `${n}'` : `${n}'s`} official data`;
+}
+
+/**
+ * The official source failed or timed out (OfficialUnavailableError, or a proxy/network error): COPY §10's
+ * "API error / timeout" row, per country. With a cached snapshot the client shows it, marked with its age, plus
+ * `cachedLine`; without one it shows `title` + `line` and a Try again button.
+ */
+export function officialDownCopy(cc: CountryCode, cachedObservedAt?: string | null, now = Date.now(), viewerOffsetHours?: number) {
+  const data = officialDataOf(cc);
+  const title = `Can't reach ${data} right now`;
+  let cachedLine: string | null = null;
+  if (cachedObservedAt) {
+    const min = Math.max(0, Math.round((now - Date.parse(cachedObservedAt)) / 60_000));
+    const age = min < 60 ? `${min} min ago` : min < 48 * 60 ? `${Math.floor(min / 60)} hr${Math.floor(min / 60) === 1 ? "" : "s"} ago` : `${Math.floor(min / 1440)} days ago`;
+    cachedLine = `${title}. Showing the last reading we got, from ${stationTime(cachedObservedAt, cc, viewerOffsetHours)} (${age}).`;
+  }
+  return { title, line: "We'll try again in a few minutes.", cachedLine, statusLine: `${title}. We'll try again in a few minutes.` };
+}
+
+/** A cached snapshot re-judged for staleness at `now` (a reading cached an hour ago may be stale by now). */
+export function cachedCountrySnapshot(s: CountrySnapshot, now: number): CountrySnapshot {
+  return { ...s, stale: now - Date.parse(s.observedAt) > STALE_AFTER_MS };
+}
+
+export const NOTICE_COPY = {
+  noAnchor: "There's no official station within 25 km to check these sensors against, so this is an estimate, not a measurement.",
+  implausible: "A station reading looked wrong and was left out.",
+  offline: "A nearby station hasn't reported for over a day, so it was left out.",
+} as const;
+
+/** See CountryDisplay.notices. */
+export function snapshotNotices(s: Pick<CountrySnapshot, "pm25Kind" | "stations" | "notes">): string[] {
+  const out: string[] = [];
+  // (When the official source is down the stations exist but aren't answering: the kind label says that instead.)
+  if (s.pm25Kind === "crowd_estimate" && !s.notes.includes("official_unavailable") && !s.stations.some((x) => x.grade === "reference" && x.distanceKm !== null && x.distanceKm <= 25)) {
+    out.push(NOTICE_COPY.noAnchor);
+  }
+  if (s.notes.includes("implausible_dropped")) out.push(NOTICE_COPY.implausible);
+  if (s.notes.includes("offline_dropped")) out.push(NOTICE_COPY.offline);
+  return out;
 }
 
 const AVG = (a: "24h" | "1h" | "nowcast") => (a === "24h" ? "24-hr" : a === "nowcast" ? "hourly" : "1-hr");
@@ -204,7 +258,9 @@ export function countryDisplay(s: CountrySnapshot, opts: DisplayOptions = {}): C
     const basisNote =
       s.bandBasis === "official_index" && s.official
         ? `${b.agency} category for the ${AVG(s.official.averaging)} ${s.official.name}`
-        : `${getScale(b.scaleId).indexName ?? b.agency} category for this hour's PM2.5`;
+        : s.bandFromEstimate
+          ? `${b.agency} category, applied to the community-sensor estimate`
+          : `${getScale(b.scaleId).indexName ?? b.agency} category for this hour's PM2.5`;
     chip = {
       en: b.labelEn,
       local: b.labelLocal && b.labelLocal !== b.labelEn ? b.labelLocal : null,
@@ -213,6 +269,20 @@ export function countryDisplay(s: CountrySnapshot, opts: DisplayOptions = {}): C
       color: b.color,
       shape: b.shape,
       basisNote,
+      estimate: !!s.bandFromEstimate,
+    };
+  } else if (s.pm25 !== null && CHIP_SCALE[s.country] === null) {
+    // No national scale: WHO 2021 guidance bands on the hourly estimate (COPY.md §20).
+    const w = whoVerdictBand(s.pm25);
+    chip = {
+      en: `WHO guide: ${w.word}`,
+      local: null,
+      lang: "en",
+      agency: "WHO 2021",
+      color: WHO_CHIP_COLOR[w.level],
+      shape: (["circle", "half", "triangle", "octagon"] as const)[w.level],
+      basisNote: "WHO 2021 guidance, applied to this hour's estimate. There's no national scale here.",
+      estimate: s.pm25Kind === "crowd_estimate",
     };
   }
   const time = stationTime(s.observedAt, s.country, opts.viewerOffsetHours, opts.lon);
@@ -248,8 +318,9 @@ export function countryDisplay(s: CountrySnapshot, opts: DisplayOptions = {}): C
   }
   return {
     sensorLine: nearbySensorLine(s),
+    notices: snapshotNotices(s),
     chip,
-    numberSub: s.pm25Kind === "crowd_estimate" ? "PM2.5 · community sensors" : "PM2.5 · last hour",
+    numberSub: numberSub(s),
     kindLabel,
     provenance,
     official,
@@ -259,6 +330,27 @@ export function countryDisplay(s: CountrySnapshot, opts: DisplayOptions = {}): C
     attribution: s.attribution.map((a) => ({ text: a.text, url: a.url })),
   };
 }
+
+/**
+ * WHO-guide chip tones, low → very high: calm neutral blues, deepening towards indigo. None is an authority's colour
+ * (not PCD's #00BFF3, DOE's #3D8AF7 or ISPU's #0000CC), and each is ≥ 3:1 against both the light paper (#f3f1ec:
+ * 3.0, 3.5, 4.2, 4.6) and the dark paper (#14232b: 4.7, 4.1, 3.4, 3.1). Chip text uses the ink mix, as for any band.
+ */
+export const WHO_CHIP_COLOR = ["#6690AE", "#5B84B1", "#5873AE", "#6268A9"] as const;
+
+/**
+ * The small line directly under the big number. For a community estimate it says why there's no official number
+ * (these are the only places "No official reading near here" and "no official air-quality scale" may appear).
+ */
+export function numberSub(s: Pick<CountrySnapshot, "pm25Kind" | "notes" | "country" | "stations" | "official">): string {
+  if (s.pm25Kind !== "crowd_estimate") return "PM2.5 · last hour";
+  const tail = "community sensors estimate";
+  if (s.notes.includes("official_unavailable")) return `${cap(officialDataOf(s.country))} isn't responding right now · ${tail}`;
+  if (CHIP_SCALE[s.country] === null) return `There's no official air-quality scale here · ${tail}`;
+  if (!s.stations.some((x) => x.grade === "reference" && x.distanceKm !== null && x.distanceKm <= 25)) return `No official reading near here · ${tail}`;
+  return "PM2.5 · community sensors";
+}
+const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
 
 export const SENSOR_LINE_KM = 20;
 

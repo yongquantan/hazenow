@@ -140,6 +140,10 @@ export interface CountryVerdict extends Verdict {
   hedged?: boolean;
   /** Copy is a draft awaiting native review (TH table, MY/ID/VN/PH category rows). */
   needsReview?: boolean;
+  /** The headline comes from a community estimate mapped to the authority's category ("Estimate: …"). */
+  estimate?: boolean;
+  /** No national scale: the headline follows WHO 2021 guidance bands (WHO_VERDICT_BANDS). */
+  whoBased?: boolean;
   /** Local-language headline (TH), or null. */
   headlineLocal: string | null;
   shortLocal: string | null;
@@ -419,8 +423,43 @@ export const NO_SCALE_COPY = {
   crowdProvenance: (n: number) => `Estimate from ${n} community sensor${n === 1 ? "" : "s"} · not a government reading`,
 } as const;
 
+/**
+ * No national scale (KH, LA, MM, TL): a verdict from WHO 2021 guidance on the hourly estimate, labelled as such
+ * (COPY.md §20, founder-approved defaults). Four calm bands; `sev` follows the same 0–4 severity as the categories.
+ */
+export const WHO_VERDICT_BANDS = [
+  { max: 25, key: "low", word: "low", en: "Likely fine to be out.", short: "Likely fine", sev: 0 as Severity, level: 0 as const },
+  { max: 50, key: "moderate", word: "moderate", en: "Likely OK. Sensitive people, go easy.", short: "Likely OK", sev: 1 as Severity, level: 1 as const },
+  { max: 100, key: "high", word: "high", en: "Go easy outdoors for now.", short: "Go easy outdoors", sev: 2 as Severity, level: 2 as const },
+  { max: Infinity, key: "very_high", word: "very high", en: "Limit time outside for now.", short: "Limit time outside", sev: 3 as Severity, level: 3 as const },
+] as const;
+
+/** WHO band for an hourly PM2.5 estimate: under 25, 25–50, 50–100, 100 and up. */
+export function whoVerdictBand(pm25: number) {
+  return WHO_VERDICT_BANDS.find((b) => pm25 < b.max)!;
+}
+
+/** Honest prefix for a verdict that comes from a community estimate (the chip carries an "estimate" tag too). */
+export const ESTIMATE_PREFIX = { en: "Estimate: ", short: "Est. ", th: "ค่าประมาณ: " } as const;
+const lcFirst = (x: string) => (/^[A-Z][a-z]/.test(x) ? x.charAt(0).toLowerCase() + x.slice(1) : x);
+
+/** A verdict can't answer "is it OK to be out?" when there's no number at all: this says so, calmly. */
+export const NO_READING_VERDICT = { headline: "Can't say for here right now.", short: "No reading nearby" } as const;
+
 /** Headline for any CountrySnapshot and profile (see the module comment for the per-country rules). */
 export function countryVerdict(s: CountrySnapshot, profile: readonly Profile[] = ["general"]): CountryVerdict {
+  const v = baseVerdict(s, profile);
+  if (!s.bandFromEstimate) return v;
+  return {
+    ...v,
+    headline: ESTIMATE_PREFIX.en + lcFirst(v.headline),
+    short: ESTIMATE_PREFIX.short + lcFirst(v.short),
+    headlineLocal: v.headlineLocal ? ESTIMATE_PREFIX.th + v.headlineLocal : v.headlineLocal,
+    estimate: true,
+  };
+}
+
+function baseVerdict(s: CountrySnapshot, profile: readonly Profile[]): CountryVerdict {
   const ids = normaliseProfile(profile);
   const hedged = hedgedOn24h(s);
   if (s.country === "TH") {
@@ -465,9 +504,25 @@ export function countryVerdict(s: CountrySnapshot, profile: readonly Profile[] =
     return { ...v, secondLine, headlineLocal: null, shortLocal: null, secondLineLocal: null };
   }
   const hasScale = CHIP_SCALE[s.country] !== null;
+  if (!hasScale && s.pm25 !== null) {
+    const w = whoVerdictBand(s.pm25);
+    return {
+      headline: w.en,
+      short: w.short,
+      secondLine: s.stale ? `Reading is from ${formatLocalTime(s.observedAt)}. It may not match the air now.` : NO_SCALE_COPY.whoLine(s.whoMultiple!),
+      forWhom: forWhom(ids),
+      profile: ids[0],
+      sensitive: isSensitive(ids),
+      whoBased: true,
+      headlineLocal: null,
+      shortLocal: null,
+      secondLineLocal: null,
+    };
+  }
+  // No number and nothing official to band (NO_OFFICIAL_COPY / NO_SCALE_COPY go under the number, never here).
   return {
-    headline: hasScale ? NO_OFFICIAL_COPY.headline : NO_SCALE_COPY.headline,
-    short: hasScale ? NO_OFFICIAL_COPY.short : NO_SCALE_COPY.short,
+    headline: NO_READING_VERDICT.headline,
+    short: NO_READING_VERDICT.short,
     secondLine: s.whoMultiple !== null ? NO_SCALE_COPY.whoLine(s.whoMultiple) : null,
     forWhom: forWhom(ids),
     profile: ids[0],

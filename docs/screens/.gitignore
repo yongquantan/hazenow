@@ -1,0 +1,4 @@
+# Intermediates for the 4-surfaces composite; keep only the final PNG.
+*
+!.gitignore
+!hazenow-4-surfaces.png

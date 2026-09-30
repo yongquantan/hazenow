@@ -13,6 +13,7 @@ import { API_BASE, API_V1_BASE } from "./constants.js";
 import { backoffMs, sgtDate, shouldFetchV2 } from "./format.js";
 import { fromV1, type ApiResponse } from "./parse.js";
 import { buildSnapshot, NoDataError } from "./snapshot.js";
+import { TimeoutError, withTimeout } from "./net.js";
 import type { LocationQuery, Snapshot } from "./types.js";
 
 export interface FetchResponseLike {
@@ -43,6 +44,8 @@ export interface GetSnapshotOptions extends LocationQuery {
   v2?: "auto" | "always" | "never";
   /** Delay before the single retry of a v1 network/5xx error (default 1000 ms; tests use 0). */
   retryDelayMs?: number;
+  /** Per-request timeout (default UPSTREAM_TIMEOUT_MS, 8 s). A timed-out request is not retried. */
+  timeoutMs?: number;
 }
 
 export interface RawResponses {
@@ -119,7 +122,7 @@ async function getV1(f: FetchLike, url: string, opts: GetSnapshotOptions): Promi
     return await getOnce(f, url, opts.signal);
   } catch (e) {
     const status = (e as FetchError).status;
-    const retryable = status === undefined ? !(e instanceof FetchError) : status >= 500 || status === 429;
+    const retryable = e instanceof TimeoutError ? false : status === undefined ? !(e instanceof FetchError) : status >= 500 || status === 429;
     if (!retryable || opts.signal?.aborted) throw e;
     await wait(opts.retryDelayMs ?? 1000, opts.signal);
     return await getOnce(f, url, opts.signal);
@@ -138,9 +141,10 @@ const hasItems = (r: ApiResponse | null | undefined) => !!r && (r.data?.items?.l
 
 /** Fetch all raw responses. Individual failures become null. Throws only if no PM2.5 data at all. */
 export async function fetchRaw(opts: GetSnapshotOptions = {}): Promise<RawResponses> {
-  const f: FetchLike | undefined =
+  const base: FetchLike | undefined =
     opts.fetch ?? (globalThis.fetch ? (globalThis.fetch.bind(globalThis) as unknown as FetchLike) : undefined);
-  if (!f) throw new FetchError("No fetch implementation available (Node 18+ required)");
+  if (!base) throw new FetchError("No fetch implementation available (Node 18+ required)");
+  const f = withTimeout(base, opts.timeoutMs);
   const v2Base = (opts.baseUrl ?? API_BASE).replace(/\/$/, "");
   const v1Base = (opts.v1BaseUrl ?? API_V1_BASE).replace(/\/$/, "");
   const nowRaw = opts.now ?? Date.now();

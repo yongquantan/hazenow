@@ -172,8 +172,10 @@ export function ispuObservations(raw: unknown, now: number): Observation[] {
     const off = provinceOffset(r.provinsi, r.time_z);
     const periodEnd = r.waktu ? wallToIso(r.waktu, off) : null;
     if (!periodEnd || Date.parse(periodEnd) > now + 10 * 60_000) continue; // future stamp = mis-tagged zone
-    const idx = num(r.t_pm25);
+    // `a_pm25 "0"` means missing (header), and so does the PM2.5 sub-index computed from it (`t_pm25 "0"`): a real
+    // 24-h ISPU of 0 would need perfectly clean air for a day (DLH Medan 01/02, coverage-hunt/id.md).
     const a = num(r.a_pm25);
+    const idx = a && a > 0 && num(r.t_pm25) !== 0 ? num(r.t_pm25) : null;
     out.push({
       stationId: `id.klh:${r.id_stasiun}`,
       name: (r.nama ?? r.id_stasiun).trim(),

@@ -980,3 +980,12 @@ describe("stale wording (COPY §19): 'that hour', never 'next hour' / 'last hour
     expect((shareCardContent("clocks", fresh) as ClocksCard).nowLabel).toBe("The last hour");
   });
 });
+
+describe("golden: trend phrase (fixtures/golden/trend.json, shared with Kotlin and Swift)", () => {
+  const golden = require("../fixtures/golden/trend.json") as { name: string; history: { time: string; pm25: number }[]; expected: { words: string; word: string | null } }[];
+  test.each(golden.map((g) => [g.name, g] as const))("%s", (_name, g) => {
+    const h = g.history as unknown as Parameters<typeof trendWords>[0];
+    expect(trendWords(h)).toBe(g.expected.words);
+    expect(h.length ? trendWord(h) : null).toBe(g.expected.word);
+  });
+});

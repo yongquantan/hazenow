@@ -120,7 +120,7 @@ export class Upstreams {
 
     s.calls.push(now);
     const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(new Error("timeout")), src.timeoutMs ?? 15_000);
+    const timer = setTimeout(() => ac.abort(new Error("timeout")), src.timeoutMs ?? 8_000);
     try {
       const res = await this.fetchImpl(url, {
         signal: ac.signal,

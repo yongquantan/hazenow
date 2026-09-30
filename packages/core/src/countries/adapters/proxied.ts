@@ -1,13 +1,14 @@
 /**
  * Adapters for jurisdictions whose sources need services/proxy (no CORS, HTML scraping, or budgeted polling):
  * MY (DOE APIMS + AirGradient), ID (BMKG + KLH ISPU + SiPongi + AirGradient), VN (Hanoi moitruongthudo +
- * AirGradient), PH and LA (AirGradient crowd only).
+ * AirGradient), PH, LA and KH (community sensors only: AirGradient + Sensor.Community).
  *
  * Privacy (REGIONAL §4.1): these call GET {proxy}/v1/{cc}/observations — **no location is sent**. The snapshot
  * is built on the device with buildCountrySnapshot(). The proxy's /snapshot?lat&lon route exists only for
  * "dumb" clients (SwiftBar, Telegram, Home Assistant) and rounds coordinates to 2 dp.
  */
 import { buildCountrySnapshot } from "../build.js";
+import { withTimeout } from "../../net.js";
 import { COUNTRIES } from "../registry.js";
 import type { AdapterContext, CountryAdapter, CountryCode, CountrySnapshot, FetchLike, ObservationSet } from "../types.js";
 
@@ -44,8 +45,9 @@ export function proxiedAdapter(country: CountryCode, meta: { kind: CountryAdapte
     attribution: [],
     async fetchObservations(ctx: AdapterContext = {}): Promise<ObservationSet> {
       if (!ctx.proxyBase) throw new ProxyError(`${id}: proxyBase (HAZENOW_EDGE) is not configured`);
-      const f: FetchLike | undefined = ctx.fetch ?? (globalThis.fetch?.bind(globalThis) as unknown as FetchLike);
-      if (!f) throw new ProxyError("No fetch implementation available");
+      const raw: FetchLike | undefined = ctx.fetch ?? (globalThis.fetch?.bind(globalThis) as unknown as FetchLike);
+      if (!raw) throw new ProxyError("No fetch implementation available");
+      const f = withTimeout(raw, ctx.timeoutMs);
       const url = `${ctx.proxyBase.replace(/\/$/, "")}/v1/${country.toLowerCase()}/observations`;
       const res = await f(url, { signal: ctx.signal, headers: { accept: "application/json" } });
       if (!res.ok) throw new ProxyError(`HTTP ${res.status} for ${url}`, res.status);
@@ -66,3 +68,4 @@ export const idAdapter = proxiedAdapter("ID", { kind: "mixed" });
 export const vnAdapter = proxiedAdapter("VN", { kind: "mixed" });
 export const phAdapter = proxiedAdapter("PH", { kind: "crowd" });
 export const laAdapter = proxiedAdapter("LA", { kind: "crowd" });
+export const khAdapter = proxiedAdapter("KH", { kind: "crowd" });

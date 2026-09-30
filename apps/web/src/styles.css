@@ -2037,3 +2037,11 @@ figcaption .legend {
     overflow: visible;
   }
 }
+
+/* Chip for a community estimate (or WHO guidance): a small "estimate" tag, never presented as official. */
+.chip-est { font-size: 0.72em; font-weight: 500; opacity: 0.75; margin-left: 0.2em; text-transform: lowercase; }
+
+/* WHO-guidance verdicts (no national scale): the headline in the normal ink colour, never a band tint. */
+:root[data-who] .verdict {
+  color: var(--ink);
+}
