@@ -234,6 +234,23 @@ Bump `versionCode` and `versionName` in `app/build.gradle.kts` for every release
 - There is no background location: the worker only reads the last known fix.
 - Keep the store listing calm and factual: say you complement NEA, and make no medical claims.
 
+## Southeast Asia (SPEC v2.0 and v2.1)
+
+- **Core (`core/.../sea/`)** is a port of `packages/core/src/countries`: scales, registry, borders (the polygons are extracted at build time from `borders-data.ts`), quality screens, the snapshot builder, verdicts (Thai table, category rows, WHO-guidance bands), the display model, the place catalogue, `guessCountry`/`startPlace`, and the Air4Thai and proxy adapters.
+- **Headlines** are always a verdict. A community estimate gets the authority's category verdict prefixed "Estimate: ", with an "estimate" tag on the chip. Laos, Cambodia, Myanmar and Timor-Leste get WHO-guidance verdicts and a "WHO guide: …" chip. The caveats ("No official reading near here", "There's no official air-quality scale here", "… official data isn't responding right now") only ever appear in the line under the number.
+- **Timeouts and fallbacks:** every upstream call (NEA, Air4Thai, the proxy) is bounded at about 8 s (`Net.withTimeout` plus OkHttp's call timeout). If Air4Thai fails, in-country community sensors from the proxy stand in, labelled as such. Next comes the cached snapshot with its age, then the calm "Can't reach … official data" state.
+- **Country guess:** `TimeZone.getDefault()`, `LocaleList.getDefault()` and the SIM's `networkCountryIso`, all on-device. The order is deep link, then saved choice, then guess, then Singapore. The guess is never saved. A sure Singapore guess shows the v1.4 first-run card, unchanged.
+- **Change** opens a two-step sheet. Step 1 lists the countries, with their status. Step 2 lists that country's places, Popular first (Singapore: its 55 areas). One search box covers every country and alias.
+- **Data:** Singapore is unchanged. Thailand comes direct from Air4Thai. `air4thai.pcd.go.th` still serves an incomplete chain after PCD renewed its certificate on 30 Sep 2026, so `res/xml/network_security_config.xml` adds Let's Encrypt `YR1` and `Root YR` for that host only (SHA-256 fingerprints are in the file). Other countries, and Thailand's community sensors (Pai), come through `HAZENOW_EDGE`. Set it with `-Phazenow.edge=https://…`, the `HAZENOW_EDGE` env var, or `hazenow.edge=` in `local.properties`. When it is unset, those places say "Not available yet on this app". Recorded data is never shown.
+- **Tests:** `SeaGoldenTest` checks every catalogue place, the guess grid, search, groups and borders against `core/src/test/resources/sea-golden.json`. Regenerate it with `bun tools/gen_sea_golden.ts`. `SeaHeadlineTest` and `SeaFallbackTest` port `headlines.test.ts` and `timeouts.test.ts`.
+- **QA:**
+  ```sh
+  adb shell am start -n sg.hazenow/.MainActivity --es country th --es area pai
+  adb shell am start -n sg.hazenow/.MainActivity --es edge http://10.0.2.2:8787   # (debug) a local services/proxy; --es edge off
+  adb shell cmd alarm set-timezone Asia/Bangkok && adb shell pm clear sg.hazenow  # test the guess
+  ```
+- **Known limits:** widgets, the tile and Haze watch still show Singapore. Band alerts pause while the app shows a place outside Singapore, because crossing a border never fires an alert. Sharing a place outside Singapore shares text only; there are no country share cards yet.
+
 ## Layout
 
 ```

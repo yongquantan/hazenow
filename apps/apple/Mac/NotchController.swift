@@ -255,7 +255,11 @@ struct NotchView: View {
     private var ears: some View {
         HStack(spacing: 0) {
             Group {
-                if let s = store.snapshot {
+                if let c = store.country {
+                    Image(systemName: "aqi.medium").font(.system(size: 11))
+                        .foregroundStyle(store.countryTint.map { Color(hex: $0) } ?? .secondary)
+                        .accessibilityLabel(c.placeName)
+                } else if let s = store.snapshot {
                     Image(systemName: s.band.symbolName)
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(s.band.color)
@@ -266,7 +270,8 @@ struct NotchView: View {
             }
             .frame(width: NotchController.earWidth - 10, alignment: .trailing)
             Spacer(minLength: 0)
-            Text((store.snapshot?.compactValueText ?? "—") + (store.mockScenario != nil ? " M" : ""))
+            Text(store.country != nil ? (store.country?.snapshot?.pm25.map(String.init) ?? "—")
+                 : (store.snapshot?.compactValueText ?? "—") + (store.mockScenario != nil ? " M" : ""))
                 .font(.system(size: 12, weight: .semibold, design: .rounded).monospacedDigit())
                 .foregroundStyle(.white)
                 .frame(width: NotchController.earWidth - 8, alignment: .leading)

@@ -3,14 +3,6 @@
  * (a plain-language warning), it never fails the whole country while another source still answers.
  */
 import {
-  AG_ATTRIBUTION,
-  AIR4THAI_ATTRIBUTION,
-  BMKG_ATTRIBUTION,
-  DOE_ATTRIBUTION,
-  HANOI_ATTRIBUTION,
-  KLH_ATTRIBUTION,
-  NEA_ATTRIBUTION,
-  SC_ATTRIBUTION,
   SIPONGI_ATTRIBUTION,
   agMapObservations,
   agWorldObservations,
@@ -29,7 +21,6 @@ import {
   parseHanoiSites,
   sgObservations,
   sipongiHotspots,
-  type Attribution,
   type CountryCode,
   type Observation,
   type ObservationSet,
@@ -42,23 +33,9 @@ import { Rings } from "./rings.js";
 import { URLS } from "./sources.js";
 import { UpstreamError, type Got, type Upstreams } from "./upstream.js";
 
-export const SERVED: CountryCode[] = ["SG", "TH", "MY", "ID", "VN", "PH", "LA", "KH"];
-export const ANCHOR_RADIUS_KM = 10;
+export { SERVED, ANCHOR_RADIUS_KM, ATTRIBUTION, ALL_ATTRIBUTION } from "./coverage.js";
+import { ANCHOR_RADIUS_KM, ATTRIBUTION } from "./coverage.js";
 const HOUR = 3600_000;
-
-/** Crowd attribution: AirGradient (CC BY-SA 4.0) and the Sensor.Community rows its map carries (ODbL 1.0). */
-const CROWD = [AG_ATTRIBUTION, SC_ATTRIBUTION];
-export const ATTRIBUTION: Record<string, Attribution[]> = {
-  SG: [NEA_ATTRIBUTION],
-  TH: [AIR4THAI_ATTRIBUTION, ...CROWD],
-  MY: [DOE_ATTRIBUTION, ...CROWD],
-  ID: [BMKG_ATTRIBUTION, KLH_ATTRIBUTION, SIPONGI_ATTRIBUTION, ...CROWD],
-  VN: [HANOI_ATTRIBUTION, ...CROWD],
-  PH: CROWD,
-  LA: CROWD,
-  KH: CROWD,
-};
-export const ALL_ATTRIBUTION: Attribution[] = [...new Map(Object.values(ATTRIBUTION).flat().map((a) => [a.id, a])).values()];
 
 export class NoDataForCountry extends Error {
   constructor(public country: CountryCode, public warnings: string[]) {

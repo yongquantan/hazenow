@@ -178,8 +178,8 @@ public final class HazeStore {
     public private(set) var snapshot: Snapshot?
     public private(set) var insight: HazeInsight?
     public private(set) var loadError: LoadError?
-    public private(set) var isLoading = false
-    public private(set) var lastChecked: Date?
+    public internal(set) var isLoading = false
+    public internal(set) var lastChecked: Date?
     public private(set) var locationStatus: LocationProvider.Status = .off
     public private(set) var coordinate: CLLocationCoordinate2D?
     /// Active QA scenario (`-HazeMock`), shown as a "MOCK DATA" badge.
@@ -191,11 +191,24 @@ public final class HazeStore {
     public var placeMode: PlaceMode {
         didSet {
             guard placeMode != oldValue else { return }
-            settings.placeMode = placeMode
+            // Only the user's own pick is saved (SPEC v2.1): deep links and the country guess are transient.
+            if !transientPlace {
+                settings.placeMode = placeMode
+                guessBanner = nil
+            }
             if case .myLocation = placeMode { location.start() } else { location.stop() }
-            recompute()
+            placeChanged()
         }
     }
+
+    /// SPEC v2.1: the device's country guess (time zone + languages, no network), and the calm line it shows.
+    public private(set) var guess: CountryGuess = CountryGuesser.device()
+    public var guessBanner: GuessBanner?
+    /// The place outside Singapore being shown (nil = the Singapore view).
+    public internal(set) var country: CountryViewState?
+    @ObservationIgnored var transientPlace = false
+    @ObservationIgnored var countryTask: Task<Void, Never>?
+    @ObservationIgnored public var edge: String? = HazeEdge.configured()
 
     public var savedPlaces: [SavedPlace] {
         didSet { settings.savedPlaces = savedPlaces; recompute() }
@@ -304,6 +317,7 @@ public final class HazeStore {
         if mockScenario == nil { snapshot = settings.lastSnapshot } // instant paint from cache
         if let c = settings.lastCoordinate { coordinate = CLLocationCoordinate2D(latitude: c.lat, longitude: c.lon) }
         if let snapshot { insight = HazeInsight(snapshot: snapshot, location: locationInput, placeName: resolved.name, profiles: profiles) }
+        applyStartPlace()
         location.onUpdate = { [weak self] status, coord in
             guard let self else { return }
             self.locationStatus = status
@@ -313,7 +327,7 @@ public final class HazeStore {
                 self.coordinate = CLLocationCoordinate2D(latitude: lat, longitude: lon)
                 self.settings.lastCoordinate = (lat, lon)
             }
-            self.recompute()
+            self.placeChanged()
         }
     }
 
@@ -366,6 +380,11 @@ public final class HazeStore {
         guard let s = snapshot else { return nil }
         let obs = HazeFormat.hour(s.observedAt)
         if loadError == .offline { return HazeCopy.offlineCached(obs) }
+        // Timeout / API error with a cached reading: say so, with the reading's time and age (COPY §10).
+        if loadError == .api {
+            let min = max(0, Int(referenceNow.timeIntervalSince(s.observedAt) / 60))
+            return "\(HazeCopy.apiErrorTitle). Showing the last reading we got, from \(obs) (\(Provenance.formatAge(minutes: min)))."
+        }
         if s.stale {
             let latest = data?.readings.last
             if let latest, !latest.hasAnyValid { return HazeCopy.allOffline(obs) }
@@ -383,14 +402,29 @@ public final class HazeStore {
             var includeV2 = true
             while !Task.isCancelled {
                 guard let self else { return }
-                await self.refresh(includeV2: includeV2)
-                let plan = PollSchedule.next(now: Date(), latestObserved: self.data?.latestObserved,
-                                             failures: self.failures, retryAfter: self.retryAfter)
-                includeV2 = plan.includeV2
-                try? await Task.sleep(for: .seconds(max(5, plan.delay)))
+                let delay: TimeInterval
+                if let target = self.countryTarget {
+                    await self.refreshCountry(target)
+                    delay = self.countryPollDelay(target)
+                } else {
+                    await self.refresh(includeV2: includeV2)
+                    let plan = PollSchedule.next(now: Date(), latestObserved: self.data?.latestObserved,
+                                                 failures: self.failures, retryAfter: self.retryAfter)
+                    includeV2 = plan.includeV2
+                    delay = plan.delay
+                }
+                // A place change wakes the loop early (see placeChanged()).
+                self.pollWake = false
+                var waited: TimeInterval = 0
+                while waited < max(5, delay), !self.pollWake, !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(1))
+                    waited += 1
+                }
             }
         }
     }
+
+    @ObservationIgnored var pollWake = false
 
     public func stop() {
         pollTask?.cancel()
@@ -398,6 +432,10 @@ public final class HazeStore {
     }
 
     public func refresh(includeV2: Bool = true) async {
+        if let target = countryTarget {
+            await refreshCountry(target)
+            return
+        }
         isLoading = true
         defer { isLoading = false }
         do {

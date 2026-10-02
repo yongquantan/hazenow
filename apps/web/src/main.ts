@@ -1166,7 +1166,8 @@ function applyTheme() {
     root.style.setProperty("--haze", h.toFixed(3));
     root.style.setProperty("--veil", `${(5 + h * 11).toFixed(1)}%`);
     root.dataset.band = C.sea.adviceBand(cs) ?? "normal";
-    document.title = `${cs.pm25 ?? "–"}${cs.localBand ? ` ${cs.localBand.labelEn}` : ""} · ${placeLabelOf(state.where)} · HazeNow`;
+    // A recorded preview must say so in the tab too, so it is never mistaken for a live reading.
+    document.title = `${state.cmode === "preview" ? "Preview · " : ""}${cs.pm25 ?? "–"}${cs.localBand ? ` ${cs.localBand.labelEn}` : ""} · ${placeLabelOf(state.where)} · HazeNow`;
     return;
   }
   delete root.dataset.who;

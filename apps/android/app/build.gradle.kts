@@ -30,6 +30,16 @@ val keystoreProps = Properties().apply {
 val ciVersionName: String? = System.getenv("HAZENOW_VERSION_NAME")?.takeIf { it.isNotBlank() }
 val ciVersionCode: Int? = System.getenv("HAZENOW_VERSION_CODE")?.toIntOrNull()
 
+// SPEC v2.0 §2: HAZENOW_EDGE, the base URL of services/proxy (e.g. https://….up.railway.app). Proxied countries
+// (MY, ID, VN, PH, LA, KH, and Thailand's community sensors) need it; SG and TH direct never do. Unset → those places
+// say "Not available yet on this app" (never recorded or fake data). Set with -Phazenow.edge=…, env HAZENOW_EDGE,
+// or `hazenow.edge=…` in local.properties.
+val hazenowEdge: String = ((project.findProperty("hazenow.edge") as String?)
+    ?: System.getenv("HAZENOW_EDGE")
+    ?: Properties().apply { rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) } }
+        .getProperty("hazenow.edge")
+    ?: "https://hazenow-data.yongquan26.workers.dev").trim().trimEnd('/')  // default: the free Cloudflare Worker (services/worker)
+
 android {
     namespace = "sg.hazenow"
     compileSdk = 35
@@ -40,6 +50,7 @@ android {
         targetSdk = 35
         versionCode = ciVersionCode ?: 1
         versionName = ciVersionName ?: "1.0.0"
+        buildConfigField("String", "HAZENOW_EDGE", "\"$hazenowEdge\"")
     }
 
     signingConfigs {

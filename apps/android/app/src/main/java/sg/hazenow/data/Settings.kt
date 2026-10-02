@@ -28,7 +28,7 @@ import sg.hazenow.core.Selection
 val Context.settingsStore by preferencesDataStore(name = "settings")
 
 /** Where the reading is for (SPEC v1.4). */
-enum class PlaceMode { GPS, AREA, REGION, ISLAND }
+enum class PlaceMode { GPS, AREA, REGION, ISLAND, CITY }
 
 object PlaceKeys {
     const val HOME = "home"
@@ -66,7 +66,20 @@ data class Settings(
     val notifAsked: Boolean = false,
     /** Debug-only QA scenario (see MockData). */
     val mock: String? = null,
+    /** SPEC v2.0: a picked place outside Singapore (CITY mode): country code + catalogue slug. */
+    val cityCountry: String? = null,
+    val cityId: String? = null,
+    /** Debug-only override of HAZENOW_EDGE (QA against a local services/proxy). */
+    val edgeOverride: String? = null,
 ) {
+    /** A GPS fix in another SEA country (Johor, Bangkok…): the reading follows that country (SPEC v2.0 §3). */
+    val gpsCountry: sg.hazenow.core.sea.CountryCode?
+        get() = if (mode == PlaceMode.GPS && lat != null && lon != null && !sg.hazenow.core.Experience.inSingapore(lat, lon))
+            sg.hazenow.core.sea.Borders.countryAt(lat, lon)?.takeIf { it != sg.hazenow.core.sea.CountryCode.SG } else null
+
+    /** Showing a place outside Singapore: SG surfaces (widgets, alerts) must not pretend it's Singapore's reading. */
+    val outsideSingapore: Boolean get() = mode == PlaceMode.CITY || gpsCountry != null
+
     val alertPrefs: AlertPrefs get() = AlertPrefs(profiles, elevatedAlerts, quietStart, quietEnd, placeName = if (mode == PlaceMode.AREA) area?.name else null)
 
     val selection: Selection
@@ -74,7 +87,7 @@ data class Settings(
             PlaceMode.GPS -> if (lat != null && lon != null) Selection.Gps(lat, lon) else Selection.Island
             PlaceMode.AREA -> area?.selection ?: Selection.Island
             PlaceMode.REGION -> Selection.Region(region)
-            PlaceMode.ISLAND -> Selection.Island
+            PlaceMode.ISLAND, PlaceMode.CITY -> Selection.Island
         }
 
     /** Provenance prefix for a named place ("Tampines", "Home (Tampines)"); null = "Near you" / region. */
@@ -108,6 +121,9 @@ object SettingsKeys {
     val ALERT_STATE = stringPreferencesKey("alert_state")
     val NOTIF_ASKED = booleanPreferencesKey("notif_asked")
     val MOCK = stringPreferencesKey("mock_scenario")
+    val CITY_COUNTRY = stringPreferencesKey("city_country")
+    val CITY_ID = stringPreferencesKey("city_id")
+    val EDGE_OVERRIDE = stringPreferencesKey("edge_override")
     fun widgetPlace(appWidgetId: Int) = stringPreferencesKey("widget_place_$appWidgetId")
 }
 
@@ -160,6 +176,19 @@ class SettingsRepo(private val context: Context) {
         it[SettingsKeys.PLACES] = HazeApi.json.encodeToString(placesSer, next)
     }
 
+    /** SPEC v2.0: the user's own pick of a place outside Singapore (the "saved choice" of SPEC v2.1 §1). */
+    suspend fun setCity(country: String, id: String) = update {
+        it[SettingsKeys.CITY_COUNTRY] = country
+        it[SettingsKeys.CITY_ID] = id
+        it[SettingsKeys.MODE] = PlaceMode.CITY.name
+        it.remove(SettingsKeys.ACTIVE_PLACE)
+        it[SettingsKeys.FIRST_RUN_DONE] = true
+    }
+
+    suspend fun setEdgeOverride(url: String?) = update {
+        if (url.isNullOrBlank()) it.remove(SettingsKeys.EDGE_OVERRIDE) else it[SettingsKeys.EDGE_OVERRIDE] = url.trim().trimEnd('/')
+    }
+
     suspend fun setLocationDenied(denied: Boolean) = update { it[SettingsKeys.LOCATION_DENIED] = denied }
     suspend fun setFirstRunDone() = update { it[SettingsKeys.FIRST_RUN_DONE] = true }
     suspend fun resetFirstRun() = update {
@@ -208,5 +237,8 @@ class SettingsRepo(private val context: Context) {
         } ?: AlertState(),
         notifAsked = this[SettingsKeys.NOTIF_ASKED] ?: false,
         mock = if (MockData.enabled) this[SettingsKeys.MOCK] else null,
+        cityCountry = this[SettingsKeys.CITY_COUNTRY],
+        cityId = this[SettingsKeys.CITY_ID],
+        edgeOverride = if (MockData.enabled) this[SettingsKeys.EDGE_OVERRIDE] else null,
     )
 }

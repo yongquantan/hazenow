@@ -39,18 +39,30 @@ object ChartPainter {
     fun bandColor(b: Band, bg: Int, target: Double = Contrast.ICON): Int =
         Contrast.ensure(b.argb, bg.toLong() and 0xFFFFFFFFL, target).toInt()
 
-    fun draw(c: Canvas, width: Float, height: Float, bars: List<HistoryPoint>, line: List<HistoryPoint>, s: ChartStyle) {
+    /**
+     * @param guides dashed guides (value to label); SG's are NEA's 56 / 151. Other countries pass none: NEA's bands
+     *   never describe another country's air (SPEC v2.0 §5).
+     * @param barColor bar colour per value; SG colours by NEA band. Other countries use one neutral colour.
+     * @param clock time label for an ISO hour (SG time by default; station-local time elsewhere).
+     */
+    fun draw(
+        c: Canvas, width: Float, height: Float, bars: List<HistoryPoint>, line: List<HistoryPoint>, s: ChartStyle,
+        guides: List<Pair<Int, String>> = listOf(56 to Chart.GUIDE_ELEVATED, 151 to Chart.GUIDE_HIGH),
+        barColor: ((Int) -> Int)? = null,
+        minScale: Int = 170,
+        clock: (String) -> String = Format::clock,
+    ) {
         if (bars.isEmpty()) return
         val d = s.density
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = s.text; textSize = 10.5f * d }
-        val guideLabelW = if (s.labels) textPaint.measureText(Chart.GUIDE_ELEVATED) + 6f * d else 0f
+        val guideLabelW = if (s.labels && guides.isNotEmpty()) guides.maxOf { textPaint.measureText(it.second) } + 6f * d else 0f
         val left = 2f * d
         val bottom = height - if (s.labels) 16f * d else 2f * d
         val top = if (s.labels) 8f * d else 2f * d
         val right = width - 2f * d - guideLabelW
         val plotH = bottom - top
 
-        val maxV = max(170, max(bars.maxOf { it.pm25 }, line.maxOfOrNull { it.pm25 } ?: 0))
+        val maxV = max(minScale, max(bars.maxOf { it.pm25 }, line.maxOfOrNull { it.pm25 } ?: 0))
         val yMax = maxV * 1.1f
         fun y(v: Int) = bottom - plotH * (v / yMax)
 
@@ -59,7 +71,7 @@ object ChartPainter {
             color = s.grid; strokeWidth = 1.2f * d; style = Paint.Style.STROKE
             pathEffect = DashPathEffect(floatArrayOf(5f * d, 4f * d), 0f)
         }
-        for ((v, label) in listOf(56 to Chart.GUIDE_ELEVATED, 151 to Chart.GUIDE_HIGH)) {
+        for ((v, label) in guides) {
             val gy = y(v)
             c.drawLine(left, gy, right, gy, guide)
             if (s.labels) c.drawText(label, right + 4f * d, gy + 3.5f * d, textPaint)
@@ -71,7 +83,7 @@ object ChartPainter {
         val barPaint = Paint(Paint.ANTI_ALIAS_FLAG)
         val r = (2.5f * d).coerceAtMost(slot / 3)
         bars.forEachIndexed { i, p ->
-            barPaint.color = bandColor(HazeCore.band(p.pm25), s.background)
+            barPaint.color = barColor?.invoke(p.pm25) ?: bandColor(HazeCore.band(p.pm25), s.background)
             barPaint.alpha = if (i == n - 1) 255 else 190
             val x0 = left + i * slot + gap / 2
             val x1 = left + (i + 1) * slot - gap / 2
@@ -102,7 +114,7 @@ object ChartPainter {
 
         if (s.labels) {
             for (i in listOf(0, n / 2, n - 1).distinct()) {
-                val label = Format.clock(bars[i].time)
+                val label = clock(bars[i].time)
                 val w = textPaint.measureText(label)
                 val cx = (left + (i + 0.5f) * slot - w / 2).coerceIn(left, right - w)
                 c.drawText(label, cx, height - 3f * d, textPaint)

@@ -67,7 +67,15 @@ function scName(r: AgMapRow): string {
   return n || `Sensor.Community ${r.locationId}`;
 }
 
-export function agMapObservations(raw: unknown, countries?: readonly CountryCode[]): Observation[] {
+/**
+ * `locate` defaults to the polygon lookup; a long-running server can pass a memoised one (sensors rarely move, and
+ * the lookup dominates this function's CPU cost).
+ */
+export function agMapObservations(
+  raw: unknown,
+  countries?: readonly CountryCode[],
+  locate: (lat: number, lon: number) => CountryCode | null = countryAt,
+): Observation[] {
   const rows = (raw as { data?: AgMapRow[] })?.data;
   if (!Array.isArray(rows)) return [];
   const out: Observation[] = [];
@@ -77,7 +85,7 @@ export function agMapObservations(raw: unknown, countries?: readonly CountryCode
     if (!Number.isFinite(r.latitude) || !Number.isFinite(r.longitude) || typeof r.pm25 !== "number" || r.pm25 < 0) continue;
     if (!r.measuredAt || Number.isNaN(Date.parse(r.measuredAt))) continue;
     if (sc && typeof r.rhum === "number" && r.rhum >= SC_MAX_RH) continue;
-    const cc = countryAt(r.latitude, r.longitude);
+    const cc = locate(r.latitude, r.longitude);
     if (!cc || (countries && !countries.includes(cc))) continue;
     const name = sc ? scName(r) : (r.locationName ?? `AirGradient ${r.locationId}`).trim();
     out.push({

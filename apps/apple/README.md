@@ -293,6 +293,25 @@ end
 - **watchOS:** `WKWatchOnly` (independent) keeps the iOS build free of a watchOS dependency. Switch to a companion
   (`WKCompanionAppBundleIdentifier`) if you want them bundled together.
 
+## Southeast Asia (SPEC v2.0) and the country guess (v2.1)
+
+- **Port:** `HazeKit/Sources/HazeKit/SEA/` ports `packages/core/src/countries` (builder, quality screens, scales, borders,
+  verdicts, display model, places, `guessCountry`/`startPlace`, Air4Thai, proxied adapters). The tables come from
+  `Resources/Data/sea-data.json`, generated from the TS: `cd HazeKit && bun scripts/export-sea.ts` (it also refreshes the
+  golden fixtures in `Tests/HazeKitTests/Fixtures/sea/`, which `SeaGoldenTests` must match exactly).
+- **Timeouts:** every upstream request (NEA, Air4Thai, the proxy) has a hard ~8 s budget (`HazeNet.swift`). If the official
+  source fails, the app shows in-country community sensors (via the proxy), then the cached snapshot with its age, then
+  the calm "Can't reach … right now" state.
+- **Sources:** SG unchanged; TH direct to Air4Thai (system trust, no certificate override); MY, ID, VN, PH, LA and KH through
+  the proxy. The proxy URL is `HazeEdge` (Info.plist `HazeNowEdge`, the `hazenow.edge` default, or `-HazeEdge <url>`),
+  defaulting to the placeholder `https://HAZENOW_EDGE.invalid`, which means unset. While it's unset, those places
+  show "Not available yet on this app". Nothing is faked.
+- **Start place:** deep link (`hazenow://open?country=th&area=pai`, `?area=Tampines`, `?region=east`, `?lat&lon`), then
+  the saved choice, then the guess from `TimeZone.current` and `Locale.preferredLanguages` (no network, never saved).
+  Singapore with a sure guess keeps the v1.4 first-run card. **Other countries…** in the place menu opens the two-step
+  picker. QA (Debug only): `-HazePlace th:bangkok` (transient) and `-HazeOpenSheet places`.
+- Widgets, the watch and notifications stay Singapore-only for now.
+
 ## Layout
 
 ```

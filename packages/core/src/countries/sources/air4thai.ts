@@ -77,23 +77,31 @@ export function parseAir4ThaiHistory(raw: unknown): Record<string, { time: strin
       if (!t) continue;
       rows.push({ time: t, pm25: num(d.PM25) });
     }
-    rows.sort((a, b) => Date.parse(a.time) - Date.parse(b.time));
+    const ts = new Map(rows.map((r) => [r, Date.parse(r.time)]));
+    rows.sort((a, b) => ts.get(a)! - ts.get(b)!);
     out[st.stationID] = rows;
   }
   return out;
 }
 
-/** PCD's rolling 24-h mean over the available hours ending at index i (reproduces AQILast exactly; thailand.md). */
-function rolling24(rows: { time: string; pm25: number | null }[], i: number): number | null {
-  const end = Date.parse(rows[i].time);
-  const vals = rows
-    .filter((r) => {
-      const t = Date.parse(r.time);
-      return t <= end && t > end - 24 * HOUR_MS && r.pm25 !== null;
-    })
-    .map((r) => r.pm25!) ;
-  if (vals.length < 12) return null;
-  return Math.round((vals.reduce((s, v) => s + v, 0) / vals.length) * 10) / 10;
+/**
+ * PCD's rolling 24-h mean over the available hours ending at index i (reproduces AQILast exactly; thailand.md).
+ * `ts` holds the rows' times as epoch ms (parsed once per station: this runs on a 10 ms-CPU edge worker).
+ */
+function rolling24(rows: { time: string; pm25: number | null }[], ts: readonly number[], i: number): number | null {
+  const end = ts[i];
+  let sum = 0;
+  let n = 0;
+  for (let j = 0; j < rows.length; j++) {
+    const t = ts[j];
+    const v = rows[j].pm25;
+    if (t <= end && t > end - 24 * HOUR_MS && v !== null) {
+      sum += v;
+      n++;
+    }
+  }
+  if (n < 12) return null;
+  return Math.round((sum / n) * 10) / 10;
 }
 
 /**
@@ -128,7 +136,10 @@ export function air4thaiObservations(
         : null;
     const pm25_24h = num(last.PM25?.value);
     const rows = history[s.stationID] ?? [];
-    const hist: ObservationHour[] = rows.map((r, i) => ({ time: r.time, pm25: r.pm25, pm25Avg24h: rolling24(rows, i) })).slice(-keepHours);
+    const ts = rows.map((r) => Date.parse(r.time));
+    const from = Math.max(0, rows.length - keepHours);
+    const hist: ObservationHour[] = [];
+    for (let i = from; i < rows.length; i++) hist.push({ time: rows[i].time, pm25: rows[i].pm25, pm25Avg24h: rolling24(rows, ts, i) });
     // The chart line at the AQILast hour is PCD's own published value.
     if (lastTime && pm25_24h !== null) {
       const h = hist.find((x) => Date.parse(x.time) === Date.parse(lastTime));

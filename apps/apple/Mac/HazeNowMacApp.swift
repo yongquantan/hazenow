@@ -54,7 +54,19 @@ struct MenuBarLabel: View {
     let store: HazeStore
 
     var body: some View {
-        if let s = store.snapshot {
+        if let c = store.country {
+            // A place outside Singapore: its own number and the authority's colour (no number → the mark).
+            if let s = c.snapshot, let pm = s.pm25 {
+                HStack(spacing: 3) {
+                    Image(nsImage: MenuBarDot.image(hex: store.countryTint ?? "#8FA3AD", stale: s.stale))
+                    Text("\(pm)").monospacedDigit()
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(c.placeName), PM2.5 \(pm), \(SeaVerdicts.verdict(s, profiles: store.profiles).short)")
+            } else {
+                Image("MenubarTemplate").renderingMode(.template).accessibilityLabel("HazeNow, \(c.placeName)")
+            }
+        } else if let s = store.snapshot {
             HStack(spacing: 3) {
                 Image(nsImage: MenuBarDot.image(for: s.band, stale: s.stale))
                 Text(s.compactValueText).monospacedDigit()
@@ -74,6 +86,20 @@ struct MenuBarLabel: View {
 
 enum MenuBarDot {
     private static var cache: [String: NSImage] = [:]
+
+    static func image(hex: String, stale: Bool) -> NSImage {
+        let key = "\(hex)-\(stale)"
+        if let img = cache[key] { return img }
+        let img = NSImage(size: NSSize(width: 10, height: 10), flipped: false) { rect in
+            let c = Band.rgb(hex: hex)
+            NSColor(srgbRed: c.red, green: c.green, blue: c.blue, alpha: stale ? 0.45 : 1).setFill()
+            NSBezierPath(ovalIn: rect.insetBy(dx: 1, dy: 1)).fill()
+            return true
+        }
+        img.isTemplate = false
+        cache[key] = img
+        return img
+    }
 
     static func image(for band: Band, stale: Bool) -> NSImage {
         let key = "\(band.rawValue)-\(stale)"

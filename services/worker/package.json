@@ -1,0 +1,22 @@
+{
+  "name": "hazenow-worker",
+  "version": "0.2.0",
+  "private": true,
+  "description": "HazeNow data server as a free Cloudflare Worker: cron-polled, budgeted upstreams stored in D1, the same HTTP API as services/proxy, and hourly community-sensor logging.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "wrangler dev --test-scheduled",
+    "migrate": "wrangler d1 migrations apply hazenow-data --remote",
+    "deploy": "wrangler d1 migrations apply hazenow-data --remote && wrangler deploy",
+    "budget": "bun -e 'import {simulateDay} from \"./src/budget.ts\"; await Bun.write(\"src/budget-data.json\", JSON.stringify(simulateDay(), null, 2) + \"\\n\")'"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260926.1",
+    "@types/bun": "^1.1.0",
+    "typescript": "^5.6.0",
+    "wrangler": "^4.144.0"
+  }
+}

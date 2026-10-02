@@ -107,11 +107,14 @@ public struct AreaPickerList: View {
 public struct PlaceSwitcherMenu<LabelContent: View>: View {
     @Bindable var store: HazeStore
     var onPickArea: () -> Void
+    var onOtherCountries: (() -> Void)?
     var label: () -> LabelContent
 
-    public init(store: HazeStore, onPickArea: @escaping () -> Void, @ViewBuilder label: @escaping () -> LabelContent) {
+    public init(store: HazeStore, onPickArea: @escaping () -> Void, onOtherCountries: (() -> Void)? = nil,
+                @ViewBuilder label: @escaping () -> LabelContent) {
         self.store = store
         self.onPickArea = onPickArea
+        self.onOtherCountries = onOtherCountries
         self.label = label
     }
 
@@ -125,6 +128,10 @@ public struct PlaceSwitcherMenu<LabelContent: View>: View {
             }
             Button { onPickArea() } label: { Label(PlaceCopy.pickArea, systemImage: "list.bullet") }
             Button { store.placeMode = .island } label: { Label(PlaceCopy.islandLabel, systemImage: "globe.asia.australia") }
+            if let onOtherCountries {
+                // SPEC v2.1: the two-step place picker (countries, then places; search across all countries).
+                Button { onOtherCountries() } label: { Label("Other countries…", systemImage: "globe") }
+            }
             Menu("NEA stations") {
                 ForEach(HazeRegions.canonicalOrder, id: \.self) { r in
                     Button { store.placeMode = .region(r) } label: {

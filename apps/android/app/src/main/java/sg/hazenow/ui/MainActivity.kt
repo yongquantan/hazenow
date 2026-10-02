@@ -35,6 +35,9 @@ import sg.hazenow.work.RefreshWorker
  *   --es region <name>           pick a region
  *   --ez location true           use my location (needs the permission already granted)
  *   --es area <name>             pick an area from the bundled list (e.g. Tampines); completes first run
+ *   --es country th [--es area pai]  SPEC v2.0 deep link: a place outside Singapore (area = slug, name or alias;
+ *                                omitted = the country's default city). Like ?country=th&area=pai on the web.
+ *   --es edge <url|off>          (debug builds only) override HAZENOW_EDGE, e.g. http://10.0.2.2:8787
  *   --es place home|work|other   switch to a saved place
  *   --ez island true             show the island average
  *   --ez resetFirstRun true      show the first-run flow again
@@ -78,6 +81,14 @@ class MainActivity : ComponentActivity() {
         if (intent.getBooleanExtra(EXTRA_SHARE, false)) vm.requestShare()
         if (intent.getBooleanExtra("resetFirstRun", false)) vm.resetFirstRun()
         intent.getStringExtra("region")?.let { vm.selectRegion(it) }
+        if (BuildConfig.DEBUG) intent.getStringExtra("edge")?.let { vm.setEdgeOverride(it.takeIf { e -> e != "off" }) }
+        val country = sg.hazenow.core.sea.Registry.parse(intent.getStringExtra("country"))
+        if (country != null && country != sg.hazenow.core.sea.CountryCode.SG) {
+            val q = intent.getStringExtra("area")
+            val c = q?.let { sg.hazenow.core.sea.SeaPlaces.findCity(it, country) } ?: sg.hazenow.core.sea.SeaPlaces.defaultCity(country)
+            vm.pickCity(c)
+            intent.removeExtra("area")
+        }
         intent.getStringExtra("area")?.let { q ->
             val hit = Areas.search(AreaList.get(this), q, limit = 1).firstOrNull()?.first
             if (hit != null) vm.pickArea(hit) else Toast.makeText(this, "No area matches $q", Toast.LENGTH_LONG).show()
@@ -92,7 +103,7 @@ class MainActivity : ComponentActivity() {
             RefreshWorker.runOnce(this)
         }
         // Consume one-shot extras so rotation doesn't replay them.
-        listOf("mock", "region", "location", "pinWidget", "addTile", "refresh", "area", "place", "island", "resetFirstRun", EXTRA_SHARE).forEach { intent.removeExtra(it) }
+        listOf("mock", "edge", "country", "region", "location", "pinWidget", "addTile", "refresh", "area", "place", "island", "resetFirstRun", EXTRA_SHARE).forEach { intent.removeExtra(it) }
     }
 
     fun pinWidget(which: String) {

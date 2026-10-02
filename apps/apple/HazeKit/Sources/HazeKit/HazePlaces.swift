@@ -97,6 +97,16 @@ public enum PlaceMode: Codable, Sendable, Hashable {
     case saved(SavedPlace.Kind)
     case region(String)
     case island
+    /// A catalogue place outside Singapore (SPEC v2.0), by key "TH:bangkok". SG keeps the cases above.
+    case city(String)
+
+    /// The catalogue place for `.city`, if any.
+    public var cityPlace: CityPlace? {
+        guard case let .city(key) = self else { return nil }
+        let parts = key.split(separator: ":", maxSplits: 1).map(String.init)
+        guard parts.count == 2, let cc = CountryCode(rawValue: parts[0]) else { return nil }
+        return SeaPlaces.find(parts[1], country: cc)
+    }
 }
 
 /// A resolved place: the computation input plus how to describe it.
@@ -131,6 +141,9 @@ public struct ResolvedPlace: Sendable, Hashable {
             return ResolvedPlace(input: .region(r), name: nil, mode: mode)
         case .island:
             return ResolvedPlace(input: .island, name: nil, mode: mode)
+        case .city:
+            // Not Singapore: the SG computation (widgets, watch) falls back to the island; the app shows the country view.
+            return ResolvedPlace(input: .island, name: mode.cityPlace?.name, mode: mode)
         }
     }
 
@@ -141,6 +154,7 @@ public struct ResolvedPlace: Sendable, Hashable {
         case .area, .saved: name ?? "Singapore"
         case let .region(r): HazeFormat.regionName(r)
         case .island: "Singapore"
+        case .city: name ?? "Singapore"
         }
     }
 }

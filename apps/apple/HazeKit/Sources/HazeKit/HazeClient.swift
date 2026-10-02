@@ -81,6 +81,8 @@ public enum HazeClientError: Error, LocalizedError, Sendable, Equatable {
     case offline
     case api(String)
     case noData
+    /// No answer within the upstream timeout (~8 s, HazeNet.swift).
+    case timeout
 
     public var errorDescription: String? {
         switch self {
@@ -89,6 +91,7 @@ public enum HazeClientError: Error, LocalizedError, Sendable, Equatable {
         case .offline: "You're offline"
         case let .api(msg): "data.gov.sg error: \(msg)"
         case .noData: "No PM2.5 readings available right now"
+        case .timeout: "data.gov.sg didn't answer in time"
         }
     }
 
@@ -161,12 +164,15 @@ public final class HazeClient: @unchecked Sendable {
     public static let v2Base = URL(string: "https://api-open.data.gov.sg/v2/real-time/api")!
 
     public let session: URLSession
+    /// Per-request upstream timeout (SPEC: ~8 s). Tests shorten it.
+    public let timeout: TimeInterval
     private let lock = NSLock()
     /// Yesterday's responses barely change: cache them for an hour.
     private var cache: [URL: (at: Date, data: Data)] = [:]
 
-    public init(session: URLSession = .shared) {
+    public init(session: URLSession = .shared, timeout: TimeInterval = upstreamTimeout) {
         self.session = session
+        self.timeout = timeout
     }
 
     private func get(_ base: URL, _ path: String, date: String? = nil, cacheFor ttl: TimeInterval = 0) async throws -> Data {
@@ -176,14 +182,21 @@ public final class HazeClient: @unchecked Sendable {
         if ttl > 0, let hit = lock.withLock({ cache[url] }), Date().timeIntervalSince(hit.at) < ttl { return hit.data }
 
         var req = URLRequest(url: url)
-        req.timeoutInterval = 20
+        req.timeoutInterval = timeout + 2
         req.cachePolicy = .reloadIgnoringLocalCacheData
         req.setValue("application/json", forHTTPHeaderField: "Accept")
         let data: Data, response: URLResponse
+        let session = self.session
+        let request = req
         do {
-            (data, response) = try await session.data(for: req)
+            // A hard ~8 s budget per request (HazeNet.swift): a hanging upstream never holds the UI.
+            (data, response) = try await withUpstreamTimeout(timeout, url: url.absoluteString) {
+                try await session.data(for: request)
+            }
         } catch let e as URLError where [.notConnectedToInternet, .networkConnectionLost, .dataNotAllowed].contains(e.code) {
             throw HazeClientError.offline
+        } catch is UpstreamTimeoutError {
+            throw HazeClientError.timeout
         }
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
             if http.statusCode == 429 {

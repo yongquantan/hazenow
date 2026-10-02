@@ -56,6 +56,7 @@ public final class HazeSettings: @unchecked Sendable {
         static let onboarded = "hazenow.onboarded"
         static let quietStart = "hazenow.quietStart"
         static let quietEnd = "hazenow.quietEnd"
+        static let countryCache = "hazenow.countryCache"
     }
 
     public var selectedRegion: String {
@@ -115,6 +116,24 @@ public final class HazeSettings: @unchecked Sendable {
             return defaults.string(forKey: Key.region).map { .region($0) } ?? .region("central")
         }
         set { defaults.set(try? JSONEncoder().encode(newValue), forKey: Key.placeMode) }
+    }
+
+    /// True once the user has made their own place choice (SPEC v2.1: a guess never overrides it, and is never saved).
+    public var hasSavedPlaceChoice: Bool {
+        onboarded || defaults.object(forKey: Key.placeMode) != nil || defaults.object(forKey: Key.region) != nil
+            || defaults.object(forKey: Key.useLocation) != nil
+    }
+
+    /// Last good snapshot per place outside Singapore ("TH:bangkok" → snapshot), for the cached-with-age fallback.
+    public var countryCache: [String: CountrySnapshot] {
+        get { defaults.data(forKey: Key.countryCache).flatMap { try? JSONDecoder().decode([String: CountrySnapshot].self, from: $0) } ?? [:] }
+        set {
+            // Keep it small: the six most recent places.
+            let trimmed = newValue.count > 6
+                ? Dictionary(uniqueKeysWithValues: newValue.sorted { (SeaTime.parse($0.value.observedAt) ?? 0) > (SeaTime.parse($1.value.observedAt) ?? 0) }.prefix(6).map { ($0.key, $0.value) })
+                : newValue
+            defaults.set(try? JSONEncoder().encode(trimmed), forKey: Key.countryCache)
+        }
     }
 
     /// Home / Work-School / one more. Coordinates are rounded on creation.

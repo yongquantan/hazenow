@@ -186,12 +186,16 @@ fun HazeScreen(vm: HazeViewModel) {
     var showLicences by rememberSaveable { mutableStateOf(false) }
     var showAbout by rememberSaveable { mutableStateOf(false) }
     var showShare by rememberSaveable { mutableStateOf(false) }
+    /** SPEC v2.1 two-step place sheet: "" = the country list, else a country code (its places). */
+    var picker by rememberSaveable { mutableStateOf<String?>(null) }
     var shareFromWhy by rememberSaveable { mutableStateOf(false) }
     // Deep links (band-change notification "Share" action, widgets): open the share sheet once data is in.
     LaunchedEffect(state.shareRequested, state.data != null) {
         if (state.shareRequested && state.data != null) { shareFromWhy = false; showShare = true; vm.consumeShareRequest() }
     }
-    val firstRun = state.settingsLoaded && !state.settings.firstRunDone
+    // The v1.4 first-run card only for a sure Singapore guess; other guesses render a place at once (SPEC v2.1 §4).
+    val firstRun = state.showFirstRun
+    val city = state.city
 
     val locationPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
         val purpose = locationPurpose
@@ -232,7 +236,7 @@ fun HazeScreen(vm: HazeViewModel) {
         if (state.settingsLoaded && state.settings.firstRunDone && !state.settings.profilesChosen) showProfiles = true
     }
     // COPY §11: ask for notifications after the first Elevated+ view, not on first launch.
-    val band = state.data?.snapshot?.band
+    val band = if (city == null) state.data?.snapshot?.band else null
     LaunchedEffect(band, state.settings.notifAsked, state.settings.profilesChosen) {
         if (band != null && band != Band.NORMAL && !state.settings.notifAsked && state.settings.profilesChosen && !Notifier.canPostNow(ctx)) {
             showNotifAsk = true
@@ -247,12 +251,16 @@ fun HazeScreen(vm: HazeViewModel) {
                 // Title only: the place and the mock badge live in the content, so large text can't clip them (QA S14).
                 title = { Text("HazeNow", fontWeight = FontWeight.SemiBold, maxLines = 1) },
                 actions = {
-                    if (state.loading) {
+                    if (state.loading || state.countryLoading) {
                         CircularProgressIndicator(Modifier.size(20.dp).padding(end = 4.dp), strokeWidth = 2.dp)
                     } else {
                         IconButton(onClick = { vm.refresh() }) { Icon(Icons.Filled.Refresh, "Refresh") }
                     }
-                    IconButton(onClick = { shareFromWhy = false; showShare = true }, enabled = state.data != null) {
+                    val countrySnap = (state.country as? sg.hazenow.data.CountryResult.Data)?.snap
+                    IconButton(
+                        onClick = { if (city != null) countrySnap?.let { shareCountryText(ctx, it, city) } else { shareFromWhy = false; showShare = true } },
+                        enabled = if (city != null) countrySnap != null else state.data != null,
+                    ) {
                         Icon(Icons.Filled.Share, "Share")
                     }
                     IconButton(onClick = { showInfo = true }) { Icon(Icons.Outlined.Info, "How we calculate this") }
@@ -268,6 +276,18 @@ fun HazeScreen(vm: HazeViewModel) {
                 onLocation = { askLocation("current") },
                 onPickArea = { areaPicker = "current" },
                 onSkip = { vm.useIsland() },
+            )
+        } else if (city != null) {
+            CountryContent(
+                state, city, pad.calculateTopPadding(),
+                hasPermission = LocationHelper.hasPermission(ctx),
+                onLocation = { askLocation("current") },
+                onChange = { cc -> picker = cc?.name ?: "" },
+                onRetry = { vm.refresh() },
+                onWho = { showProfiles = true },
+                onInfo = { showInfo = true },
+                onAbout = { showAbout = true },
+                onLicences = { showLicences = true },
             )
         } else if (data == null) {
             EmptyState(state, Modifier.padding(pad), onRetry = { vm.refresh() })
@@ -314,12 +334,16 @@ fun HazeScreen(vm: HazeViewModel) {
                         locating = state.locating,
                         onNear = { askLocation("current") },
                         onPlace = vm::activatePlace,
-                        onPickArea = { areaPicker = "current" },
+                        onPickArea = { picker = "SG" },
                         onEditPlaces = { showPlaces = true },
                     )
                 }
                 item { VerdictCard(data, offline, onWho = { showProfiles = true }, onWhy = { showWhy = true }, onShare = { shareFromWhy = false; showShare = true }) }
                 item { Provenance(data.insight, state, data) }
+                // SPEC v2.1 §4: an unsure (or non-SEA) guess still shows the default reading, with this card under it.
+                state.guess?.takeIf { !it.sureSingapore && !state.settings.firstRunDone }?.let {
+                    item { WhereCheckingCard(proxy = sg.hazenow.data.SeaRepository.edge(state.settings) != null, onCountry = { cc -> picker = cc.name }) }
+                }
                 item { ActionsCard(data.insight, onMore = { showTips = true }) }
                 item { ChartCard(data, onWhy = { showWhy = true }) }
                 item {
@@ -385,6 +409,18 @@ fun HazeScreen(vm: HazeViewModel) {
                 areaPicker = null
                 if (target == "current" && firstRun) vm.useIsland() // last-resort fallback: island view
             },
+        )
+    }
+    picker?.let { start ->
+        PlacePickerSheet(
+            startCountry = sg.hazenow.core.sea.Registry.parse(start),
+            proxy = sg.hazenow.data.SeaRepository.edge(state.settings) != null,
+            current = (state.country as? sg.hazenow.data.CountryResult.Data)?.snap,
+            onCity = { c -> picker = null; vm.pickCity(c) },
+            onArea = { a -> picker = null; vm.pickArea(a) },
+            onIsland = { picker = null; vm.useIsland() },
+            onLocation = { picker = null; askLocation("current") },
+            onDismiss = { picker = null },
         )
     }
     if (showPlaces) {

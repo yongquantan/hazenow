@@ -10,7 +10,7 @@ struct PopoverView: View {
     let notch: NotchController
     @State private var page: Page = .main
 
-    enum Page { case main, settings, about, areas, share, shareClocks, credits }
+    enum Page { case main, settings, about, areas, share, shareClocks, credits, places }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -20,9 +20,10 @@ struct PopoverView: View {
                 Group {
                     switch page {
                     case .main:
-                        if store.onboarded {
+                        if !store.showsFirstRunChoice {
+                            GuessBannerView(store: store, onChange: { page = .places }, onCountry: { _ in page = .places })
                             HazeDetailContent(store: store, onWhy: { page = .about }, onShare: { page = .share },
-                                              onCredits: { page = .credits })
+                                              onCredits: { page = .credits }, onPlaces: { page = .places })
                         } else {
                             PlaceOnboardingView(store: store)
                         }
@@ -39,6 +40,9 @@ struct PopoverView: View {
                             Text(HazeCopy.loading)
                         }
                     case .credits: AboutView()
+                    case .places:
+                        PlacePickerView(store: store, startAt: store.country?.country) { page = .main }
+                            .frame(height: 530)
                     case .areas:
                         AreaPickerList { area in
                             store.placeMode = .area(area.name)
@@ -59,7 +63,7 @@ struct PopoverView: View {
     private var header: some View {
         HStack(spacing: 8) {
             if page == .main {
-                PlaceMenu(store: store, onPickArea: { page = .areas })
+                PlaceMenu(store: store, onPickArea: { page = .areas }, onOtherCountries: { page = .places })
             } else {
                 Button { page = .main } label: { Label("Back", systemImage: "chevron.left") }
                     .buttonStyle(.borderless)
@@ -92,9 +96,10 @@ struct HeaderButton: View {
 struct PlaceMenu: View {
     @Bindable var store: HazeStore
     var onPickArea: () -> Void
+    var onOtherCountries: (() -> Void)?
 
     var body: some View {
-        PlaceSwitcherMenu(store: store, onPickArea: onPickArea) {
+        PlaceSwitcherMenu(store: store, onPickArea: onPickArea, onOtherCountries: onOtherCountries) {
             Label(store.resolved.label, systemImage: store.isMyLocation ? "location.fill" : "mappin")
                 .hazeHeadline(.headline)
         }
@@ -110,9 +115,12 @@ struct HazeDetailContent: View {
     var onWhy: (() -> Void)?
     var onShare: (() -> Void)?
     var onCredits: (() -> Void)?
+    var onPlaces: (() -> Void)?
 
     var body: some View {
-        if let s = store.snapshot, let insight = store.insight {
+        if let c = store.country {
+            CountryDetailView(store: store, state: c, compact: true, onChangePlace: { onPlaces?() })
+        } else if let s = store.snapshot, let insight = store.insight {
             VStack(alignment: .leading, spacing: 14) {
                 if let note = store.locationNote {
                     Label(note, systemImage: "location.slash").font(.haze(.caption)).foregroundStyle(.secondary)

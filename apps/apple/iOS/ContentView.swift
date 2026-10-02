@@ -8,6 +8,7 @@ struct ContentView: View {
     @Bindable var store: HazeStore
     let watch: HazeWatch
     @State private var sheet: Sheet?
+    @State private var pickerStart: CountryCode?
     @Environment(\.openURL) private var openURL
 
     /// QA only (DEBUG builds): `-HazeOpenShare YES` / `-HazeOpenSheet profiles|about|explainer|areas`.
@@ -22,7 +23,7 @@ struct ContentView: View {
     }
 
     enum Sheet: String, Identifiable {
-        case explainer, profiles, areas, onboarding, share, shareClocks, about
+        case explainer, profiles, areas, onboarding, share, shareClocks, about, places
         var id: String { rawValue }
     }
 
@@ -30,7 +31,10 @@ struct ContentView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    if let s = store.snapshot, let insight = store.insight {
+                    GuessBannerView(store: store, onChange: { openPlaces(nil) }, onCountry: { openPlaces($0) })
+                    if let c = store.country {
+                        CountryDetailView(store: store, state: c, onChangePlace: { openPlaces(c.country) })
+                    } else if let s = store.snapshot, let insight = store.insight {
                         loaded(s, insight)
                     } else if let error = store.loadError {
                         errorView(error)
@@ -45,7 +49,7 @@ struct ContentView: View {
             .refreshable { await store.refresh() }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    PlaceSwitcherMenu(store: store, onPickArea: { sheet = .areas }) {
+                    PlaceSwitcherMenu(store: store, onPickArea: { sheet = .areas }, onOtherCountries: { openPlaces(nil) }) {
                         Label(store.resolved.label, systemImage: store.isMyLocation ? "location.fill" : "mappin")
                             .hazeHeadline(.headline)
                     }
@@ -61,12 +65,13 @@ struct ContentView: View {
                     .presentationDetents(which == .explainer || which == .about ? [.medium, .large] : [.large])
             }
             .onAppear {
-                if !store.onboarded { sheet = .onboarding }
+                if store.showsFirstRunChoice { sheet = .onboarding }
                 // QA: `-HazeOpenShare YES` opens the share sheet at launch (no URL confirmation dialog).
                 else if let qa = Self.qaSheet { sheet = qa }
             }
             .onOpenURL { url in
                 if url.host == "share" { sheet = .share } else if url.host == "about" { sheet = .about }
+                else if url.host == "open" || url.host == "place" { store.openDeepLink(url); sheet = nil }
             }
             .onReceive(NotificationCenter.default.publisher(for: .hazeNowOpenShare)) { _ in sheet = .share }
         }
@@ -138,6 +143,12 @@ struct ContentView: View {
             .padding()
             .navigationTitle(PlaceCopy.pickArea)
             .toolbar { Button("Cancel") { sheet = nil } }
+        case .places:
+            PlacePickerView(store: store, startAt: pickerStart) { sheet = nil }
+                .padding()
+                .navigationTitle("Places")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar { Button("Close") { sheet = nil } }
         case .onboarding:
             ScrollView {
                 PlaceOnboardingView(store: store).padding(20)
@@ -215,8 +226,14 @@ struct ContentView: View {
         }
     }
 
+    private func openPlaces(_ cc: CountryCode?) {
+        pickerStart = cc
+        sheet = .places
+    }
+
     private var background: some View {
-        LinearGradient(colors: [(store.snapshot?.band.color ?? .gray).opacity(0.14), Color(.systemBackground)],
+        let tint: Color = store.country != nil ? (store.countryTint.map { Color(hex: $0) } ?? .gray) : (store.snapshot?.band.color ?? .gray)
+        return LinearGradient(colors: [tint.opacity(0.14), Color(.systemBackground)],
                        startPoint: .top, endPoint: .center)
     }
 

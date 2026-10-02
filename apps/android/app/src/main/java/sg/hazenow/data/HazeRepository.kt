@@ -9,7 +9,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import sg.hazenow.BuildConfig
 import sg.hazenow.core.ApiResponse
@@ -22,6 +21,7 @@ import sg.hazenow.core.HistoryPoint
 import sg.hazenow.core.Insight
 import sg.hazenow.core.Selection
 import sg.hazenow.core.Snapshot
+import sg.hazenow.core.sea.Net
 import java.io.File
 import java.io.IOException
 import java.time.Duration
@@ -65,10 +65,8 @@ private data class RawCache(
 class HazeRepository private constructor(private val context: Context) {
 
     private val file = File(context.filesDir, "nea-cache-v2.json")
-    private val http = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(20, TimeUnit.SECONDS)
-        .build()
+    /** Bounded at ~8 s per call (Http, SPEC v2.0 / COPY §10): a slow NEA answer falls back to the cache fast. */
+    private val http = Http.client
     private val lock = Mutex()
 
     @Volatile private var cache: RawCache? = null
@@ -87,7 +85,9 @@ class HazeRepository private constructor(private val context: Context) {
         tmp.renameTo(file)
     }
 
-    private fun httpGet(url: String): String {
+    private fun httpGet(url: String): String = Net.await(Net.async { httpGetOnce(url) }, url, Net.UPSTREAM_TIMEOUT_MS + 500)
+
+    private fun httpGetOnce(url: String): String {
         val req = Request.Builder().url(url).header("User-Agent", "HazeNow-Android/${BuildConfig.VERSION_NAME}").build()
         http.newCall(req).execute().use { resp ->
             val body = resp.body?.string().orEmpty()
@@ -154,7 +154,8 @@ class HazeRepository private constructor(private val context: Context) {
                 for (j in due.filter { !it.v1 }) {
                     val r = runCatching { httpGet(j.url) }
                     v2Results += j to r
-                    if (r.exceptionOrNull() is RateLimitedException) break
+                    // Stop at the first failure (429, timeout, network): never chain several ~8 s waits.
+                    if (r.isFailure) break
                 }
                 v1Results.awaitAll() + v2Results
             }

@@ -1,0 +1,26 @@
+# HazeNow data server: a free Cloudflare Worker (replaces the planned Railway proxy, services/proxy).
+# Free plan only: 100k requests/day, 10 ms CPU per invocation, Cron Triggers, D1 free tier. No secrets needed.
+name = "hazenow-data"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+account_id = "cd79508c2b4a1c05d7b63f4646ceb1a5"
+workers_dev = true
+preview_urls = false
+
+# One trigger, every minute. Each minute runs ONE job (minute % 5): 0 crowd, 1 TH, 2 MY+SG, 3 ID, 4 VN, so
+# every job runs every 5 min and each invocation stays inside the 10 ms CPU budget. Upstream calls follow each
+# source's documented cadence (services/proxy/src/sources.ts), never user traffic. 1,440 invocations/day.
+[triggers]
+crons = ["* * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "hazenow-data"
+database_id = "a109476f-6771-4675-abcc-85e606b2d391"
+migrations_dir = "migrations"
+
+[observability]
+enabled = true
+head_sampling_rate = 0.05
+
+# Optional: NEA_API_KEY (data.gov.sg production key) as a secret: `wrangler secret put NEA_API_KEY`. Not set.

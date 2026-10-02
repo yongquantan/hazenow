@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPEC v2.0 §10: PCD Air4Thai (air4thai.pcd.go.th) serves its Let's Encrypt leaf (issuer "YR1") followed by an unrelated
+  Sectigo chain, so Android can't build a path to a trusted root. Checked again 30 Sep 2026 after PCD renewed the
+  certificate (notBefore 2026-09-30): still incomplete. For that host only, we add the two public certificates the
+  server should have sent. Everything else, including Air4Thai's own leaf checks and hostname verification, is normal.
+    YR1      http://yr1.i.lencr.org/  SHA-256 13:94:96:34:D9:9C:D6:FD:6A:A8:0B:C0:34:FE:FA:CC:EB:19:69:FE:EF:98:65:86:71:3E:CD:BB:05:75:8D:3F
+    Root YR  http://yr.i.lencr.org/   SHA-256 07:26:39:D0:B1:40:D5:BF:FA:E1:6A:D9:C3:F6:CC:60:86:04:06:21:F5:1E:E6:1A:6D:46:A8:91:5C:07:CF:76
+  Never trust-all. No cleartext anywhere.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="false">air4thai.pcd.go.th</domain>
+        <domain includeSubdomains="false">air4thai.com</domain>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="@raw/letsencrypt_yr1" />
+            <certificates src="@raw/isrg_root_yr" />
+        </trust-anchors>
+    </domain-config>
+</network-security-config>

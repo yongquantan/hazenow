@@ -53,7 +53,9 @@ object Refresher {
         }
         publish(app, data, force)
 
-        if (settings.bandAlerts) {
+        // SPEC v2.0 §3: alerts use each place's own scale, and crossing a border never fires one. Band alerts stay
+        // NEA-based, so they only run while the app is showing a Singapore place.
+        if (settings.bandAlerts && !settings.outsideSingapore) {
             val outcome = Alerts.evaluate(settings.alertState, data.snapshot, settings.alertPrefs, Instant.now())
             if (outcome.state != settings.alertState) settingsRepo.setAlertState(outcome.state)
             outcome.alert?.let { Notifier.showAlert(app, it, data) }

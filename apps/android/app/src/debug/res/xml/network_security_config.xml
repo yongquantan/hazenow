@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only: main's config (the Air4Thai chain fix, see src/main/res/xml) plus cleartext to the emulator's
+     host (10.0.2.2), so QA can point the app at a local services/proxy (the debug "edge" launch extra, e.g. http://10.0.2.2:8787). -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="false">air4thai.pcd.go.th</domain>
+        <domain includeSubdomains="false">air4thai.com</domain>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="@raw/letsencrypt_yr1" />
+            <certificates src="@raw/isrg_root_yr" />
+        </trust-anchors>
+    </domain-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>

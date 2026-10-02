@@ -90,14 +90,28 @@ export function crowdQc(obs: readonly Observation[], now: number): Observation[]
   }
   const live = out.filter((o) => o.qc !== "indoor" && o.qc !== "stale" && o.qc !== "erratic");
   const val = (o: Observation) => o.pm25_now ?? o.pm25_1h;
+  // Neighbours are searched in a latitude window (10 km < 0.1°) of the list sorted by latitude, instead of against
+  // every sensor: same result, a fraction of the haversine calls (this runs every 5 min on a 10 ms-CPU worker).
+  const byLat = [...live].sort((a, b) => a.lat - b.lat);
+  const lats = byLat.map((n) => n.lat);
   for (const o of live) {
     const v = val(o);
     if (v === null || v === undefined) continue;
-    const neigh = live
-      .filter((n) => n !== o && haversineKm(o, n) <= OUTLIER_CLUSTER_KM)
-      .map(val)
-      .filter((x): x is number => typeof x === "number")
-      .sort((a, b) => a - b);
+    let lo = 0;
+    let hi = lats.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (lats[mid] < o.lat - 0.1) lo = mid + 1;
+      else hi = mid;
+    }
+    const neigh: number[] = [];
+    for (let i = lo; i < byLat.length && lats[i] <= o.lat + 0.1; i++) {
+      const n = byLat[i];
+      if (n === o || haversineKm(o, n) > OUTLIER_CLUSTER_KM) continue;
+      const x = val(n);
+      if (typeof x === "number") neigh.push(x);
+    }
+    neigh.sort((a, b) => a - b);
     // Cluster rule: ≥ 4 sensors (itself included), > 3× the cluster median and ≥ 10 µg/m³ above it.
     const cluster = [...neigh, v].sort((a, b) => a - b);
     if (cluster.length >= OUTLIER_MIN_CLUSTER) {
