@@ -45,6 +45,7 @@ import {
   trendWords,
   uncertainty,
   verdict,
+  locationDeniedLine,
   WHY_TWO_NUMBERS,
   WHY_TWO_NUMBERS_LINK,
   type FetchLike,
@@ -56,6 +57,7 @@ import {
 import { chartSvg } from "./chart";
 import type { CityWhere, DataMode } from "./country";
 import { PICKER_LITE, surelySingapore } from "./country-lite";
+import { embedWords, placeQuery } from "./embed";
 import { resolveStart, rounded, type Place } from "./start";
 
 /* SPEC v2.0: other countries load on demand (catalogue, borders, adapters), so Singapore's bundle stays small. */
@@ -499,16 +501,7 @@ function sharePlaceName(): string | undefined {
 
 /** Share link: carries the place (so the link preview can match) and the card. */
 function shareLink(card: ShareCardId): string {
-  const w = state.where;
-  const q =
-    w.kind === "area"
-      ? `area=${encodeURIComponent(w.name)}`
-      : w.kind === "gps"
-        ? `area=${encodeURIComponent(nearestArea(w.point).name)}`
-        : w.kind === "region"
-          ? `region=${w.region}`
-          : "region=island";
-  return `${SITE_URL}?${q}&s=${card}`;
+  return `${SITE_URL}?${placeQuery(state.where)}&s=${card}`;
 }
 
 function openShare(opts: { initial?: ShareCardId; fromWhy?: boolean } = {}) {
@@ -656,7 +649,7 @@ function geoControls(assign: Slot | null) {
     state.locating ? "Finding your spot…" : "Use my location"
   }</button>${
     state.geoBlocked
-      ? `<p class="fine">Location is turned off for this site. You can allow it in your browser's site settings, or pick your area.</p>`
+      ? `<p class="fine">${esc(locationDeniedLine(placeLabelOf(state.where)))}</p>`
       : ""
   }`;
 }
@@ -926,8 +919,7 @@ function regionsSection(s: Snapshot) {
 function appsSection() {
   const w = state.where;
   const cliArg = w.kind === "area" ? `--area "${w.name}"` : w.kind === "region" ? `--region ${w.region}` : "--region central";
-  const embedQ = w.kind === "area" ? `area=${encodeURIComponent(w.name)}` : w.kind === "region" ? `region=${w.region}` : "region=central";
-  const embed = `<iframe src="${SITE_URL}?embed=1&${embedQ}" title="HazeNow: air right now" width="320" height="190" style="border:0;border-radius:14px;overflow:hidden" loading="lazy"></iframe>`;
+  const embed = `<iframe src="${SITE_URL}?embed=1&${placeQuery(w)}" title="HazeNow: air right now" width="320" height="190" style="border:0;border-radius:14px;overflow:hidden" loading="lazy"></iframe>`;
   const s = state.snap;
   const badge = s ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(badgeSvg(s))}` : "";
   const item = (name: string, sub: string, status: string, extra = "") =>
@@ -1062,8 +1054,10 @@ function countryMainView(w: CityWhere): string {
   return `${cs && state.cmode !== "unavailable" ? '<div class="veil" aria-hidden="true"></div>' : ""}
 ${header()}
 <main class="page">
-  <div class="col-a">${gl}${colA}${fr}</div>
-  <div class="col-b">${colB}</div>
+  <div class="cols">
+    <div class="col-a">${gl}${colA}${fr}</div>
+    <div class="col-b">${colB}</div>
+  </div>
 </main>
 ${countryFooter(w)}${toastEl()}`;
 }
@@ -1092,8 +1086,10 @@ function mainView(): string {
   return `<div class="veil" aria-hidden="true"></div>
 ${header()}
 <main class="page">
-  <div class="col-a">${nowSection(s, fr)}</div>
-  <div class="col-b">${chartSection(s)}${regionsSection(s)}</div>
+  <div class="cols">
+    <div class="col-a">${nowSection(s, fr)}</div>
+    <div class="col-b">${chartSection(s)}${regionsSection(s)}</div>
+  </div>
   <div class="col-full">${appsSection()}</div>
 </main>
 ${footer()}${toastEl()}`;
@@ -1124,17 +1120,16 @@ function embedView(): string {
     return `<main>${ribbon()}<div class="embed"><h1 class="e-verdict">${state.error ? "Can't reach NEA's data right now" : "Getting NEA's latest reading…"}</h1><p class="e-meta">HazeNow</p></div></main>`;
   }
   const info = bandInfo(s.band);
-  const v = verdict(s.band, ["general"], s.trend);
+  const e = embedWords(s);
   const u = uncertainty(s, point());
-  const tw = trendWord(s.history);
-  const w = state.where;
-  const href = `${SITE_URL}?${w.kind === "area" ? `area=${encodeURIComponent(w.name)}` : `region=${w.kind === "region" ? w.region : s.nearestRegion || "central"}`}`;
-  return `<main>${ribbon()}<a class="embed" href="${href}" target="_blank" rel="noopener" aria-label="${esc(`${v.short}. PM2.5 ${u.a11y}, ${info.label}${tw ? `, ${tw}` : ""}, measured ${formatSgtTime(s.observedAt)}. Open HazeNow`)}">
-  <h1 class="e-verdict">${esc(v.short)}</h1>
+  const tw = s.stale ? null : trendWord(s.history); // COPY §19: no trend on a delayed reading
+  const href = `${SITE_URL}?${placeQuery(state.where)}`;
+  return `<main>${ribbon()}<a class="embed" href="${href}" target="_blank" rel="noopener" aria-label="${esc(`${/[.!?]$/.test(e.headline) ? e.headline : `${e.headline}.`} ${e.staleLine ? `${e.staleLine} ` : ""}PM2.5 ${u.a11y}, ${info.label}${s.stale ? " (old)" : ""}${tw ? `, ${tw}` : ""}, measured ${formatSgtTime(s.observedAt)}. Open HazeNow`)}">
+  <h1 class="e-verdict">${esc(e.headline)}</h1>
   <p class="e-num">${s.pm25}<span>µg/m³ PM2.5</span></p>
   <p class="e-chip"><span class="chip${s.stale ? " is-old" : ""}">${bandShape(info.shape, info.color, 12, { outline: s.stale })}${esc(info.label)}${s.stale ? " (old)" : ""}</span> ${tw ? trendIcon(s.trend.direction, "e-arrow") : ""}</p>
   <p class="e-psi">NEA 24-hr PSI ${s.officialPsi24h ?? "not available"}</p>
-  <p class="e-meta">${esc(placeLabelOf(state.where))} · ${esc(formatSgtTime(s.observedAt))} · NEA<span>HazeNow ↗</span></p>
+  <p class="e-meta">${esc(placeLabelOf(state.where))} · ${esc(e.when)}<span>HazeNow ↗</span></p>
 </a></main>`;
 }
 
@@ -1205,12 +1200,31 @@ function render() {
   app.innerHTML = EMBED ? embedView() : mainView();
   app.classList.toggle("is-first", first);
   document.documentElement.classList.toggle("sheet-open", !!state.sheet);
+  if (!EMBED) watchStickyColumn();
   if (focusKey) {
     const el = app.querySelector(`[data-key="${CSS.escape(focusKey)}"]`) as HTMLElement | null;
     el?.focus();
     if (el instanceof HTMLInputElement && caret !== null) el.setSelectionRange(caret, caret);
   }
 }
+
+/**
+ * Desktop: the verdict column sticks beside the chart, inside .cols only (so it never rides over the sections below).
+ * When it's taller than the window, it sticks by its bottom edge instead, so every line of it can still be read.
+ */
+const STICK_GAP = 24;
+const stickyObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => fitStickyColumn());
+function fitStickyColumn() {
+  const col = app.querySelector<HTMLElement>(".col-a");
+  if (col) col.style.setProperty("--stick-top", `${Math.min(STICK_GAP, innerHeight - col.offsetHeight - STICK_GAP)}px`);
+}
+function watchStickyColumn() {
+  stickyObserver?.disconnect();
+  const col = app.querySelector<HTMLElement>(".col-a");
+  if (col) stickyObserver?.observe(col);
+  fitStickyColumn();
+}
+addEventListener("resize", fitStickyColumn);
 
 function renderStatus() {
   const el = app.querySelector("[data-status]");

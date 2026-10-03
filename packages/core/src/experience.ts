@@ -223,6 +223,11 @@ export const PLANNING_LINE = "Planning for tomorrow? Use NEA's 24-hr PSI forecas
 /** NEA's haze site: 24-hr PSI forecast and advisory, for planning ahead (SPEC v1.2 §10). */
 export const NEA_FORECAST_URL = "https://www.haze.gov.sg/";
 
+/** COPY §10 "Location permission denied": the line under the location button, for the place still on screen. */
+export function locationDeniedLine(place: string): string {
+  return `Showing ${place}. Pick your area, or allow location for a closer reading.`;
+}
+
 /** Mask line for this profile, or null. Masks are never the lead action; never N95 for kids. */
 function maskLine(ids: Profile[]): string | null {
   if (ids.includes("kids")) return A.n95Kids;

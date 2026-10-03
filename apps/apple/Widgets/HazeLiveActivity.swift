@@ -9,7 +9,7 @@ import WidgetKit
 struct HazeLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: HazeActivityAttributes.self) { context in
-            LockScreenActivityView(state: context.state, place: context.attributes.place)
+            LockScreenActivityView(state: context.state, place: context.attributes.placeLabel(context.state))
                 .activityBackgroundTint(Color.black.opacity(0.6))
                 .activitySystemActionForegroundColor(.white)
                 .widgetURL(URL(string: "hazenow://share"))
@@ -32,7 +32,7 @@ struct HazeLiveActivity: Widget {
                     HStack {
                         Text(st.verdictShort).font(.haze(.callout))
                         Spacer()
-                        Text("\(context.attributes.place) · \(HazeFormat.hour(st.observedAt)) · NEA")
+                        Text("\(context.attributes.placeLabel(st)) · \(HazeFormat.hour(st.observedAt)) · NEA")
                             .font(.haze(.caption2)).foregroundStyle(.secondary)
                     }
                 }

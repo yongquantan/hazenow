@@ -45,11 +45,16 @@ public struct BigNumber: View {
     var snapshot: Snapshot
     var insight: HazeInsight
     var numberSize: CGFloat
+    /// At accessibility text sizes, show the compact official 24-hr PSI line directly under the number, so it stays
+    /// above the fold (SPEC v1.2 §1) even when the verdict and number fill the first screen. The caller then skips its
+    /// own `OfficialPsiView` at those sizes (see `OfficialPsiView.isInline(_:)`).
+    var officialInline: Bool
 
-    public init(snapshot: Snapshot, insight: HazeInsight, numberSize: CGFloat = 64) {
+    public init(snapshot: Snapshot, insight: HazeInsight, numberSize: CGFloat = 64, officialInline: Bool = false) {
         self.snapshot = snapshot
         self.insight = insight
         self.numberSize = numberSize
+        self.officialInline = officialInline
     }
 
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -71,7 +76,14 @@ public struct BigNumber: View {
                 Text(HazeCopy.pm25Label).font(.haze(.caption)).foregroundStyle(.secondary)
             }
             Group {
-                if big {
+                if big && officialInline {
+                    // Keep the hero number huge but stop it growing past the AX2 scale, so the number, its unit and
+                    // the official PSI line all fit on the first screen with the verdict.
+                    VStack(alignment: .leading, spacing: 0) {
+                        number.dynamicTypeSize(...DynamicTypeSize.accessibility2)
+                        unit.dynamicTypeSize(...DynamicTypeSize.accessibility1)
+                    }
+                } else if big {
                     VStack(alignment: .leading, spacing: 2) { number; unit }
                 } else {
                     HStack(alignment: .firstTextBaseline, spacing: 6) { number; unit }
@@ -79,6 +91,7 @@ public struct BigNumber: View {
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("P M 2.5 \(insight.uncertainty.a11y) micrograms per cubic metre")
+            if big && officialInline { OfficialPsiView(snapshot: snapshot, compact: true) }
             Text(insight.uncertaintyLine).font(.haze(.caption)).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             let trend = Label(insight.trendWords, systemImage: snapshot.trend.direction.symbolName)
@@ -140,12 +153,25 @@ public struct ActionsList: View {
 /// The official figure, always visible, smaller (COPY §6). No "lagging".
 public struct OfficialPsiView: View {
     var snapshot: Snapshot
-    public init(snapshot: Snapshot) { self.snapshot = snapshot }
+    /// One line, no caption: the form used under the big number at accessibility text sizes.
+    var compact: Bool
+    public init(snapshot: Snapshot, compact: Bool = false) {
+        self.snapshot = snapshot
+        self.compact = compact
+    }
+
+    /// Whether `BigNumber(officialInline: true)` already shows the official figure at this text size.
+    public static func isInline(_ size: DynamicTypeSize) -> Bool { size.isAccessibilitySize }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 1) {
-            Text(HazeCopy.officialPsiLabel(snapshot.officialPsi24h)).font(.haze(.subheadline, weight: .medium))
-            Text(HazeCopy.officialCaption).font(.haze(.caption2)).foregroundStyle(.secondary)
+            Text(HazeCopy.officialPsiLabel(snapshot.officialPsi24h))
+                .font(.haze(.subheadline, weight: .medium))
+                .fixedSize(horizontal: false, vertical: true)
+                .dynamicTypeSize(...(compact ? DynamicTypeSize.accessibility3 : .accessibility5))
+            if !compact {
+                Text(HazeCopy.officialCaption).font(.haze(.caption2)).foregroundStyle(.secondary)
+            }
         }
         .accessibilityElement(children: .combine)
     }
@@ -193,7 +219,7 @@ public struct RegionsSection: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(HazeCopy.regionsHeading).hazeHeadline(.headline)
-            RegionGrid(snapshot: snapshot, highlight: snapshot.locationMode == .island ? nil : snapshot.nearestRegion,
+            RegionGrid(snapshot: snapshot, highlight: snapshot.markedRegion,
                        compact: compact, onSelect: onSelect)
         }
     }
@@ -326,11 +352,10 @@ public struct NotifyAskSection: View {
                     Label("You're set. We'll message when the band changes, and when it's clear.", systemImage: "checkmark.circle.fill")
                         .font(.haze(.callout))
                 case .denied, .error:
+                    // Friendly copy only: the OS error text (e.g. "Notifications are not allowed for this
+                    // application") is system jargon and is logged by HazeNotifier instead of shown.
                     Label("Notifications are off for HazeNow.", systemImage: "bell.slash")
                         .font(.haze(.callout, weight: .semibold))
-                    if case let .error(msg) = result {
-                        Text(msg).font(.haze(.caption2)).foregroundStyle(.secondary)
-                    }
                     Button("Open System Settings") { HazeNotifier.openSystemSettings() }
                         .buttonStyle(.bordered).controlSize(.small)
                 }

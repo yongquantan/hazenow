@@ -52,6 +52,7 @@ public final class HazeSettings: @unchecked Sendable {
         static let notifyAsked = "hazenow.notifyAsked"
         static let mock = "hazenow.mock"
         static let placeMode = "hazenow.placeMode"
+        static let locationFallback = "hazenow.locationFallback"
         static let savedPlaces = "hazenow.savedPlaces"
         static let onboarded = "hazenow.onboarded"
         static let quietStart = "hazenow.quietStart"
@@ -118,6 +119,23 @@ public final class HazeSettings: @unchecked Sendable {
         set { defaults.set(try? JSONEncoder().encode(newValue), forKey: Key.placeMode) }
     }
 
+    /// The Singapore place chosen before "Use my location", shown while there is no fix (denied, unavailable, locating).
+    public var locationFallback: PlaceMode? {
+        get { defaults.data(forKey: Key.locationFallback).flatMap { try? JSONDecoder().decode(PlaceMode.self, from: $0) } }
+        set {
+            if let newValue, newValue.isLocationFallback {
+                defaults.set(try? JSONEncoder().encode(newValue), forKey: Key.locationFallback)
+            } else {
+                defaults.removeObject(forKey: Key.locationFallback)
+            }
+        }
+    }
+
+    /// True when a place choice is stored (not just the built-in Central default).
+    public var hasStoredPlaceMode: Bool {
+        defaults.object(forKey: Key.placeMode) != nil || defaults.object(forKey: Key.region) != nil
+    }
+
     /// True once the user has made their own place choice (SPEC v2.1: a guess never overrides it, and is never saved).
     public var hasSavedPlaceChoice: Bool {
         onboarded || defaults.object(forKey: Key.placeMode) != nil || defaults.object(forKey: Key.region) != nil
@@ -150,7 +168,7 @@ public final class HazeSettings: @unchecked Sendable {
 
     /// Resolve the current mode for widgets/background work (uses the last stored, rounded fix).
     public var resolvedPlace: ResolvedPlace {
-        ResolvedPlace.resolve(placeMode, gps: lastCoordinate, saved: savedPlaces)
+        ResolvedPlace.resolve(placeMode, gps: lastCoordinate, saved: savedPlaces, fallback: locationFallback)
     }
 
     /// Active QA mock scenario (see `HazeMock`), shared with widgets. nil = live data.

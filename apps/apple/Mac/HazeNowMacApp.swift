@@ -69,9 +69,9 @@ struct MenuBarLabel: View {
         } else if let s = store.snapshot {
             HStack(spacing: 3) {
                 Image(nsImage: MenuBarDot.image(for: s.band, stale: s.stale))
-                Text(s.compactValueText).monospacedDigit()
-                // Never mistakable for real data (QA mock is DEBUG-only and session-scoped).
-                if store.mockScenario != nil { Text("· MOCK").fontWeight(.bold) }
+                // Never mistakable for real data (QA mock is DEBUG-only and session-scoped). One Text: the menu bar
+                // shows only the image and the first Text of a MenuBarExtra label.
+                Text(s.menuBarText(mock: store.mockScenario != nil)).monospacedDigit()
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel((store.insight?.compactLabel ?? HazeCompute.accessibleLabel(s)) + (store.mockScenario != nil ? ", mock data" : ""))

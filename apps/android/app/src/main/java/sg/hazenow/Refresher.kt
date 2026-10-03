@@ -69,6 +69,8 @@ object Refresher {
         val key = listOf(
             data.snapshot.publishedAt, data.snapshot.pm25, settings.selection, settings.profiles,
             data.snapshot.stale, settings.hazeWatch, settings.mock,
+            // Widgets size their text from the font scale when rendered, so re-render when it changes.
+            context.resources.configuration.fontScale,
         ).toString()
         if (!force && key == lastRenderKey) return
         lastRenderKey = key

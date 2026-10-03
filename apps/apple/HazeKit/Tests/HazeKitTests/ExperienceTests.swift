@@ -195,6 +195,62 @@ struct ExperienceTests {
         #expect(WidgetPlaceChoice.work.resolve(appPlace: app, saved: [home]).input == .island) // unset → island, never the app's area
     }
 
+    @Test func widgetPlaceIdentifiers() {
+        #expect(WidgetPlaceChoice.fromIdentifier("east") == .east)
+        #expect(WidgetPlaceChoice.fromIdentifier("East") == .east)
+        #expect(WidgetPlaceChoice.fromIdentifier(nil) == .automatic)
+        #expect(WidgetPlaceChoice.fromIdentifier("mars") == .automatic)
+        #expect(WidgetPlaceChoice.east.title == "East station")
+        #expect(Set(WidgetPlaceChoice.allCases.map(\.title)).count == WidgetPlaceChoice.allCases.count)
+    }
+
+    @Test func deniedLocationKeepsTheChosenPlace() {
+        // COPY §10: "Showing {Region}" — a denied fix keeps the place picked before "Use my location".
+        let south = ResolvedPlace.resolve(.myLocation, gps: nil, saved: [], fallback: .region("south"))
+        #expect(south.input == .region("south"))
+        #expect(south.label == "South")
+        #expect(HazeCopy.locationDenied(south.label) == "Showing South. Pick your area, or allow location for a closer reading.")
+        #expect(ResolvedPlace.resolve(.myLocation, gps: nil, saved: [], fallback: .area("Tampines")).label == "Tampines")
+        // No earlier choice (or a place outside Singapore): the island view, as before.
+        #expect(ResolvedPlace.resolve(.myLocation, gps: nil, saved: [], fallback: nil).input == .island)
+        #expect(ResolvedPlace.resolve(.myLocation, gps: nil, saved: [], fallback: .city("TH:bangkok")).input == .island)
+        #expect(ResolvedPlace.resolve(.myLocation, gps: nil, saved: [], fallback: .myLocation).input == .island)
+        // A fix always wins.
+        #expect(ResolvedPlace.resolve(.myLocation, gps: (1.35, 103.94), saved: [], fallback: .region("south")).input == .gps(lat: 1.35, lon: 103.94))
+    }
+
+    @Test func chartGuideLabelAvoidsTheBars() {
+        // Elevated/High scenarios: the latest hours are the tallest, so "Elevated 56" moves to the leading edge.
+        let rising = [30, 32, 35, 33, 31, 40, 45, 60, 90, 120, 150, 188]
+        #expect(HazeCompute.guideLabelEdge(pm25: rising, guide: 56) == .leading)
+        // Calm right edge: stays trailing (the default).
+        #expect(HazeCompute.guideLabelEdge(pm25: [80, 70, 60, 40, 30, 20, 25, 22, 20, 18], guide: 56) == .trailing)
+        // Bars over the guide at both edges: the lower side.
+        #expect(HazeCompute.guideLabelEdge(pm25: [70, 72, 75, 50, 40, 90, 120, 150], guide: 56, edgeHours: 3) == .leading)
+        #expect(HazeCompute.guideLabelEdge(pm25: [], guide: 56) == .trailing)
+    }
+
+    @Test func offlineChosenRegionKeepsYourArea() {
+        let t = HazeFormat.parseISO8601("2026-09-28T16:00:00+08:00")!
+        let values: [String: Double] = ["north": 40, "south": -1, "west": 50, "east": 60, "central": 45]
+        let d = HazeData(readings: [HourlyReading(time: t, published: t, values: values)], psi24h: [:], regions: HazeRegions.fallback)
+        let south = HazeCompute.snapshot(data: d, location: .region("south"), now: t)!
+        #expect(south.regions["south"]?.pm25 == nil)
+        #expect(south.markedRegion == "south")          // COPY §14: the picked offline card still says "(your area)"
+        #expect(south.markedRegionLabel == "(your area)")
+        #expect(HazeCompute.snapshot(data: d, location: .region("west"), now: t)!.markedRegion == "west")
+        #expect(HazeCompute.snapshot(data: d, location: .island, now: t)!.markedRegion == nil)
+        let gps = HazeCompute.snapshot(data: d, location: .gps(lat: 1.35, lon: 103.94), now: t)!
+        #expect(gps.markedRegion == gps.nearestRegion)
+        #expect(gps.markedRegionLabel == "(nearest)")
+    }
+
+    @Test func menuBarTextCarriesMock() {
+        let s = Self.snap(.region("west"))
+        #expect(s.menuBarText(mock: false) == s.compactValueText)
+        #expect(s.menuBarText(mock: true) == s.compactValueText + " · MOCK")
+    }
+
     @Test func provenanceLines() {
         let s = Self.snap(.region("west"))
         let pr = Provenance(snapshot: s, point: nil, now: HazeFormat.parseISO8601("2026-09-28T16:47:00+08:00")!)

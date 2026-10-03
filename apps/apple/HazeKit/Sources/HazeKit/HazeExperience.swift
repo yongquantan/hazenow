@@ -363,6 +363,21 @@ extension HazeCompute {
     }
 
     /// COPY §8 accessibility summary for the chart.
+    public enum GuideLabelEdge: Sendable, Equatable { case leading, trailing }
+
+    /// Where a band-edge guide label ("Elevated 56") goes so it doesn't sit on the bars (COPY §8 chart legible).
+    /// The label is drawn just above the guide line, so a bar taller than the guide runs into it. Trailing edge (the
+    /// default) unless the latest hours there pass the guide; then the leading edge if its first hours stay under;
+    /// else whichever edge has the lower bars.
+    public static func guideLabelEdge(pm25: [Int], guide: Int, edgeHours: Int = 5) -> GuideLabelEdge {
+        let n = min(edgeHours, pm25.count)
+        let trailingPeak = pm25.suffix(n).max() ?? 0
+        let leadingPeak = pm25.prefix(n).max() ?? 0
+        if trailingPeak <= guide { return .trailing }
+        if leadingPeak <= guide { return .leading }
+        return leadingPeak < trailingPeak ? .leading : .trailing
+    }
+
     public static func chartSummary(_ history: [HistoryPoint]) -> String {
         guard let first = history.first, let last = history.last else { return "Chart. No readings yet." }
         let max = history.reduce(first) { $1.pm25 > $0.pm25 ? $1 : $0 }

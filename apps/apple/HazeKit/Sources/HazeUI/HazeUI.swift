@@ -164,7 +164,7 @@ public struct RegionGrid: View {
 
     public var body: some View {
         let cells = ForEach(snapshot.orderedRegions, id: \.name) { item in
-            let mark: String? = item.name == highlight ? (snapshot.locationMode == .gps ? "(nearest)" : "(your area)") : nil
+            let mark: String? = item.name == highlight ? snapshot.markedRegionLabel : nil
             let cell = RegionCell(name: item.name, reading: item.reading, highlighted: item.name == highlight, mark: mark, compact: compact)
             if let onSelect {
                 Button { onSelect(item.name) } label: { cell }
@@ -224,7 +224,7 @@ public struct RegionCell: View {
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(reading.pm25.map { "\(HazeFormat.regionName(name)) · \($0) · \(HazeCompute.band(pm25: $0).label)\(mark.map { " \($0)" } ?? "")" }
-            ?? "\(HazeFormat.regionName(name)) · offline")
+            ?? "\(HazeFormat.regionName(name)) · offline\(mark.map { " \($0)" } ?? "")")
     }
 }
 

@@ -272,6 +272,11 @@ public struct Snapshot: Codable, Sendable, Hashable {
     /// Same, without the dot (for surfaces that draw a tinted dot themselves).
     public var compactValueText: String { "\(pm25) \(trend.direction.arrow)" }
 
+    /// The macOS menu bar text after the tinted dot: `105 ▲`, or `105 ▲ · MOCK` in QA mock mode so mock data is never
+    /// mistakable for real data. One string on purpose: `MenuBarExtra` labels show an image plus the first `Text`
+    /// only, so a separate "· MOCK" view is dropped from the real menu bar.
+    public func menuBarText(mock: Bool) -> String { compactValueText + (mock ? " · MOCK" : "") }
+
     /// "Measured 4pm · posted by NEA 4:01pm" (COPY §6 detail line)
     public var asOfText: String {
         "Measured \(HazeFormat.hour(observedAt)) · posted by NEA \(HazeFormat.time(publishedAt))"
@@ -296,6 +301,18 @@ public struct Snapshot: Codable, Sendable, Hashable {
     }
 
     /// Regions in canonical display order.
+    /// The region card that is the user's (COPY §14): the nearest station for GPS, the chosen station otherwise —
+    /// including a chosen station that is offline, whose reading falls back to the island average. nil for the
+    /// island view.
+    public var markedRegion: String? {
+        guard !nearestRegion.isEmpty, let r = regions[nearestRegion] else { return nil }
+        if locationMode == .island { return r.pm25 == nil ? nearestRegion : nil }
+        return nearestRegion
+    }
+
+    /// COPY §14 "Your row gets: (nearest) or (your area)".
+    public var markedRegionLabel: String { locationMode == .gps ? "(nearest)" : "(your area)" }
+
     public var orderedRegions: [(name: String, reading: RegionReading)] {
         HazeRegions.displayOrder(regions.keys).compactMap { name in
             regions[name].map { (name, $0) }

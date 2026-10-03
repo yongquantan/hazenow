@@ -141,7 +141,9 @@ build/dd/Build/Products/Debug/HazeNow.app/Contents/MacOS/HazeNow -HazeMock very_
 add the circular/rectangular/inline widget. Long-press a widget → Edit Widget → **Place** to pin Home, Work/School, an
 NEA station or the island average. Widgets only load from a **signed** build with the App Group, since unsigned
 simulator builds install the extension but the widget can't share settings. In mock mode each widget fetches the
-scenario itself.
+scenario itself. To check the Place setting reaches the widget, stream
+`xcrun simctl spawn booted log stream --level info --predicate 'subsystem == "sg.hazenow.widgets"'`: after picking
+East you should see `place query ids=east` and `timeline place=east param=east resolved=East`.
 
 **Live Activity ("Haze watch"):** scroll to the Haze watch card and toggle it on. The activity shows on the Lock Screen
 (⌘L in Simulator) and in the Dynamic Island on iPhone 14 Pro or later simulators. It updates locally on each new
@@ -152,8 +154,9 @@ reading. Live Activities also require a signed build with `NSSupportsLiveActivit
 First run offers **Use my location** (a one-line explainer appears before the OS prompt; when-in-use only, reduced
 accuracy is fine) or **Pick my area** (an offline search of the 55 URA planning areas plus estate aliases from
 `packages/core/data/sg-areas.json`, bundled). Home, Work/School and one more place can be saved. Coordinates are
-rounded to 2 decimals before storing. If location is denied, the app falls back quietly to the island view and never
-re-prompts. A small "Use my location" chip deep-links to Settings instead.
+rounded to 2 decimals before storing. If location is denied or unavailable, the app keeps showing the place chosen
+before "Use my location" ("Showing South. Pick your area, or allow location for a closer reading.", COPY §10), or the
+island view if there was none, and never re-prompts. A small "Use my location" chip deep-links to Settings instead.
 
 ## macOS notch crash (fixed)
 

@@ -33,7 +33,7 @@ service worker, and shows a small "MOCK DATA" ribbon.
 | `normal` | Normal band everywhere (West 29) |
 | `elevated` | the real capture: West 117, South 105, Central 105, East 83, North 49 |
 | `high` | High band (West 205), NEA 24-hr PSI still Moderate |
-| `very_high` | Very High band (West 310) |
+| `very_high` | Very High band (West 310, island average 276) |
 | `south_offline` | `&region=south` shows ~89, the average of the other stations, with an offline note |
 | `all_offline_stale` | latest hour all −1: falls back to 3pm, marked old/stale |
 | `rising_fast` | every region +25 on the previous hour: "Getting worse. Check again in an hour." |

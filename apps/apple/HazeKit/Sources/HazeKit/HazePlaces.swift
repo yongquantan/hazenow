@@ -100,6 +100,15 @@ public enum PlaceMode: Codable, Sendable, Hashable {
     /// A catalogue place outside Singapore (SPEC v2.0), by key "TH:bangkok". SG keeps the cases above.
     case city(String)
 
+    /// Whether this place can stand in for "my location" while there is no fix: a Singapore place other than
+    /// my location itself (a city outside Singapore has its own country view).
+    public var isLocationFallback: Bool {
+        switch self {
+        case .myLocation, .city: false
+        case .area, .saved, .region, .island: true
+        }
+    }
+
     /// The catalogue place for `.city`, if any.
     public var cityPlace: CityPlace? {
         guard case let .city(key) = self else { return nil }
@@ -123,11 +132,14 @@ public struct ResolvedPlace: Sendable, Hashable {
     }
 
     /// Resolve a mode. `gps` is the current (rounded) fix, if location is allowed and available.
-    /// Denied / unavailable location falls back quietly to the island view.
-    public static func resolve(_ mode: PlaceMode, gps: (lat: Double, lon: Double)?, saved: [SavedPlace]) -> ResolvedPlace {
+    /// With no fix (denied / unavailable / still locating), "my location" falls back to `fallback`: the Singapore place
+    /// the user had chosen before asking for location (COPY §10 "Showing {Region}"), else the island view.
+    public static func resolve(_ mode: PlaceMode, gps: (lat: Double, lon: Double)?, saved: [SavedPlace],
+                               fallback: PlaceMode? = nil) -> ResolvedPlace {
         switch mode {
         case .myLocation:
             if let gps { return ResolvedPlace(input: .gps(lat: gps.lat, lon: gps.lon), name: nil, mode: mode) }
+            if let fallback, fallback.isLocationFallback { return resolve(fallback, gps: nil, saved: saved) }
             return ResolvedPlace(input: .island, name: nil, mode: .island)
         case let .area(name):
             if let a = SGAreas.named(name) { return ResolvedPlace(input: .gps(lat: a.lat, lon: a.lon), name: a.name, mode: mode) }
@@ -163,6 +175,26 @@ public struct ResolvedPlace: Sendable, Hashable {
 /// A widget's configured place (the widget's "Place" parameter). Pure so it can be unit-tested.
 public enum WidgetPlaceChoice: String, Sendable, CaseIterable {
     case automatic, home, work, island, north, west, central, east, south
+
+    /// The option title in the widget's "Place" editor.
+    public var title: String {
+        switch self {
+        case .automatic: "Same as the app"
+        case .home: "Home"
+        case .work: "Work/School"
+        case .island: "Singapore (island average)"
+        case .north: "North station"
+        case .west: "West station"
+        case .central: "Central station"
+        case .east: "East station"
+        case .south: "South station"
+        }
+    }
+
+    /// The choice for a configured widget parameter identifier. A missing or unknown id follows the app.
+    public static func fromIdentifier(_ id: String?) -> WidgetPlaceChoice {
+        id.flatMap { WidgetPlaceChoice(rawValue: $0.lowercased()) } ?? .automatic
+    }
 
     /// Resolve against the app's settings. Only `.automatic` follows the app; every other choice pins the widget.
     public func resolve(appPlace: ResolvedPlace, saved: [SavedPlace]) -> ResolvedPlace {

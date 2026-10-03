@@ -48,6 +48,10 @@ struct HazeNowApp: App {
                     }
                     store.start()
                 }
+                // A place change with an identical reading produces no new snapshot; refresh the label anyway.
+                .onChange(of: store.resolved.label) { _, _ in
+                    if let s = store.snapshot { Task { await watch.update(s, store: store) } }
+                }
                 .onChange(of: phase) { _, p in
                     if p == .active { Task { await store.refresh() } }
                 }
@@ -77,12 +81,10 @@ final class HazeWatch {
     func start(store: HazeStore) {
         guard let s = store.snapshot else { message = "Waiting for the first reading…"; return }
         guard isAvailable else { message = "Live Activities are turned off in Settings."; return }
-        let state = HazeActivityAttributes.ContentState(snapshot: s, profiles: store.profiles,
-                                                        estimate: store.insight?.uncertainty.approx ?? false)
         do {
             activity = try Activity.request(
                 attributes: HazeActivityAttributes(place: store.resolved.label),
-                content: ActivityContent(state: state, staleDate: s.observedAt.addingTimeInterval(HazeCompute.staleAfter)),
+                content: Self.content(s, store: store),
                 pushType: nil
             )
             isOn = true
@@ -92,11 +94,17 @@ final class HazeWatch {
         }
     }
 
+    /// Push the new reading, and the place it is for, to the running activity. The place is part of the content
+    /// state, so after a region change the Lock Screen and Dynamic Island say the new place with the new number.
     func update(_ s: Snapshot, store: HazeStore) async {
         guard let activity else { return }
-        let state = HazeActivityAttributes.ContentState(snapshot: s, profiles: store.profiles,
+        await activity.update(Self.content(s, store: store))
+    }
+
+    private static func content(_ s: Snapshot, store: HazeStore) -> ActivityContent<HazeActivityAttributes.ContentState> {
+        let state = HazeActivityAttributes.ContentState(snapshot: s, place: store.resolved.label, profiles: store.profiles,
                                                         estimate: store.insight?.uncertainty.approx ?? false)
-        await activity.update(ActivityContent(state: state, staleDate: s.observedAt.addingTimeInterval(HazeCompute.staleAfter)))
+        return ActivityContent(state: state, staleDate: s.observedAt.addingTimeInterval(HazeCompute.staleAfter))
     }
 
     func stop() async {

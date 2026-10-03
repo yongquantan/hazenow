@@ -264,20 +264,27 @@ pre {
   display: grid;
   gap: 56px;
 }
+/* The two columns get their own box, so the sticky verdict column stops at the end of it (QA r2: it used to ride
+   over "HazeNow, wherever you look" because its sticky container was the whole page). */
+.cols {
+  display: grid;
+  gap: 56px;
+  min-width: 0;
+}
 @media (min-width: 960px) {
   .page {
-    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
-    column-gap: clamp(48px, 6vw, 96px);
     row-gap: 72px;
     padding-top: 24px;
   }
+  .cols {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    column-gap: clamp(48px, 6vw, 96px);
+  }
   .col-a {
     position: sticky;
-    top: 24px;
+    /* main.ts sets --stick-top: 24px, or negative when the column is taller than the window (bottom-pinned). */
+    top: var(--stick-top, 24px);
     align-self: start;
-  }
-  .col-full {
-    grid-column: 1 / -1;
   }
 }
 .col-b {

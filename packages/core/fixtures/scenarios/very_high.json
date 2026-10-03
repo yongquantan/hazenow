@@ -1,7 +1,7 @@
 {
  "_meta": {
   "scenario": "very_high",
-  "description": "Very High band: the real day's PM2.5 × 2.65 (West 310, Central 278, South 278, East 220, North 130). NEA 24-hr PSI left as captured.",
+  "description": "Very High band: the real day's PM2.5 × 2.65, with 4pm at West 310, Central 280, South 290, East 262, North 240 (island average 276, Very High) and 3pm just below. NEA 24-hr PSI left as captured.",
   "now": "2026-09-28T16:35:00+08:00",
   "source": "Derived from the real NEA capture of 2026-09-28 16:00 SGT (data.gov.sg)"
  },
@@ -52,11 +52,11 @@
      "timestamp": "2026-09-28T16:00:00+08:00",
      "readings": {
       "pm25_one_hourly": {
-       "north": 130,
-       "south": 278,
+       "north": 240,
+       "south": 290,
        "west": 310,
-       "east": 220,
-       "central": 278
+       "east": 262,
+       "central": 280
       }
      }
     },
@@ -66,11 +66,11 @@
      "timestamp": "2026-09-28T15:00:00+08:00",
      "readings": {
       "pm25_one_hourly": {
-       "north": 140,
+       "north": 228,
        "south": 281,
-       "west": 273,
-       "east": 167,
-       "central": 212
+       "west": 300,
+       "east": 250,
+       "central": 271
       }
      }
     },

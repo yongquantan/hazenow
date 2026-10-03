@@ -44,8 +44,13 @@ const scenarios = {
     make: (d) => scaleAll(d, 1.75),
   },
   very_high: {
-    description: "Very High band: the real day's PM2.5 × 2.65 (West 310, Central 278, South 278, East 220, North 130). NEA 24-hr PSI left as captured.",
-    make: (d) => scaleAll(d, 2.65),
+    // The latest two hours match the Apple fixture, so the island average (276) is Very High too, not just the West.
+    description: "Very High band: the real day's PM2.5 × 2.65, with 4pm at West 310, Central 280, South 290, East 262, North 240 (island average 276, Very High) and 3pm just below. NEA 24-hr PSI left as captured.",
+    make: (d) => {
+      scaleAll(d, 2.65);
+      setHour(d, 0, { north: 240, south: 290, east: 262, west: 310, central: 280 });
+      setHour(d, 1, { north: 228, south: 281, east: 250, west: 300, central: 271 });
+    },
   },
   south_offline: {
     description: "South station offline (-1) in the latest hour. region=south falls back to the island mean 89.",

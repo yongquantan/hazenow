@@ -7,6 +7,7 @@ import UIKit
 import Foundation
 import HazeKit
 import Observation
+import OSLog
 import SwiftUI
 import UserNotifications
 
@@ -107,6 +108,9 @@ public enum HazeNotifier {
             let ok = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])
             return ok ? .granted : .denied
         } catch {
+            // Kept for diagnosis (Console, subsystem sg.hazenow); the UI shows friendly copy only.
+            Logger(subsystem: "sg.hazenow", category: "notifications")
+                .error("requestAuthorization failed: \(String(describing: error), privacy: .public)")
             return .error(error.localizedDescription)
         }
     }
@@ -191,6 +195,12 @@ public final class HazeStore {
     public var placeMode: PlaceMode {
         didSet {
             guard placeMode != oldValue else { return }
+            // Remember the Singapore place shown before "my location", so a denied or unavailable fix keeps showing it
+            // (COPY §10 "Showing {Region}") instead of jumping to the island average.
+            if case .myLocation = placeMode, oldValue.isLocationFallback, transientPlace || settings.hasStoredPlaceMode {
+                locationFallback = oldValue
+                if !transientPlace { settings.locationFallback = oldValue }
+            }
             // Only the user's own pick is saved (SPEC v2.1): deep links and the country guess are transient.
             if !transientPlace {
                 settings.placeMode = placeMode
@@ -200,6 +210,9 @@ public final class HazeStore {
             placeChanged()
         }
     }
+
+    /// The place shown while "my location" has no fix (see `ResolvedPlace.resolve(_:gps:saved:fallback:)`).
+    public private(set) var locationFallback: PlaceMode?
 
     /// SPEC v2.1: the device's country guess (time zone + languages, no network), and the calm line it shows.
     public private(set) var guess: CountryGuess = CountryGuesser.device()
@@ -307,6 +320,7 @@ public final class HazeStore {
         settings.applyMockLaunchArgument()
         mockScenario = settings.mockScenario
         placeMode = settings.placeMode
+        locationFallback = settings.locationFallback
         savedPlaces = settings.savedPlaces
         // QA mock runs skip the first-run choice so scenarios render deterministically.
         onboarded = settings.onboarded || settings.mockScenario != nil
@@ -338,7 +352,7 @@ public final class HazeStore {
                   locationStatus == .active || locationStatus == .requesting else { return nil }
             return (c.latitude, c.longitude)
         }()
-        return ResolvedPlace.resolve(placeMode, gps: fix, saved: savedPlaces)
+        return ResolvedPlace.resolve(placeMode, gps: fix, saved: savedPlaces, fallback: locationFallback)
     }
 
     public var locationInput: LocationInput { resolved.input }
@@ -366,7 +380,7 @@ public final class HazeStore {
     public var locationNote: String? {
         guard isMyLocation else { return nil }
         switch locationStatus {
-        case .denied, .unavailable: return HazeCopy.locationDenied("Singapore")
+        case .denied, .unavailable: return HazeCopy.locationDenied(resolved.label)
         case .requesting where coordinate == nil: return HazeCopy.locationLoading
         default: return nil
         }

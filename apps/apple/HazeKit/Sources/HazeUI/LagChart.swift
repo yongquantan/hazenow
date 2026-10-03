@@ -27,11 +27,16 @@ public struct LagChart: View {
             Chart {
                 if showGuides {
                     ForEach([(56, HazeCopy.chartGuideElevated), (151, HazeCopy.chartGuideHigh)].filter { $0.0 < yMax }, id: \.0) { guide in
+                        // Put the label at the edge where the bars stay below it (the latest hours are often the
+                        // tallest), on a backing so it stays readable if a bar still reaches it.
+                        let edge = HazeCompute.guideLabelEdge(pm25: history.map(\.pm25), guide: guide.0)
                         RuleMark(y: .value("Band edge", guide.0))
                             .foregroundStyle(Color.secondary.opacity(0.5))
                             .lineStyle(StrokeStyle(lineWidth: 0.75, dash: [3, 3]))
-                            .annotation(position: .top, alignment: .trailing, spacing: 1) {
+                            .annotation(position: .top, alignment: edge == .leading ? .leading : .trailing, spacing: 1) {
                                 Text(guide.1).font(.system(size: 9)).foregroundStyle(.secondary)
+                                    .padding(.horizontal, 3)
+                                    .background(.background.opacity(0.85), in: RoundedRectangle(cornerRadius: 3))
                             }
                     }
                 }

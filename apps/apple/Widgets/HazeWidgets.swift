@@ -12,37 +12,48 @@ import WidgetKit
 
 // MARK: - Configuration intent
 
-enum WidgetPlace: String, AppEnum {
-    case automatic, home, work, island, north, west, central, east, south
+/// The widget's "Place" option. An `AppEntity` (passed to the extension as its string id and looked up through
+/// `WidgetPlaceQuery`) rather than a non-optional `AppEnum` parameter with a `default:`. With that shape the stored
+/// choice could be dropped on the way back to the provider: QA saw the editor show "East station" while every
+/// timeline call got `place=automatic`. The query logs every id the system asks about, so the path is visible with
+/// `log stream --predicate 'subsystem == "sg.hazenow.widgets"'`.
+struct WidgetPlaceEntity: AppEntity, Hashable, Sendable {
+    let id: String
 
     static let typeDisplayRepresentation: TypeDisplayRepresentation = "Place"
-    static let caseDisplayRepresentations: [WidgetPlace: DisplayRepresentation] = [
-        .automatic: "Same as the app",
-        .home: "Home",
-        .work: "Work/School",
-        .island: "Singapore (island average)",
-        .north: "North station",
-        .west: "West station",
-        .central: "Central station",
-        .east: "East station",
-        .south: "South station",
-    ]
+    static let defaultQuery = WidgetPlaceQuery()
 
-    func resolve(_ settings: HazeSettings) -> ResolvedPlace {
-        (WidgetPlaceChoice(rawValue: rawValue) ?? .automatic)
-            .resolve(appPlace: settings.resolvedPlace, saved: settings.savedPlaces)
+    var choice: WidgetPlaceChoice { .fromIdentifier(id) }
+    var displayRepresentation: DisplayRepresentation { DisplayRepresentation(title: "\(choice.title)") }
+
+    init(_ choice: WidgetPlaceChoice) { id = choice.rawValue }
+
+    static let all = WidgetPlaceChoice.allCases.map(WidgetPlaceEntity.init)
+}
+
+struct WidgetPlaceQuery: EntityQuery {
+    func entities(for identifiers: [String]) async throws -> [WidgetPlaceEntity] {
+        HazeProvider.log.info("place query ids=\(identifiers.joined(separator: ","), privacy: .public)")
+        return identifiers.compactMap { WidgetPlaceChoice(rawValue: $0).map(WidgetPlaceEntity.init) }
     }
+
+    func suggestedEntities() async throws -> [WidgetPlaceEntity] { WidgetPlaceEntity.all }
+
+    func defaultResult() async -> WidgetPlaceEntity? { WidgetPlaceEntity(.automatic) }
 }
 
 struct SelectPlaceIntent: WidgetConfigurationIntent {
     static let title: LocalizedStringResource = "Choose a place"
     static let description = IntentDescription("Pin this widget to a saved place or an NEA station.")
 
-    @Parameter(title: "Place", default: .automatic)
-    var place: WidgetPlace
+    /// nil (never set) follows the app, like "Same as the app".
+    @Parameter(title: "Place")
+    var place: WidgetPlaceEntity?
 
     init() {}
-    init(place: WidgetPlace) { self.place = place }
+    init(place: WidgetPlaceChoice) { self.place = WidgetPlaceEntity(place) }
+
+    var choice: WidgetPlaceChoice { WidgetPlaceChoice.fromIdentifier(place?.id) }
 }
 
 // MARK: - Timeline
@@ -66,21 +77,22 @@ struct HazeProvider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> HazeEntry { .placeholder }
 
     func snapshot(for configuration: SelectPlaceIntent, in context: Context) async -> HazeEntry {
-        context.isPreview ? .placeholder : await Self.load(configuration.place)
+        context.isPreview ? .placeholder : await Self.load(configuration.choice, raw: configuration.place?.id)
     }
 
     func timeline(for configuration: SelectPlaceIntent, in context: Context) async -> Timeline<HazeEntry> {
-        let entry = await Self.load(configuration.place)
+        let entry = await Self.load(configuration.choice, raw: configuration.place?.id)
         return Timeline(entries: [entry], policy: .after(PollSchedule.widgetNextRefresh()))
     }
 
     static let log = Logger(subsystem: "sg.hazenow.widgets", category: "timeline")
 
-    static func load(_ place: WidgetPlace) async -> HazeEntry {
+    static func load(_ place: WidgetPlaceChoice, raw: String? = nil) async -> HazeEntry {
         let settings = HazeSettings.shared
-        let resolved = place.resolve(settings)
-        // QA: `log stream --predicate 'subsystem == "sg.hazenow.widgets"'` shows the configured place per reload.
-        log.info("timeline place=\(place.rawValue, privacy: .public) resolved=\(resolved.label, privacy: .public)")
+        let resolved = place.resolve(appPlace: settings.resolvedPlace, saved: settings.savedPlaces)
+        // QA: `log stream --predicate 'subsystem == "sg.hazenow.widgets"'` shows the configured place per reload
+        // (`param` is the raw id the system delivered; nil means the parameter was never set).
+        log.info("timeline place=\(place.rawValue, privacy: .public) param=\(raw ?? "nil", privacy: .public) resolved=\(resolved.label, privacy: .public)")
         let profiles = settings.profiles
         do {
             let loaded = try await HazeSource.load(settings: settings, client: HazeClient(), includeV2: false)
@@ -273,7 +285,7 @@ private struct LargeView: View {
                 }
             }
             LagChart(history: s.history, showLegend: false, showAxes: false).frame(maxHeight: .infinity)
-            RegionGrid(snapshot: s, highlight: s.locationMode == .island ? nil : s.nearestRegion, compact: true)
+            RegionGrid(snapshot: s, highlight: s.markedRegion, compact: true)
             Footer(e: e, s: s)
         }
     }

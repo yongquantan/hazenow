@@ -49,6 +49,7 @@ import {
   typicalMultiple,
   uncertainty,
   verdict,
+  locationDeniedLine,
   type ApiResponse,
   stationRange,
   pickShareCard,
@@ -689,6 +690,15 @@ describe("QA scenarios (fixtures/scenarios)", () => {
     expect((await snap("high")).band).toBe("high");
     expect((await snap("very_high")).band).toBe("very_high");
   });
+  test("very_high with no region (island average, QA S5) is Very High and says stay indoors", async () => {
+    for (const q of [{}, { region: "island" }]) {
+      const s = await snap("very_high", q);
+      expect(s.pm25).toBeGreaterThanOrEqual(251);
+      expect(s.band).toBe("very_high");
+      expect(verdict(s.band, ["general"], s.trend).headline).toBe("Stay indoors for now. Go out only if you need to.");
+    }
+    expect((await snap("very_high")).pm25).toBe(310); // West unchanged
+  });
   test("south_offline → island mean 89", async () => {
     const s = await snap("south_offline", { region: "south" });
     expect([s.pm25, s.locationMode]).toEqual([89, "island"]);
@@ -710,6 +720,13 @@ describe("QA scenarios (fixtures/scenarios)", () => {
   });
   test("network_error → throws", async () => {
     await expect(snap("network_error")).rejects.toThrow();
+  });
+});
+
+describe("location permission denied (COPY §10)", () => {
+  test("names the place still on screen, word for word", () => {
+    expect(locationDeniedLine("Singapore")).toBe("Showing Singapore. Pick your area, or allow location for a closer reading.");
+    expect(locationDeniedLine("West")).toBe("Showing West. Pick your area, or allow location for a closer reading.");
   });
 });
 

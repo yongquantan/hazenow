@@ -10,6 +10,7 @@ struct ContentView: View {
     @State private var sheet: Sheet?
     @State private var pickerStart: CountryCode?
     @Environment(\.openURL) private var openURL
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     /// QA only (DEBUG builds): `-HazeOpenShare YES` / `-HazeOpenSheet profiles|about|explainer|areas`.
     /// Read from the launch-argument domain, which is never written back to disk.
@@ -169,20 +170,17 @@ struct ContentView: View {
         if store.loadError == .offline {
             Label(HazeCopy.offlineChip, systemImage: "wifi.slash").font(.haze(.footnote, weight: .semibold)).foregroundStyle(.secondary)
         }
+        let inlinePsi = OfficialPsiView.isInline(typeSize)
         VerdictHeader(snapshot: s, insight: insight, size: .title)
             .padding(.top, 8)
-        Button { sheet = .share } label: {
-            Label("Share", systemImage: "square.and.arrow.up")
-                .font(.haze(.headline, weight: .semibold))
-                .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
-        .tint(Color(red: 0.08, green: 0.14, blue: 0.17))
-        BigNumber(snapshot: s, insight: insight, numberSize: 108)
+        // At accessibility text sizes the verdict and number fill the first screen, so the number (with the compact
+        // official PSI line directly under it) comes before Share, keeping the PSI above the fold (SPEC v1.2 §1).
+        if !inlinePsi { shareButton }
+        BigNumber(snapshot: s, insight: insight, numberSize: 108, officialInline: inlinePsi)
             .animation(.smooth, value: s.pm25)
+        if inlinePsi { shareButton }
         ProvenanceLine(insight: insight)
-        OfficialPsiView(snapshot: s)   // above the fold (SPEC v1.2 §1)
+        if !inlinePsi { OfficialPsiView(snapshot: s) }   // above the fold (SPEC v1.2 §1)
         if let detail = store.statusDetail {
             Text(detail).font(.haze(.footnote)).foregroundStyle(.secondary)
         }
@@ -197,6 +195,17 @@ struct ContentView: View {
         Button { sheet = .explainer } label: { Text(HazeCopy.howTitle).font(.haze(.footnote)) }
         TrustFooter(snapshot: s)
         MadeByButton { sheet = .about }
+    }
+
+    private var shareButton: some View {
+        Button { sheet = .share } label: {
+            Label("Share", systemImage: "square.and.arrow.up")
+                .font(.haze(.headline, weight: .semibold))
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.borderedProminent)
+        .controlSize(.large)
+        .tint(Color(red: 0.08, green: 0.14, blue: 0.17))
     }
 
     private func errorView(_ error: HazeStore.LoadError) -> some View {
