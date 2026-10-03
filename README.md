@@ -144,7 +144,7 @@ The full product rules live in [`SPEC.md`](SPEC.md). Every word on every screen 
 
 ## Built with Claude, tested with Devin
 
-HazeNow went from a Facebook post about the PSI to four platforms, eight integrations and a Southeast Asia plan in one working session. Claude built it. Devin tested it.
+HazeNow went from a Facebook post about the PSI to four platforms, seven integrations and a Southeast Asia plan in one working session. Claude built it. Devin tested it.
 
 ### Built with Claude Code
 
@@ -156,7 +156,7 @@ One Claude Code session led, and handed work to parallel agents that each owned 
 - **Builders:** the TypeScript core and web app, the Apple apps, the Android app, and the integrations. They all worked from the same [`SPEC.md`](SPEC.md), so the verdict, the numbers and the share cards match on every platform.
 - **Southeast Asia:** five agents checking each country's government and crowd-sensor data live, in parallel.
 
-The spec grew in versions as findings came in (v1.0 to v1.7), and every change went out to every builder at once. When one platform found a better rule, like Android's fix to the estimate range, it became a spec change and the others followed.
+The spec grew in versions as findings came in (ten versions, v1.0 to v2.1), and every change went out to every builder at once. When one platform found a better rule, like Android's fix to the estimate range, it became a spec change and the others followed.
 
 ### Tested with Devin
 
@@ -165,8 +165,8 @@ When the builds were green, Claude pushed the repo and started four [Devin](http
 **Round 1, on v0.1:** 96 checks, 34 recordings and 18 bugs across the four platforms. Every bug went back to the agent that owned that code. The biggest ones: the official PSI sat below the fold, the installed web app hung on its first offline launch, and the largest text sizes broke the layout on iPhone and Android.
 
 <p align="center">
-  <a href="docs/qa/round-1/four-platforms.mp4"><img src="docs/qa/round-1/posters/four-platforms.jpg" width="820" alt="Four Devin sessions testing HazeNow at once: web, iPhone, Mac menu bar and Android widgets, all showing the same live haze reading"></a><br>
-  <sub>Four machines, one live reading. Web, iPhone, Mac and Android, tested at the same time. Click to play.</sub>
+  <a href="docs/qa/round-1/four-platforms.mp4"><img src="docs/qa/round-1/posters/four-platforms.jpg" width="820" alt="Four Devin sessions testing HazeNow at once on web, iPhone, Mac menu bar and Android, using the app's mock test scenarios"></a><br>
+  <sub>Four machines at once: web, iPhone, Mac and Android walking the same 16 test scenarios (mock data). Click to play.</sub>
 </p>
 
 | | | |
