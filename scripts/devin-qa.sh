@@ -41,9 +41,9 @@ surface_prompt() {
   local name="$1" section="$2"
   cat <<EOF
 You are the QA tester for the **$name** surface of HazeNow (repo $REPO, branch $BRANCH).
-HazeNow shows Singaporeans NEA's 1-hr PM2.5 "right now" with calm, trustworthy guidance.
+HazeNow shows each Southeast Asian authority's 1-hr PM2.5 "right now" with calm, trustworthy guidance. Live: site https://hazenow.pages.dev, app https://hazenow-app.pages.dev, data server https://hazenow-data.yongquan26.workers.dev. This is QA round 2: also re-verify every round-1 bug listed in docs/qa/round-1-bugs.md and the 'Round 2 additions' in docs/QA_MATRIX.md.
 
-Read, in order: docs/QA_MATRIX.md (your section is **$section**, plus the shared Scenarios table), SPEC.md (v1.2 amendments win), docs/COPY.md (exact expected strings), then the README for your surface.
+Read, in order: docs/QA_MATRIX.md (your section is **$section**, plus the shared Scenarios table), SPEC.md (later amendments win, through v2.1), docs/COPY.md (exact expected strings), then the README for your surface.
 
 Do:
 1. Build from a clean checkout. Run the unit tests.
