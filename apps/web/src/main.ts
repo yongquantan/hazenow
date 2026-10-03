@@ -922,6 +922,7 @@ function appsSection() {
   const embed = `<iframe src="${SITE_URL}?embed=1&${placeQuery(w)}" title="HazeNow: air right now" width="320" height="190" style="border:0;border-radius:14px;overflow:hidden" loading="lazy"></iframe>`;
   const s = state.snap;
   const badge = s ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(badgeSvg(s))}` : "";
+  const DOWNLOAD_URL = "https://hazenow.pages.dev/download/";
   const item = (name: string, sub: string, status: string, extra = "") =>
     `<li><div><p class="a-name">${name}</p><p class="a-sub">${sub}</p>${extra}</div><span class="a-status">${status}</span></li>`;
   return `<section class="apps" aria-labelledby="apps-h">
@@ -929,9 +930,9 @@ function appsSection() {
   <p class="apps-intro">Same numbers and the same rules everywhere. Free and open source.</p>
   <ul class="alist">
     ${item("Add to Home Screen", "This page works offline and installs like an app.", "Now")}
-    ${item("Mac menu bar", "<code>● 105 ▲</code> next to your clock.", "Soon")}
-    ${item("iPhone, iPad &amp; widgets", "Lock Screen and Home Screen widgets.", "Soon")}
-    ${item("Android &amp; widgets", "Home screen widgets.", "Soon")}
+    ${item("Mac menu bar", "<code>● 105 ▲</code> next to your clock.", `<a href="${DOWNLOAD_URL}#mac">Download</a>`)}
+    ${item("iPhone &amp; iPad widget", "A free Home Screen widget through the Scriptable app.", `<a href="${DOWNLOAD_URL}#iphone">Get it</a>`)}
+    ${item("Android &amp; widgets", "The app, home-screen widgets and a Quick Settings tile.", `<a href="${DOWNLOAD_URL}#android">Download</a>`)}
     ${item(
       "Terminal",
       "For status bars, tmux and scripts.",
