@@ -7,7 +7,9 @@ import Foundation
 // Timestamps stay ISO 8601 strings with the station's own offset (as in TS): the clock time shown is the
 // station's local time (SPEC v2.0 §3.4), which a `Date` would lose.
 
-public enum CountryCode: String, Codable, Sendable, CaseIterable, Hashable, Identifiable {
+// Not `Identifiable`: the case `ID` (Indonesia) collides with the protocol's `ID` associated type, which
+// Release (whole-module) builds reject. Lists use `id: \.self`.
+public enum CountryCode: String, Codable, Sendable, CaseIterable, Hashable {
     case SG, MY, ID, TH, VN, PH, LA, KH, MM, BN, TL
     public var id: String { rawValue }
 }

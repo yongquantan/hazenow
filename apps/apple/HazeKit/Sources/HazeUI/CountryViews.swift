@@ -92,7 +92,7 @@ public struct GuessBannerView: View {
                 Text(GuessCopy.whereChecking).font(.haze(.subheadline, weight: .semibold))
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
-                        ForEach(SeaPlaces.pickerCountries) { cc in
+                        ForEach(SeaPlaces.pickerCountries, id: \.self) { cc in
                             Button(SeaRegistry.name(cc)) { onCountry(cc) }
                                 .buttonStyle(.bordered)
                                 .controlSize(.small)
@@ -505,7 +505,7 @@ public struct PlacePickerView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
                 Text("Countries").font(.haze(.headline, weight: .semibold)).padding(.bottom, 4).accessibilityAddTraits(.isHeader)
-                ForEach(SeaPlaces.pickerCountries) { cc in
+                ForEach(SeaPlaces.pickerCountries, id: \.self) { cc in
                     Button { step = cc } label: {
                         HStack {
                             if let d = dot(cc) { Circle().fill(d).frame(width: 8, height: 8) }
