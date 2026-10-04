@@ -9,10 +9,12 @@ import { runScheduled } from "./jobs.js";
 import { handle } from "./routes.js";
 import type { Env } from "./store.js";
 import { scheduleFlush } from "./usage.js";
+import { handlePush, runPush } from "./push.js";
 import { githubDue, githubSnapshot } from "./github.js";
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    if (new URL(request.url).pathname.startsWith("/v1/push/")) return handlePush(request, env).catch(() => new Response('{"error":"Internal error"}', { status: 500, headers: { "content-type": "application/json", "access-control-allow-origin": "*" } })); // opt-in Web Push alerts
     let out;
     try {
       out = await handle(
@@ -35,6 +37,7 @@ export default {
 
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(runScheduled(env, { fetch: (url, init) => fetch(url, init), now: controller.scheduledTime, neaKey: env.NEA_API_KEY }));
+    ctx.waitUntil(runPush(env, controller.scheduledTime)); // opt-in Web Push alerts: idle unless NEA has a new hour
     if (env.GITHUB_TOKEN && githubDue(controller.scheduledTime)) ctx.waitUntil(githubSnapshot(env, controller.scheduledTime)); // hourly traffic archive
   },
 } satisfies ExportedHandler<Env>;

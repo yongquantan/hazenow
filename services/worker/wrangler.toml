@@ -10,6 +10,8 @@ preview_urls = false
 # One trigger, every minute. Each minute runs ONE job (minute % 5): 0 crowd, 1 TH, 2 MY+SG, 3 ID, 4 VN, so
 # every job runs every 5 min and each invocation stays inside the 10 ms CPU budget. Upstream calls follow each
 # source's documented cadence (services/proxy/src/sources.ts), never user traffic. 1,440 invocations/day.
+# The same invocation also runs the opt-in Web Push alerts (src/push.ts): one small D1 read, except for a few minutes
+# after each new NEA hour. (A second trigger isn't used: Cloudflare fired only one of two every-minute triggers.)
 [triggers]
 crons = ["* * * * *"]
 
@@ -18,6 +20,12 @@ binding = "DB"
 database_name = "hazenow-data"
 database_id = "a109476f-6771-4675-abcc-85e606b2d391"
 migrations_dir = "migrations"
+
+# Web Push (src/push.ts). The VAPID public key is public (the web app ships it too). The private key is a secret:
+# `wrangler secret put VAPID_PRIVATE_KEY` (a copy lives outside the repo in ~/.config/hazenow/vapid-private.txt).
+[vars]
+VAPID_PUBLIC_KEY = "BDtvBtcv8ZhzX3MEFEYr_enB2b42eH6OZgvI9Kx9GXpDgiRJqGtr4mURNbOIkgJ09pKc02WkkikXLStCilSf4CY"
+VAPID_SUBJECT = "https://hazenow.pages.dev"
 
 [observability]
 enabled = true

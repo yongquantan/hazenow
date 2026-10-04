@@ -11,6 +11,7 @@ export { getSnapshot, fetchRaw, clearCache, v2BackoffUntil, FetchError, type Fet
 export * from "./mock.js";
 export * from "./areas.js";
 export * from "./share.js";
+export * from "./alerts.js";
 // SPEC v2.0 — Southeast Asia (additive). Namespaced to avoid clashing with v1 names such as `locate`.
 export * as sea from "./countries/index.js";
 export {

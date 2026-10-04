@@ -54,6 +54,18 @@ The server uses your IP address only in memory, for about a minute, to slow down
 - **Downloads:** GitHub's own per-file download totals on each release.
 - **GitHub repository:** stars, forks, page views and clones (GitHub's own daily totals and top referring sites), copied daily because GitHub keeps them for only 14 days.
 
+## Optional haze alerts (stored only if you turn them on)
+
+> Alerts are optional. If you turn them on, we keep only a push address from your browser, the area you chose and who you're checking for, so we can tell you when the air changes there. Turn them off anytime and all of it is deleted.
+
+Web Push alerts (web app, including iPhone Home Screen web apps) need one row on the data server
+([`services/worker/migrations/0003_push.sql`](../services/worker/migrations/0003_push.sql)). It holds exactly:
+the push endpoint and its two encryption keys (made by your browser), the place (a Singapore area or region name,
+never coordinates; "Near you" is sent as the nearest area's name), who you're checking for and the Elevated opt-in
+(so the advice fits), the alert state (last band, alerts sent today), and the day it was created. No IP, user agent,
+coordinates or account. Messages are end-to-end encrypted to your browser. "Turn off alerts" deletes the row at once,
+and a row is deleted automatically when your browser's push service says the address is gone.
+
 ## What isn't counted
 
 Your location, the places you check, readings you look at, profiles, how long you stay, what you tap, and anything that could link one count to another. Native-app users who only fetch NEA's data directly are invisible apart from the daily `app_open` above.

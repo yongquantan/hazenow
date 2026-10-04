@@ -47,15 +47,42 @@ export function isStale(observedAt: string, now: Date | number = Date.now()): bo
   return t - Date.parse(observedAt) > STALE_AFTER_MS;
 }
 
-export function buildSnapshot(inputs: SnapshotInputs, query: LocationQuery = {}, now: Date | number = Date.now()): Snapshot {
+type Hours = ReturnType<typeof mergeV1V2>;
+interface ParsedInputs {
+  coords: ReturnType<typeof parseRegionCoords>;
+  hours: Hours;
+  psiHours: Hours;
+  avgHours: Hours;
+}
+
+/**
+ * Parsing the responses is most of buildSnapshot's work, and it doesn't depend on the place. Callers that build
+ * many places from the same responses (the data server's alerts) pass the same `inputs` object each time, so it is
+ * parsed once. Inputs are treated as immutable.
+ */
+const parsedCache = new WeakMap<SnapshotInputs, ParsedInputs>();
+
+function parseInputs(inputs: SnapshotInputs): ParsedInputs {
+  const hit = parsedCache.get(inputs);
+  if (hit) return hit;
   const days = inputs.pm25Days ?? [];
   const psiDays = inputs.psiDays ?? [];
   const v1Pm25 = inputs.v1Pm25 ?? [];
   const v1Psi = inputs.v1Psi ?? [];
-  const coords = parseRegionCoords(inputs.pm25Latest, ...days, inputs.psi, ...psiDays, ...v1Pm25, ...v1Psi);
   const hoursOf = (v2: (ApiResponse | null | undefined)[], v1: (ApiResponse | null | undefined)[], key: string) =>
     mergeV1V2(mergeHours(...v1.map((d) => parseHours(d, key))), mergeHours(...v2.map((d) => parseHours(d, key))));
-  const hours = hoursOf([inputs.pm25Latest, ...days], v1Pm25, PM25_KEY);
+  const parsed: ParsedInputs = {
+    coords: parseRegionCoords(inputs.pm25Latest, ...days, inputs.psi, ...psiDays, ...v1Pm25, ...v1Psi),
+    hours: hoursOf([inputs.pm25Latest, ...days], v1Pm25, PM25_KEY),
+    psiHours: hoursOf([inputs.psi, ...psiDays], v1Psi, PSI24_KEY),
+    avgHours: hoursOf([inputs.psi, ...psiDays], v1Psi, PM25_24H_KEY),
+  };
+  parsedCache.set(inputs, parsed);
+  return parsed;
+}
+
+export function buildSnapshot(inputs: SnapshotInputs, query: LocationQuery = {}, now: Date | number = Date.now()): Snapshot {
+  const { coords, hours, psiHours, avgHours } = parseInputs(inputs);
   if (hours.length === 0) throw new NoDataError("No PM2.5 readings in response");
 
   // Walk back from the newest hour to the most recent one with any valid data.
@@ -70,13 +97,11 @@ export function buildSnapshot(inputs: SnapshotInputs, query: LocationQuery = {},
   const pm25 = here.value;
 
   // Official 24-hr PSI, hour by hour.
-  const psiHours = hoursOf([inputs.psi, ...psiDays], v1Psi, PSI24_KEY);
   const psiByHour = new Map(psiHours.map((h) => [Date.parse(h.time), h]));
   const psiAt = (time: string) => {
     const h = psiByHour.get(Date.parse(time));
     return h ? locate(h.values, coords, query).value : null;
   };
-  const avgHours = hoursOf([inputs.psi, ...psiDays], v1Psi, PM25_24H_KEY);
   const avgByHour = new Map(avgHours.map((h) => [Date.parse(h.time), h]));
   const avgAt = (time: string) => {
     const h = avgByHour.get(Date.parse(time));

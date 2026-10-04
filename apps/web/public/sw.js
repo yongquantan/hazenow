@@ -88,3 +88,51 @@ self.addEventListener("fetch", (event) => {
     );
   }
 });
+
+/* Opt-in haze alerts (Web Push, services/worker/src/push.ts). The payload is {title, body, url, tag, kind}, encrypted
+   end to end (RFC 8291): only this browser can read it. Every push shows a notification (iOS requires it). */
+self.addEventListener("push", (event) => {
+  let d = {};
+  try {
+    d = event.data ? event.data.json() : {};
+  } catch {
+    d = { body: event.data ? event.data.text() : "" };
+  }
+  const title = typeof d.title === "string" && d.title ? d.title : "HazeNow";
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: typeof d.body === "string" ? d.body : "",
+      tag: typeof d.tag === "string" ? d.tag : "hazenow-band",
+      renotify: true,
+      icon: "/icons/icon-192.png",
+      badge: "/icons/favicon-48.png",
+      data: { url: typeof d.url === "string" ? d.url : "/", kind: d.kind },
+    }),
+  );
+});
+
+/* A tap opens the web app at the alert's place (?area= / ?region=), reusing an open HazeNow window if there is one. */
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const raw = (event.notification.data && event.notification.data.url) || "/";
+  const target = new URL(raw, self.location.origin);
+  const url = target.origin === self.location.origin ? target.href : self.location.origin + "/";
+  event.waitUntil(
+    (async () => {
+      const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      for (const c of wins) {
+        if (new URL(c.url).origin !== self.location.origin) continue;
+        let w = c;
+        if ("navigate" in c) {
+          try {
+            w = (await c.navigate(url)) || c;
+          } catch {
+            /* not controlled yet: focus it as it is */
+          }
+        }
+        if ("focus" in w) return w.focus();
+      }
+      return self.clients.openWindow(url);
+    })(),
+  );
+});

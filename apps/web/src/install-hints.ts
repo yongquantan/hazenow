@@ -122,9 +122,12 @@ export function showInAppHint(getLink: () => string = () => location.href, d: De
   return true;
 }
 
-/** The one-time Add to Home Screen coach mark, for Safari on iPhone and iPad. Call it once a verdict is on screen. True when shown. */
-export function maybeShowCoachMark(d: Device = detectDevice()): boolean {
-  if (!d.iosSafari || d.standalone || seen(COACH_KEY) || document.querySelector(".hn-coach")) return false;
+/**
+ * The one-time Add to Home Screen coach mark, for Safari on iPhone and iPad. Call it once a verdict is on screen. True when shown.
+ * `again`: show it even if it was seen before (the alerts card's "Show me how", which the visitor asked for).
+ */
+export function maybeShowCoachMark(d: Device = detectDevice(), again = false): boolean {
+  if (!d.iosSafari || d.standalone || (!again && seen(COACH_KEY)) || document.querySelector(".hn-coach")) return false;
   remember(COACH_KEY); // once, even if they never tap "Got it"
   style();
   const box = document.createElement("div");

@@ -71,6 +71,7 @@ import { mapSvg } from "./map";
 import { bandShape, esc, store, trendIcon } from "./util";
 import { detectDevice, installStepsUrl, maybeShowCoachMark, showInAppHint } from "./install-hints";
 import { count, countAppOpen, firstTime } from "./count";
+import { ALERTS_PRIVACY, alertsCard, alertsKey, alertsOn, healAlerts, setElevated, showAddToHomeScreen, switchAlerts, syncAlerts, toggleAlertSettings, turnOff, turnOn } from "./alerts";
 
 // Opened from a share link (?s=<card>): one anonymous +1 on the data server's share-landing counter (hit.ts).
 countShareLanding((import.meta.env.VITE_HIT_URL as string | undefined) || (import.meta.env.VITE_PROXY_URL as string | undefined));
@@ -898,6 +899,7 @@ function nowSection(s: Snapshot, afterShare = "") {
       ? `<h2 class="acts-h">What helps now</h2><ul class="acts">${acts.map((a) => `<li>${esc(a)}</li>`).join("")}</ul>`
       : `<p class="calm">${esc(calmLine(s.history))}</p>`
   }
+  ${EMBED || MOCK ? "" : alertsCard(state.where, state.profile)}
   <p class="plan"><a href="${NEA_FORECAST_URL}" rel="noopener" target="_blank">${esc(PLANNING_LINE)}</a></p>
   <details class="tips"><summary>More tips</summary><ul>
     <li>Indoors is a good shield. Windows shut helps a bit. A purifier running helps a lot.</li>
@@ -1008,6 +1010,7 @@ function aboutSection() {
   <h2 id="about-h">About HazeNow</h2>
   <p>I built HazeNow because the number most of us check during a haze, the 24-hr PSI, moves slowly. NEA also publishes the last hour's PM2.5, and recommends it for deciding what to do right now. HazeNow puts that number first, in plain words, using only NEA's data.</p>
   <p>It's free and open source (MIT). ${esc(COUNT_LINE)} Your location stays on your phone.</p>
+  <p>${esc(ALERTS_PRIVACY)}</p>
   <p class="about-sig">— Yong Quan Tan</p>
   <ul class="about-links">
     <li><a href="${LINKEDIN_URL}" rel="noopener" target="_blank">LinkedIn</a></li>
@@ -1221,7 +1224,7 @@ function applyTheme() {
 function render() {
   const s = state.snap;
   const cs = state.csnap;
-  const key = JSON.stringify([cs?.observedAt, cs?.pm25, cs?.stale, state.cmode, state.sheetCountry, s?.publishedAt, s?.pm25, s?.nearestRegion, s?.locationMode, s?.stale, s?.officialPsi24h, s?.history.length, state.where, state.firstRun, state.places, state.sheet, state.geoExplain, state.geoBlocked, state.profile, state.profileOpen, state.locating, state.locNote, state.error, state.fromCache, state.online, state.aboutOpen, state.guess, state.guessNotCovered, askedWhere]);
+  const key = JSON.stringify([cs?.observedAt, cs?.pm25, cs?.stale, state.cmode, state.sheetCountry, s?.publishedAt, s?.pm25, s?.nearestRegion, s?.locationMode, s?.stale, s?.officialPsi24h, s?.history.length, state.where, state.firstRun, state.places, state.sheet, state.geoExplain, state.geoBlocked, state.profile, state.profileOpen, state.locating, state.locNote, state.error, state.fromCache, state.online, state.aboutOpen, state.guess, state.guessNotCovered, askedWhere, alertsKey()]);
   applyTheme();
   if (key === lastRenderKey) {
     renderStatus();
@@ -1285,6 +1288,17 @@ function saveProfile(done: boolean) {
   if (done) state.profileOpen = false;
   render();
   if (done) (app.querySelector('[data-key="profile-toggle"]') as HTMLElement | null)?.focus();
+  // Alerts' advice follows who you're checking for: re-send it to the server (debounced, quietly).
+  if (alertsOn()) {
+    clearTimeout(alertSyncTimer);
+    alertSyncTimer = window.setTimeout(() => syncAlerts(state.profile, render), 1500);
+  }
+}
+let alertSyncTimer: number | undefined;
+
+/** Run an alerts action, then show its toast (if any). */
+function alertAction(p: Promise<string | null>) {
+  p.then((msg) => msg && toast(msg)).catch(() => {});
 }
 
 /** Open the place sheet at a step, then move focus there (the heading, or a given control). */
@@ -1435,6 +1449,23 @@ app.addEventListener("click", (e) => {
     case "retry":
       refresh();
       break;
+    case "alerts-on":
+      // Straight from the tap: the permission prompt needs the tap's user activation (iOS).
+      alertAction(turnOn(state.where, state.profile, render));
+      break;
+    case "alerts-off":
+      alertAction(turnOff(render));
+      break;
+    case "alerts-settings":
+      toggleAlertSettings();
+      render();
+      break;
+    case "alerts-switch":
+      alertAction(switchAlerts(state.where, state.profile, render));
+      break;
+    case "alerts-a2hs":
+      showAddToHomeScreen();
+      break;
   }
 });
 
@@ -1479,6 +1510,7 @@ app.addEventListener("change", (e) => {
     state.profile = normaliseProfile(picked);
     saveProfile(false);
   }
+  if (el.dataset.action === "alerts-elevated" && el instanceof HTMLInputElement) alertAction(setElevated(el.checked, state.profile, render));
 });
 
 window.addEventListener("online", () => {
@@ -1619,6 +1651,7 @@ if (bootCountry()) {
 }
 
 firmUpGuess();
+if (!EMBED && !MOCK) healAlerts(state.profile, render);
 // COPY §21: in a chat app's built-in browser, a slim strip says how to get to Safari or Chrome (never over the reading).
 if (!EMBED && showInAppHint()) count("install_prompt_shown", { kind: "inapp" });
 

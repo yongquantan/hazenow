@@ -567,3 +567,37 @@ Calm and specific, like the rest of this file. Never block the reading to ask fo
 - Toasts: "The tile is already in Quick Settings." · "Couldn't add the tile just now. {tile hint}" · "This launcher can't add widgets from apps. Long-press the Home Screen, tap Widgets, then pick HazeNow."
 
 **Mac app.** First launch only, a small popover from the menu-bar item: "HazeNow lives up here." + on a notched Mac with the pill on, "On a MacBook with a notch, the pill beside it shows the same reading. Hover it to see more."; otherwise "Click the reading any time for the full picture." Button "Got it". It closes by itself after about 12 seconds.
+
+## 22. Haze alerts by Web Push (web app, 5 Oct 2026)
+
+Free, opt-in alerts for the web app (iPhone and iPad once it's on the Home Screen, iOS 16.4+; Chrome, Edge, Firefox,
+Android). The messages themselves are §11, verbatim, from the shared state machine (`packages/core/src/alerts.ts`).
+Singapore places only, like the native apps.
+
+**Card, under "What helps now", after the first verdict.** Title: "Get an alert when the air changes here".
+- Body: "For {area}. We'll only message when the band changes, and when it's clear again. Never at night." For a "Near you"
+  place: "For {area}, the area nearest you. Only the area's name is sent, never your location." Button "Get alerts"
+  (busy: "Turning on…"). The OS permission prompt only follows this tap.
+- iPhone/iPad, not on the Home Screen (never a permission prompt): "On iPhone and iPad, alerts work once HazeNow is on your
+  Home Screen. Add it, open it from there, then tap “Get alerts”." Button "Show me how" (Safari: the §21 coach mark) ·
+  link "Steps to add HazeNow" → /download/#iphone.
+- Older iOS: "Alerts need iOS 16.4 or newer. Update your iPhone, then open HazeNow from your Home Screen."
+- Unsupported browser: "This browser can't show alerts. Try Chrome, Edge, Firefox or Safari."
+- Blocked: "Notifications are blocked for HazeNow. Allow them in your browser's site settings (on iPhone: Settings, then
+  Notifications, then HazeNow), then come back here."
+- On: title "Alerts are on for {area}", body "We'll message when the band changes there, and when it's clear again. Never at
+  night." Buttons "Turn off alerts" (one tap; busy "Turning off…") · "Alert settings".
+- Settings: "Switch alerts to {place on screen}" (when different) · checkbox "Also alert at Elevated" · "High and Very High
+  always alert. Advice in alerts is for {who}, as on this screen." · "Quiet hours: 10pm to 7am. Anything overnight comes as
+  one morning update. At most 3 alerts a day, and the all-clear always comes through."
+- Toasts: "Alerts are on for {area}." · "No alerts for now. You can turn them on any time." · "Alerts are off. Your push
+  address and area are deleted." · (server unreachable) "Alerts are off on this device. We'll delete the rest the next time
+  we'd have sent an alert." · "Alerts now follow {area}." · "Alerts are full right now. Please try again in a few days."
+- Test message (debug only): "HazeNow test alert" / "Alerts work on this device. Tap to open {area}."
+
+**Privacy line** (the card, alert settings, the web app's About, docs/PRIVACY.md; the site's privacy item says the same in
+one sentence). "We never track you" stays everywhere.
+> Alerts are optional. If you turn them on, we keep only a push address from your browser, the area you chose and who you're checking for, so we can tell you when the air changes there. Turn them off anytime and all of it is deleted.
+
+**Download page, iPhone:** "**Alerts:** add HazeNow to your Home Screen, then tap “Get alerts”. You'll hear from it only when
+the air changes in your area, and when it's clear again. Free, and it needs iOS 16.4 or newer."
