@@ -56,6 +56,7 @@ describe("product metrics: allow-listed counters only", () => {
     expect(r.body.funnel.steps.map((s: { id: string }) => s.id)).toEqual(["visits", "share_landings", "app_open", "eureka", "installed", "share_sent", "alerts_on"]);
     expect(r.body.funnel.steps[0].n).toBeNull(); // no Cloudflare analytics token
     expect(r.body.visits.available).toBe(false);
+    expect(r.body.alertsActive).toBe(0); // push_subs is empty
     expect(r.body.funnel.sharesPerEureka).toBe(1);
     expect(Object.keys(r.body.eventInfo).sort()).toEqual(Object.keys(EVENTS).sort());
 

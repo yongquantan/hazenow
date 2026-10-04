@@ -1,7 +1,15 @@
 /**
- * GET /dash: the private metrics dashboard. A static page (no data in it): it asks for the STATS_TOKEN once, keeps
- * it in sessionStorage (gone when the tab closes), and reads GET /v1/stats with it. noindex, no external scripts,
+ * GET /dash: the private metrics dashboard. A static page (no data in it): it asks for the STATS_TOKEN (the PIN) once,
+ * keeps it in sessionStorage (gone when the tab closes), and reads GET /v1/stats with it. noindex, no external scripts,
  * charts are inline SVG. Fonts come from the public site (Apfel Grotezk, OFL).
+ *
+ * Built to answer three questions in five seconds on a phone: is anyone using it, is it growing, is it spreading.
+ * One hero number (people this week) with a trend sentence and a calm status line, a progress bar to the next
+ * milestone, four tiles with a change vs the previous period, the journey as one sentence, the share loop in one
+ * line and downloads by platform. Everything else sits in a closed "More detail".
+ *
+ * The chosen window (7/30/90 days) is compared with the period of the same length before it, so the page asks
+ * /v1/stats for twice the window (and at least 8 weeks, for the weekly trend) and splits the days itself.
  */
 import type { Res } from "./routes.js";
 
@@ -26,214 +34,387 @@ const HTML = /* html */ `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<title>HazeNow metrics</title>
+<meta name="theme-color" content="#f3f1ec" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101d23" media="(prefers-color-scheme: dark)">
+<title>HazeNow numbers</title>
 <style>
 @font-face{font-family:"Apfel Grotezk";src:url(https://hazenow.pages.dev/fonts/apfel-grotezk-regular.woff2) format("woff2");font-weight:400;font-display:swap}
 @font-face{font-family:"Apfel Grotezk";src:url(https://hazenow.pages.dev/fonts/apfel-grotezk-mittel.woff2) format("woff2");font-weight:500;font-display:swap}
-:root{--ink:#14232b;--paper:#f3f1ec;--surface:#fbfaf7;--tint:#ebe7de;--muted:#4a5a62;--line:rgba(20,35,43,.12);--bar:#14232b;--bar2:#9fb3bb;color-scheme:light}
-@media (prefers-color-scheme:dark){:root{--ink:#f5f0e6;--paper:#101d23;--surface:#1a2d36;--tint:#14232b;--muted:#b1c1c7;--line:rgba(245,240,230,.14);--bar:#f5f0e6;--bar2:#5d7682;color-scheme:dark}}
+:root{--paper:#f3f1ec;--ink:#14232b;--mist:#9fb3bb;--soft:#5b6f78;--tint:#e8e4db;--up:#2e9e5b;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--paper:#101d23;--ink:#f3f1ec;--mist:#9fb3bb;--soft:#9fb3bb;--tint:#1b2d35;--up:#4cc07a;color-scheme:dark}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--paper);color:var(--ink);font:400 15px/1.45 "Apfel Grotezk",ui-sans-serif,system-ui,-apple-system,sans-serif}
-main{max-width:1080px;margin:0 auto;padding:28px 16px 64px}
-header{display:flex;flex-wrap:wrap;align-items:baseline;gap:12px 20px;margin-bottom:20px}
-h1{font-weight:500;font-size:26px;margin:0;letter-spacing:-.01em}
-h2{font-weight:500;font-size:17px;margin:0 0 4px}
-h3{font-weight:500;font-size:14px;margin:14px 0 6px;color:var(--muted)}
-.sub{color:var(--muted);font-size:13px;margin:0 0 12px}
-.ctl{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 16px/1.45 "Apfel Grotezk",ui-sans-serif,system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+main{max-width:720px;margin:0 auto;padding:20px 20px 48px;padding-top:max(20px,env(safe-area-inset-top))}
+b,strong{font-weight:500}
+.num{font-variant-numeric:tabular-nums}
 button,input{font:inherit;color:inherit}
-button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;cursor:pointer;min-height:34px}
-button[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 18px;min-width:0}
-.wide{grid-column:1/-1}
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:14px}
-.tile{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px}
-.tile b{display:block;font-weight:500;font-size:28px;line-height:1.1;font-variant-numeric:tabular-nums}
-.tile span{font-size:13px;color:var(--muted)}
-.funnel{display:grid;gap:6px}
-.fs{display:grid;grid-template-columns:170px 1fr 64px 60px;align-items:center;gap:10px;font-size:14px}
-.fs .track{height:18px;background:var(--tint);border-radius:4px;overflow:hidden}
-.fs .fill{height:100%;background:var(--bar);border-radius:0 4px 4px 0}
-.fs .n{text-align:right;font-variant-numeric:tabular-nums;font-weight:500}
-.fs .r{text-align:right;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
-.hb{display:grid;grid-template-columns:minmax(80px,140px) 1fr 52px;align-items:center;gap:8px;font-size:13px;margin:3px 0}
-.hb .track{height:12px;border-radius:3px;background:var(--tint);overflow:hidden}
-.hb .fill{height:100%;background:var(--bar);border-radius:0 3px 3px 0}
-.hb .n{text-align:right;font-variant-numeric:tabular-nums}
-svg.bars{width:100%;height:96px;display:block}
-svg.bars rect.b{fill:var(--bar)} svg.bars rect.b2{fill:var(--bar2)} svg.bars rect.hit{fill:transparent}
-svg.bars rect.hit:hover + rect, svg.bars g:hover rect.b{opacity:.75}
-svg.bars line{stroke:var(--line)}
-.axis{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
-.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin:2px 0 6px}
-.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
-.note{font-size:13px;color:var(--muted)}
-.empty{font-size:13px;color:var(--muted);font-style:italic}
+button{cursor:pointer;background:none;border:0;padding:0}
 a{color:inherit;text-underline-offset:3px}
-form.login{max-width:420px;margin:12vh auto;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px}
-form.login input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--paper);margin:10px 0}
-dl.defs{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;font-size:13px;margin:0}
-dl.defs dt{font-weight:500} dl.defs dd{margin:0;color:var(--muted)}
-#tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--paper);font-size:12px;padding:4px 8px;border-radius:6px;display:none;z-index:9;white-space:nowrap}
-@media (max-width:560px){.fs{grid-template-columns:110px 1fr 48px 44px;font-size:13px}}
+.soft{color:var(--soft)}
+.up{color:var(--up)}
+
+/* top bar */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:40px}
+.brand{font-weight:500;font-size:15px;letter-spacing:-.005em}
+.seg{display:flex;gap:2px;background:var(--tint);border-radius:999px;padding:3px}
+.seg button{font-size:13px;padding:6px 11px;border-radius:999px;color:var(--soft);min-height:32px;font-variant-numeric:tabular-nums}
+.seg button[aria-pressed=true]{background:var(--paper);color:var(--ink);font-weight:500}
+
+/* hero */
+.eyebrow{font-size:14px;color:var(--soft);margin:0 0 6px}
+.hero{font-weight:500;font-size:clamp(88px,30vw,136px);line-height:.9;letter-spacing:-.045em;margin:0 0 14px;font-variant-numeric:tabular-nums}
+.trend{font-size:18px;margin:0 0 4px}
+.status{font-size:16px;color:var(--soft);margin:0}
+.goal{margin:28px 0 0}
+.goal .bar{height:6px;border-radius:999px;background:var(--tint);overflow:hidden}
+.goal .bar i{display:block;height:100%;background:var(--ink);border-radius:999px;min-width:6px}
+.goal p{font-size:14px;color:var(--soft);margin:8px 0 0}
+.goal p b{color:var(--ink)}
+
+/* sections */
+section{margin-top:56px}
+h2{font-size:14px;font-weight:400;color:var(--soft);margin:0 0 14px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:28px 20px}
+@media (min-width:640px){.tiles{grid-template-columns:repeat(4,1fr)}}
+.tile .v{display:block;font-weight:500;font-size:44px;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.tile .l{display:block;font-size:15px;margin-top:8px}
+.tile .d{display:block;font-size:13px;color:var(--soft);margin-top:3px;font-variant-numeric:tabular-nums}
+.tile .d.up{color:var(--up)}
+.line{font-size:22px;line-height:1.35;letter-spacing:-.01em;margin:0;font-variant-numeric:tabular-nums}
+.line .ar{color:var(--mist);padding:0 .15em}
+.line .weak{text-decoration:underline;text-decoration-color:var(--mist);text-decoration-thickness:2px;text-underline-offset:6px}
+.hint{font-size:15px;color:var(--soft);margin:12px 0 0}
+.empty{font-size:16px;color:var(--soft);margin:0}
+
+/* more detail */
+details{margin-top:64px;border-top:1px solid var(--tint)}
+summary{list-style:none;cursor:pointer;padding:18px 0;font-size:15px;color:var(--soft);display:flex;justify-content:space-between;align-items:center}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-size:20px;line-height:1;color:var(--mist)}
+details[open] summary::after{content:"\\2212"}
+.more{display:grid;gap:40px;padding:8px 0 16px}
+.more h3{font-size:15px;font-weight:500;margin:0 0 4px}
+.more .sub{font-size:13px;color:var(--soft);margin:0 0 12px}
+.rows{display:grid;gap:8px}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;font-size:15px;align-items:baseline}
+.row .n{font-variant-numeric:tabular-nums;font-weight:500}
+.row .t{grid-column:1/-1;height:3px;border-radius:999px;background:var(--tint);overflow:hidden}
+.row .t i{display:block;height:100%;background:var(--mist)}
+svg.bars{width:100%;height:72px;display:block}
+svg.bars rect{fill:var(--ink)}
+svg.bars line{stroke:var(--tint)}
+.axis{display:flex;justify-content:space-between;font-size:12px;color:var(--soft);margin-top:4px;font-variant-numeric:tabular-nums}
+.pair{display:grid;gap:40px}
+@media (min-width:640px){.pair{grid-template-columns:1fr 1fr}}
+dl.defs{display:grid;gap:12px;margin:0;font-size:14px}
+dl.defs dt{font-weight:500}
+dl.defs dd{margin:2px 0 0;color:var(--soft)}
+.btn{border:1px solid var(--mist);border-radius:999px;padding:8px 16px;font-size:14px;min-height:40px}
+footer{margin-top:40px;font-size:13px;color:var(--soft);display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 16px}
+footer button{color:var(--soft);text-decoration:underline;text-underline-offset:3px;font-size:13px}
+
+/* login */
+form.login{max-width:340px;margin:22vh auto 0;text-align:left}
+form.login h1{font-weight:500;font-size:32px;letter-spacing:-.02em;margin:6px 0 8px}
+form.login p{color:var(--soft);margin:0 0 28px;font-size:15px}
+form.login input{width:100%;padding:14px 16px;border-radius:14px;border:1px solid var(--tint);background:var(--tint);font-size:22px;letter-spacing:.3em;text-align:center;outline:none}
+form.login input:focus{border-color:var(--mist)}
+form.login button{width:100%;margin-top:12px;padding:14px;border-radius:14px;background:var(--ink);color:var(--paper);font-weight:500;font-size:16px}
+.err{color:var(--ink)!important}
+.loading{color:var(--soft);margin-top:30vh;text-align:center}
 </style>
 </head>
 <body>
-<main id="app"><p class="note">Loading…</p></main>
-<div id="tip" role="tooltip"></div>
+<main id="app"><p class="loading">Loading…</p></main>
 <script>
 (() => {
 const KEY = "hazenow-stats-token";
+const DKEY = "hazenow-dash-days";
 const app = document.getElementById("app");
-const tip = document.getElementById("tip");
-let days = Number(sessionStorage.getItem("hazenow-dash-days")) || 30;
+const ss = { get: (k) => { try { return sessionStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { sessionStorage.setItem(k, v); } catch {} }, del: (k) => { try { sessionStorage.removeItem(k); } catch {} } };
+let days = [7, 30, 90].includes(Number(ss.get(DKEY))) ? Number(ss.get(DKEY)) : 7;
+let last = null;
+
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const fmt = (n) => (n == null ? "–" : Number(n).toLocaleString("en"));
-const pct = (a, b) => (b ? Math.round((a / b) * 100) + "%" : "–");
-const sum = (o) => Object.values(o || {}).reduce((a, b) => a + b, 0);
-const token = () => { try { return sessionStorage.getItem(KEY) || ""; } catch { return ""; } };
+const sumObj = (o) => Object.values(o || {}).reduce((a, b) => a + b, 0);
+const DAY = 864e5;
+const iso = (t) => new Date(t).toISOString().slice(0, 10);
+/** The n days ending \`back\` days before \`to\` (back 0 = ending today). */
+const span = (to, n, back) => { const end = Date.parse(to + "T00:00:00Z") - back * DAY, out = []; for (let i = n - 1; i >= 0; i--) out.push(iso(end - i * DAY)); return out; };
+const over = (byDay, list) => list.reduce((a, d) => a + ((byDay || {})[d] || 0), 0);
+const shortDate = (d) => new Date(d + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+
+const PERIOD = { 7: "last week", 30: "the prior 30", 90: "the prior 90" };
+const THIS = { 7: "this week", 30: "in 30 days", 90: "in 90 days" };
+const MILESTONES = [10, 50, 100, 500, 1000, 5000, 10000, 50000, 100000];
+const CARD = { now: "Air right now", clocks: "Two clocks", group: "Group plan", clear: "All clear" };
+const PLATFORM = { android: "Android", mac: "Mac", cli: "CLI", scriptable: "Scriptable", scriptable_js: "Scriptable (JS)", home_assistant: "Home Assistant", swiftbar: "SwiftBar", shell: "Shell", iphone_web: "iPhone web app", android_web: "Android web app", ios: "iPhone", other: "Other" };
+const SURFACE = { app: "Home Screen web app", browser: "Browser", android: "Android app", ios: "iPhone app", mac: "Mac app" };
+const VIA = { location: "Used their location", typed: "Typed a search", list: "Picked from the list", saved: "A saved place", link: "Opened a shared link", guess: "Our country guess" };
+const HOW = { share: "Share sheet", download: "Saved the image", copy_text: "Copied the text", copy_link: "Copied the link" };
+const HINT = { coach: "iPhone “Add to Home Screen” tip", inapp: "“Open in your browser” strip" };
+const NAME = {
+  app_open: "Daily opens", app_open_week: "Weekly opens", eureka: "Saw their air (first time)", place_set: "Picked a place",
+  share_sent: "Shared a card", install_prompt_shown: "Install tip shown", installed: "Installed to Home Screen",
+  alerts_on: "Turned alerts on", alerts_off: "Turned alerts off", download_click: "Download button clicked",
+  qr_shown: "“Open on your phone” QR shown", scriptable_file: "Scriptable widget fetched",
+};
+
+/* ---------------------------------------------------------------- login */
 
 function login(msg) {
-  app.innerHTML = '<form class="login"><h1>HazeNow metrics</h1><p class="sub">' + esc(msg || "Paste the stats token (~/.config/hazenow/stats-token.txt). It stays in this tab only.") + '</p><input type="password" name="t" autocomplete="off" aria-label="Stats token" required><button type="submit">Open</button></form>';
-  app.querySelector("form").addEventListener("submit", (e) => {
-    e.preventDefault();
-    try { sessionStorage.setItem(KEY, e.target.t.value.trim()); } catch {}
-    load();
-  });
+  app.innerHTML = '<form class="login" autocomplete="off"><div class="soft">HazeNow</div><h1>Your numbers</h1><p class="' + (msg ? "err" : "") + '">' + esc(msg || "Enter your PIN. It stays in this tab only.") + '</p><input type="password" name="t" inputmode="numeric" autocomplete="off" aria-label="PIN" required><button type="submit">Open</button></form>';
+  app.querySelector("form").addEventListener("submit", (e) => { e.preventDefault(); ss.set(KEY, e.target.t.value.trim()); load(); });
   app.querySelector("input").focus();
 }
 
-function dayList(from, to) {
-  const out = [];
-  for (let t = Date.parse(from + "T00:00:00Z"); t <= Date.parse(to + "T00:00:00Z"); t += 864e5) out.push(new Date(t).toISOString().slice(0, 10));
-  return out;
+/* ---------------------------------------------------------------- pieces */
+
+/** "▲ 4 vs last week" / "▼ 2 vs last week" / "Same as last week". Never red: a dip is just a calm ▼. */
+function delta(cur, prev, vs, cls) {
+  const d = cur - prev;
+  if (!d) return '<span class="' + (cls || "") + '">Same as ' + esc(vs) + "</span>";
+  return '<span class="' + (cls || "") + (d > 0 ? " up" : "") + '">' + (d > 0 ? "▲ " : "▼ ") + fmt(Math.abs(d)) + " vs " + esc(vs) + "</span>";
 }
 
-/** Daily bars (one or two stacked series). series: [{label, days:{day:n}, cls}] */
-function bars(series, list) {
-  const W = 600, H = 96, n = list.length, gap = n > 60 ? 1 : 2, bw = (W - gap * (n - 1)) / n;
-  const tot = list.map((d) => series.reduce((a, s) => a + ((s.days || {})[d] || 0), 0));
-  const max = Math.max(1, ...tot);
-  let g = "";
-  list.forEach((d, i) => {
-    const x = i * (bw + gap);
-    let y = H;
-    const parts = series.map((s) => s.label + " " + fmt((s.days || {})[d] || 0)).join(" · ");
-    let rects = "";
-    series.forEach((s, k) => {
-      const v = (s.days || {})[d] || 0;
-      if (!v) return;
-      const h = Math.max(1.5, (v / max) * (H - 4));
-      y -= h;
-      rects += '<rect class="' + (s.cls || (k ? "b2" : "b")) + '" x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (h - (k < series.length - 1 && series.length > 1 ? 0 : 0)).toFixed(1) + '" rx="' + Math.min(2, bw / 3).toFixed(1) + '"/>';
-      if (series.length > 1) y -= 1;
-    });
-    g += '<g data-tip="' + esc(d + ": " + (series.length > 1 ? fmt(tot[i]) + " (" + parts + ")" : fmt(tot[i]))) + '">' + rects + '<rect class="hit" x="' + x.toFixed(1) + '" y="0" width="' + (bw + gap).toFixed(1) + '" height="' + H + '"/></g>';
-  });
-  const leg = series.length > 1 ? '<div class="legend">' + series.map((s, k) => '<span><i style="background:var(' + (k ? "--bar2" : "--bar") + ')"></i>' + esc(s.label) + "</span>").join("") + "</div>" : "";
-  return leg + '<svg class="bars" viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none" role="img" aria-label="Daily counts, peak ' + fmt(max) + '"><line x1="0" x2="' + W + '" y1="' + (H - 0.5) + '" y2="' + (H - 0.5) + '"/>' + g + '</svg><div class="axis"><span>' + list[0].slice(5) + "</span><span>peak " + fmt(max) + "</span><span>" + list[n - 1].slice(5) + "</span></div>";
+function tile(v, label, d) {
+  return '<div class="tile"><span class="v">' + v + '</span><span class="l">' + esc(label) + '</span><span class="d' + (d.up ? " up" : "") + '">' + d.html + "</span></div>";
+}
+function tileDelta(cur, prev) {
+  const d = cur - prev;
+  if (!d) return { html: "Same as " + esc(PERIOD[days]) };
+  return { up: d > 0, html: (d > 0 ? "▲ " : "▼ ") + fmt(Math.abs(d)) + " vs " + esc(PERIOD[days]) };
 }
 
-/** Horizontal bars for a breakdown {label: n}. */
-function hbars(obj, names, limit) {
-  const e = Object.entries(obj || {}).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, limit || 12);
-  if (!e.length) return '<p class="empty">Nothing yet.</p>';
+/** A quiet ranked list {key: n} with faint bars. */
+function rows(obj, names, limit, emptyMsg) {
+  const e = Object.entries(obj || {}).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, limit || 10);
+  if (!e.length) return '<p class="empty" style="font-size:14px">' + esc(emptyMsg || "Nothing yet.") + "</p>";
   const max = e[0][1];
-  return e.map(([k, v]) => '<div class="hb" data-tip="' + esc((names && names[k]) || k) + ": " + fmt(v) + '"><span>' + esc((names && names[k]) || k) + '</span><span class="track"><span class="fill" style="width:' + ((v / max) * 100).toFixed(1) + '%;display:block"></span></span><span class="n">' + fmt(v) + "</span></div>").join("");
+  return '<div class="rows">' + e.map(([k, v]) => '<div class="row"><span>' + esc((names && names[k]) || k) + '</span><span class="n">' + fmt(v) + '</span><span class="t"><i style="width:' + ((v / max) * 100).toFixed(1) + '%"></i></span></div>').join("") + "</div>";
 }
 
-function isoWeek(day) {
-  const d = new Date(day + "T00:00:00Z");
-  d.setUTCDate(d.getUTCDate() + 3 - ((d.getUTCDay() + 6) % 7)); // that week's Thursday decides the year
-  const y = d.getUTCFullYear();
-  return y + "-W" + String(1 + Math.floor((d - Date.UTC(y, 0, 1)) / 864e5 / 7)).padStart(2, "0");
+/** Daily bars for one series over \`list\`. */
+function bars(byDay, list, label) {
+  const W = 600, H = 72, n = list.length, gap = n > 60 ? 1 : n > 20 ? 2 : 6, bw = (W - gap * (n - 1)) / n;
+  const vals = list.map((d) => (byDay || {})[d] || 0);
+  const max = Math.max(...vals);
+  if (!max) return '<p class="empty" style="font-size:14px">Nothing in this period yet.</p>';
+  let g = "";
+  vals.forEach((v, i) => {
+    if (!v) return;
+    const h = Math.max(2, (v / max) * (H - 2));
+    g += '<rect x="' + (i * (bw + gap)).toFixed(1) + '" y="' + (H - h).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="' + Math.min(2, bw / 3).toFixed(1) + '"><title>' + esc(list[i] + ": " + fmt(v)) + "</title></rect>";
+  });
+  return '<svg class="bars" viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none" role="img" aria-label="' + esc(label + ", most in a day " + fmt(max)) + '"><line x1="0" x2="' + W + '" y1="' + (H - 0.5) + '" y2="' + (H - 0.5) + '"/>' + g + '</svg><div class="axis"><span>' + shortDate(list[0]) + "</span><span>most in a day: " + fmt(max) + "</span><span>" + shortDate(list[n - 1]) + "</span></div>";
 }
 
-const tile = (n, label, t) => '<div class="tile"' + (t ? ' title="' + esc(t) + '"' : "") + "><b>" + n + "</b><span>" + esc(label) + "</span></div>";
-const card = (title, sub, body, wide) => '<section class="card' + (wide ? " wide" : "") + '"><h2>' + esc(title) + "</h2>" + (sub ? '<p class="sub">' + sub + "</p>" : "") + body + "</section>";
+const block = (title, sub, body) => "<div><h3>" + esc(title) + "</h3>" + (sub ? '<p class="sub">' + sub + "</p>" : "") + body + "</div>";
 
-const SURFACE = { app: "Installed web app", browser: "Browser", android: "Android app", ios: "iOS app", mac: "Mac app" };
-const VIA = { location: "Their location", typed: "Typed a search", list: "Picked from the list", saved: "A saved place", link: "A shared link", guess: "Our country guess" };
+/* ---------------------------------------------------------------- the numbers */
 
-function render(s) {
+function compute(s) {
   const E = s.events || {};
   const ev = (k) => E[k] || { total: 0, days: {}, a: {}, aDays: {}, b: {}, countries: {} };
-  const list = dayList(s.from, s.to);
-  const today = s.to;
-  const open = ev("app_open"), week = ev("app_open_week"), eureka = ev("eureka"), shares = ev("share_sent");
-  const dauToday = open.days[today] || 0;
-  const dauAvg = Math.round(sum(open.days) / list.length * 10) / 10;
-  const weeks = {};
-  for (const [d, n] of Object.entries(week.days)) weeks[isoWeek(d)] = (weeks[isoWeek(d)] || 0) + n;
-  const wauNow = weeks[isoWeek(today)] || 0;
-  const landByDay = {}, landCards = {};
-  for (const r of s.shareLandings || []) { landByDay[r.day] = r.total; for (const [k, v] of Object.entries(r.cards)) landCards[k] = (landCards[k] || 0) + v; }
-  const reqByDay = {};
-  for (const r of s.usage || []) reqByDay[r.day] = r.total;
-  const f = s.funnel || { steps: [] };
-  const top = Math.max(1, ...f.steps.map((x) => x.n || 0));
-  const funnelHtml = '<div class="funnel">' + f.steps.map((x, i) => {
-    const prev = i ? f.steps[i - 1].n : null;
-    const w = x.n == null ? 0 : (x.n / top) * 100;
-    return '<div class="fs"><span>' + esc(x.label) + '</span><span class="track">' + (x.n == null ? "" : '<span class="fill" style="display:block;width:' + w.toFixed(1) + '%"></span>') + '</span><span class="n">' + (x.n == null ? '<a href="' + esc(s.visits.enableUrl || "#") + '" title="' + esc(s.visits.reason || "") + '">enable</a>' : fmt(x.n)) + '</span><span class="r">' + (i && prev ? pct(x.n || 0, prev) : "") + "</span></div>";
-  }).join("") + "</div>";
-  const gh = s.github || {};
-  const latest = gh.latest;
-  const dlDays = {};
-  for (const r of gh.daily || []) if (r.newDownloads) dlDays[r.day] = sum(r.newDownloads);
-  const ghState = gh.state ? (gh.state.lastError ? "Last run failed: " + esc(gh.state.lastError) : "Archived " + esc(gh.state.lastOkAt || "")) : "Not archived yet (needs the GITHUB_TOKEN secret).";
-  const visits = s.visits && s.visits.available
-    ? Object.entries(s.visits.hosts).map(([h, v]) => "<h3>" + esc(h) + " · " + fmt(v.visits) + "</h3>" + bars([{ label: "Visits", days: v.days }], list)).join("")
-    : '<p class="note">Not readable: ' + esc((s.visits && s.visits.reason) || "") + '. <a href="' + esc((s.visits && s.visits.enableUrl) || "#") + '">Open Web Analytics in Cloudflare</a>. To show visits here, add a Worker secret CF_ANALYTICS_TOKEN (Account Analytics: Read).</p>';
-  const defs = Object.entries(s.eventInfo || {}).map(([k, v]) => "<dt>" + esc(k) + "</dt><dd>" + esc(v.means) + (v.dims.length ? " · by " + esc(v.dims.join(", ")) : "") + (v.country ? " · country" : "") + "</dd>").join("");
+  const cur = span(s.to, days, 0), prev = span(s.to, days, days);
+  const byA = (e, list) => Object.fromEntries(Object.entries(ev(e).aDays || {}).map(([k, d]) => [k, over(d, list)]));
 
-  app.innerHTML =
-    '<header><h1>HazeNow metrics</h1><span class="note">' + esc(s.from) + " to " + esc(s.to) + ' (UTC) · counts only, never who</span><div class="ctl">' +
-    [7, 30, 90].map((d) => '<button data-days="' + d + '" aria-pressed="' + (d === days) + '">' + d + " days</button>").join("") +
-    '<button data-act="gh" title="Fetch a GitHub snapshot now">Refresh GitHub</button><button data-act="out">Sign out</button></div></header>' +
-    '<div class="tiles">' +
-    tile(fmt(dauToday), "Active devices today", "app_open today (one per device per UTC day)") +
-    tile(fmt(dauAvg), "Daily average (" + days + "d)", "Mean app_open per day over the window") +
-    tile(fmt(wauNow), "Active devices this week", "app_open_week this ISO week (web app only)") +
-    tile(pct(open.b.new || 0, (open.b.new || 0) + (open.b.returning || 0)), "New device-days", "app_open seen=new ÷ all app_open") +
-    tile(pct(open.a.app || 0, (open.a.app || 0) + (open.a.browser || 0)), "Web opens from the installed app", "app_open surface=app ÷ (app + browser)") +
-    tile(f.sharesPerEureka == null ? "–" : f.sharesPerEureka, "Shares per first verdict", "share_sent ÷ eureka") +
-    tile(f.landingsPerShare == null ? "–" : f.landingsPerShare, "Landings per share", "share landings ÷ share_sent") +
-    tile(latest ? fmt(latest.stars) : "–", "GitHub stars", latest ? "forks " + latest.forks + ", watchers " + latest.watchers : "") +
-    "</div>" +
-    '<div class="grid">' +
-    card("Funnel", "Totals for the window. The right column is each step ÷ the step above it (steps come from different people, so read them as ratios, not conversion).", funnelHtml, true) +
-    card("Daily active devices", "app_open per UTC day, installed web app vs browser vs native apps.", bars([{ label: "Web", days: Object.fromEntries(list.map((d) => [d, ((open.aDays.app || {})[d] || 0) + ((open.aDays.browser || {})[d] || 0)])) }, { label: "Native apps", days: Object.fromEntries(list.map((d) => [d, ((open.aDays.android || {})[d] || 0) + ((open.aDays.ios || {})[d] || 0) + ((open.aDays.mac || {})[d] || 0)])) }], list)) +
-    card("Weekly active devices", "app_open_week per ISO week (web app).", hbars(weeks, null, 14)) +
-    card("App opens by surface", "", hbars(open.a, SURFACE) + "<h3>New vs returning</h3>" + hbars(open.b)) +
-    card("Countries", "App opens by country (Cloudflare's country for the web; the chosen place's country for native apps).", hbars(open.countries, null, 12)) +
-    card("First verdicts (eureka)", "How the place was found, the first time a device saw a verdict.", bars([{ label: "First verdicts", days: eureka.days }], list) + hbars(eureka.a, VIA)) +
-    card("Places picked", "place_set by method.", hbars(ev("place_set").a, VIA)) +
-    card("Shares sent", "By card, and how.", bars([{ label: "Shares", days: shares.days }], list) + "<h3>Card</h3>" + hbars(shares.a) + "<h3>How</h3>" + hbars(shares.b)) +
-    card("Share landings", "Opens of a share link (?s=card), by card.", bars([{ label: "Landings", days: landByDay }], list) + hbars(landCards)) +
-    card("Installs and alerts", "", tile(fmt(ev("installed").total), "Installs (first launch from the Home Screen)") + "<h3>By OS</h3>" + hbars(ev("installed").a) + "<h3>Install hints shown</h3>" + hbars(ev("install_prompt_shown").a, { coach: "iPhone coach mark", inapp: "In-app browser strip" }) + "<h3>Alerts</h3>" + hbars({ on: ev("alerts_on").total, off: ev("alerts_off").total }) + '<p class="note">The push subscription table is the real count of alerts in use.</p>') +
-    card("Downloads", "Cumulative per platform from GitHub release snapshots" + (latest ? " (" + esc(latest.day) + ")" : "") + "; bars are new downloads per day.", (latest ? hbars(latest.downloadsByPlatform) : '<p class="empty">No snapshot yet.</p>') + "<h3>New downloads per day</h3>" + bars([{ label: "Downloads", days: dlDays }], list) + "<h3>Download clicks on the site</h3>" + hbars(ev("download_click").a) + "<h3>Scriptable widget file served</h3>" + tile(fmt(ev("scriptable_file").total), "/widget/HazeNow.scriptable") + "<h3>QR codes shown (desktop)</h3>" + tile(fmt(ev("qr_shown").total), "qr_shown")) +
-    card("GitHub", ghState, "<h3>Repo views per day · " + fmt(gh.totals && gh.totals.views) + "</h3>" + bars([{ label: "Views", days: Object.fromEntries((gh.traffic || []).map((r) => [r.day, r.views])) }], list) + "<h3>Clones per day · " + fmt(gh.totals && gh.totals.clones) + "</h3>" + bars([{ label: "Clones", days: Object.fromEntries((gh.traffic || []).map((r) => [r.day, r.clones])) }], list) + "<h3>Top referrers (GitHub's last 14 days)</h3>" + hbars(Object.fromEntries(((latest && latest.referrers) || []).map((r) => [r.referrer, r.count])))) +
-    card("Site visits", "Cloudflare Web Analytics (cookieless).", visits) +
-    card("Data server requests", "/v1/* requests per day · " + fmt(s.totals && s.totals.requests), bars([{ label: "Requests", days: reqByDay }], list)) +
-    card("What each counter means", "Every number is a +1 on a (day, event, small label) counter. No IDs, IPs, user agents or coordinates exist anywhere. See docs/PRIVACY.md.", '<dl class="defs">' + defs + "</dl>", true) +
-    "</div>";
+  // People this week: web devices (once per device per ISO week) plus the busiest day of the native apps (they only
+  // report daily). A device that opens on both sides of a Monday counts twice, so it's "about".
+  const native = (d) => ["android", "ios", "mac"].reduce((a, k) => a + (((ev("app_open").aDays || {})[k] || {})[d] || 0), 0);
+  const week = (back) => { const l = span(s.to, 7, back * 7); return over(ev("app_open_week").days, l) + Math.max(0, ...l.map(native)); };
+  const weeks = Array.from({ length: 8 }, (_, i) => week(i)); // weeks[0] = the last 7 days
+
+  const landDays = {}, landCardsCur = {};
+  for (const r of s.shareLandings || []) { landDays[r.day] = r.total; if (cur.includes(r.day)) for (const [k, v] of Object.entries(r.cards)) landCardsCur[k] = (landCardsCur[k] || 0) + v; }
+  const visitDays = {};
+  if (s.visits && s.visits.available) for (const h of Object.values(s.visits.hosts)) for (const [d, v] of Object.entries(h.days)) visitDays[d] = (visitDays[d] || 0) + v;
+  const gh = s.github || {};
+  const dlDays = {};
+  for (const r of gh.daily || []) if (r.newDownloads) dlDays[r.day] = sumObj(r.newDownloads);
+
+  const P = (list) => {
+    const installs = over(ev("installed").days, list), downloads = over(dlDays, list);
+    return {
+      newPeople: over(ev("eureka").days, list),
+      installs, downloads, installed: installs + downloads,
+      shared: over(ev("share_sent").days, list),
+      alertsNet: over(ev("alerts_on").days, list) - over(ev("alerts_off").days, list),
+      visits: s.visits && s.visits.available ? over(visitDays, list) : null,
+      landings: over(landDays, list),
+    };
+  };
+  return { ev, cur, prev, byA, weeks, now: P(cur), was: P(prev), landDays, landCardsCur, visitDays, dlDays, gh };
 }
 
+function statusLine(w) {
+  let streak = 0;
+  while (streak < w.length - 1 && w[streak] > w[streak + 1]) streak++;
+  if (!w[0] && !w[1]) return "Quiet so far. One message to a friend changes that.";
+  if (streak >= 2) return "Growing for " + streak + " weeks straight.";
+  if (w[0] < 10) return "Early days: mostly you and testers so far.";
+  if (w[0] > w[1]) return "Up on last week. Keep going.";
+  if (w[0] < w[1]) return "A quieter week. Small numbers swing; the trend matters more.";
+  return "Holding steady.";
+}
+
+function render(s) {
+  last = s;
+  const c = compute(s);
+  const { now, was, weeks } = c;
+  const w0 = weeks[0];
+
+  // Hero and goal gradient
+  const dw = w0 - weeks[1];
+  const trend = !dw ? "Same as last week" : (dw > 0 ? '<span class="up">▲ ' + fmt(dw) + " more than last week</span>" : "▼ " + fmt(-dw) + " fewer than last week");
+  const next = MILESTONES.find((m) => m > w0) || MILESTONES[MILESTONES.length - 1];
+  const pct = Math.min(100, (w0 / next) * 100);
+
+  // Tiles
+  const subs = typeof s.alertsActive === "number";
+  const alertsTile = subs
+    ? tile(fmt(s.alertsActive), "Alerts on", now.alertsNet ? { up: now.alertsNet > 0, html: (now.alertsNet > 0 ? "▲ " : "▼ ") + fmt(Math.abs(now.alertsNet)) + " " + esc(THIS[days]) } : { html: "No change " + esc(THIS[days]) })
+    : tile(fmt(now.alertsNet), "Alerts on (net)", tileDelta(now.alertsNet, was.alertsNet));
+
+  // Journey
+  const steps = [
+    { n: now.visits, word: "visited", gerund: "visitors" },
+    { n: now.newPeople, word: "saw their air", gerund: "seeing their air" },
+    { n: now.installed, word: "installed", gerund: "installing" },
+    { n: now.shared, word: "shared", gerund: "sharing" },
+  ].filter((x) => x.n != null);
+  let weak = -1, worst = Infinity;
+  for (let i = 1; i < steps.length; i++) if (steps[i - 1].n > 0) { const r = steps[i].n / steps[i - 1].n; if (r < worst) { worst = r; weak = i; } }
+  const journeyEmpty = steps.every((x) => !x.n);
+  const journey = journeyEmpty
+    ? '<p class="empty">Nobody through the door ' + esc(THIS[days]) + " yet. The first visitor is the hardest.</p>"
+    : '<p class="line">' + steps.map((x, i) => (i ? '<span class="ar">→</span>' : "") + '<span class="' + (i === weak || i === weak - 1 ? "weak" : "") + '"><b>' + fmt(x.n) + "</b> " + esc(x.word) + "</span>").join(" ") + "</p>" +
+      (weak > 0 && worst < 1 ? '<p class="hint">Biggest drop: ' + esc(steps[weak - 1].gerund) + " → " + esc(steps[weak].gerund) + ". That’s the one to fix next.</p>" : "");
+
+  // Spreading
+  const topCard = Object.entries(c.landCardsCur).sort((a, b) => b[1] - a[1])[0];
+  const topTxt = topCard ? " Top card: <b>" + esc(CARD[topCard[0]] || topCard[0]) + "</b> (" + fmt(topCard[1]) + ")." : "";
+  let spread;
+  if (now.shared && now.landings) spread = '<p class="line">Each share brings <b>~' + fmt(Math.round((now.landings / now.shared) * 10) / 10) + "</b> visits.</p>" + '<p class="hint">' + fmt(now.shared) + " shared → " + fmt(now.landings) + " opened a share link." + topTxt + "</p>";
+  else if (now.landings) spread = '<p class="line"><b>' + fmt(now.landings) + "</b> visits came from share links.</p>" + (topTxt ? '<p class="hint">' + topTxt.trim() + "</p>" : "");
+  else if (now.shared) spread = '<p class="line"><b>' + fmt(now.shared) + "</b> shared, nobody has opened one yet.</p>";
+  else spread = '<p class="empty">No shares yet — the first one is the hardest.</p>';
+
+  // Downloads
+  const latest = c.gh.latest;
+  const dl = latest ? Object.entries(latest.downloadsByPlatform || {}).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]) : [];
+  const downloads = dl.length
+    ? '<p class="line" style="font-size:19px">' + dl.map(([k, v]) => esc(PLATFORM[k] || k) + " <b>" + fmt(v) + "</b>").join('<span class="ar"> · </span>') + "</p>" + '<p class="hint">' + fmt(sumObj(latest.downloadsByPlatform)) + " in all, since the first release." + (now.downloads ? " " + fmt(now.downloads) + " new " + esc(THIS[days]) + "." : "") + "</p>"
+    : '<p class="empty">No downloads counted yet.</p>';
+
+  app.innerHTML =
+    '<div class="top"><span class="brand">HazeNow</span><div class="seg" role="group" aria-label="Period">' +
+    [7, 30, 90].map((d) => '<button data-days="' + d + '" aria-pressed="' + (d === days) + '">' + d + "d</button>").join("") + "</div></div>" +
+
+    '<p class="eyebrow">People who checked their air this week</p>' +
+    '<p class="hero">' + fmt(w0) + "</p>" +
+    '<p class="trend">' + trend + "</p>" +
+    '<p class="status">' + esc(statusLine(weeks)) + "</p>" +
+    '<div class="goal"><div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="' + next + '" aria-valuenow="' + w0 + '"><i style="width:' + pct.toFixed(1) + '%"></i></div><p><b>' + fmt(w0) + "</b> of " + fmt(next) + " to your next milestone</p></div>" +
+
+    "<section><h2>" + (days === 7 ? "This week" : "Last " + days + " days") + ", vs " + esc(PERIOD[days]) + '</h2><div class="tiles">' +
+    tile(fmt(now.newPeople), "New people", tileDelta(now.newPeople, was.newPeople)) +
+    tile(fmt(now.installed), "Installed", tileDelta(now.installed, was.installed)) +
+    tile(fmt(now.shared), "Shared", tileDelta(now.shared, was.shared)) +
+    alertsTile +
+    "</div></section>" +
+
+    "<section><h2>The journey</h2>" + journey + "</section>" +
+    "<section><h2>Spreading</h2>" + spread + "</section>" +
+    "<section><h2>Downloads by platform</h2>" + downloads + "</section>" +
+
+    more(s, c) +
+
+    '<footer><span>Counts devices, not people. Never who. See docs/PRIVACY.md.</span><span>' + esc(shortDate(c.cur[0])) + " – " + esc(shortDate(c.cur[c.cur.length - 1])) + ' (UTC) · <button data-act="out">Sign out</button></span></footer>';
+}
+
+function more(s, c) {
+  const { ev, cur, byA, now, gh } = c;
+  const latest = gh.latest;
+  const nativeDays = {};
+  for (const k of ["android", "ios", "mac"]) for (const [d, v] of Object.entries((ev("app_open").aDays || {})[k] || {})) nativeDays[d] = (nativeDays[d] || 0) + v;
+  const opensDays = ev("app_open").days;
+  const reqDays = {};
+  for (const r of s.usage || []) reqDays[r.day] = r.total;
+  const ghState = gh.state ? (gh.state.lastError ? "Last fetch failed: " + esc(gh.state.lastError) : "Last fetched " + esc(String(gh.state.lastOkAt || "").replace("T", " ").slice(0, 16)) + " UTC") : "Not fetched yet (needs the GITHUB_TOKEN secret).";
+  const views = Object.fromEntries((gh.traffic || []).map((r) => [r.day, r.views]));
+  const clones = Object.fromEntries((gh.traffic || []).map((r) => [r.day, r.clones]));
+  const since = "Since " + esc(shortDate(s.from)) + ".";
+  const visitsBlock = s.visits && s.visits.available
+    ? bars(c.visitDays, cur, "Visits per day") + '<div class="rows" style="margin-top:14px">' + Object.entries(s.visits.hosts).map(([h, v]) => '<div class="row"><span>' + esc(h === "hazenow.pages.dev" ? "Website" : h === "hazenow-app.pages.dev" ? "Web app" : h) + '</span><span class="n">' + fmt(over(v.days, cur)) + "</span></div>").join("") + "</div>"
+    : '<p class="empty" style="font-size:14px">Not connected: ' + esc((s.visits && s.visits.reason) || "") + '. <a href="' + esc((s.visits && s.visits.enableUrl) || "#") + '">Cloudflare Web Analytics</a>.</p>';
+  const defs = Object.entries(s.eventInfo || {}).map(([k, v]) => "<div><dt>" + esc(NAME[k] || k) + "</dt><dd>" + esc(v.means) + ".</dd></div>").join("") +
+    "<div><dt>People this week</dt><dd>Web devices that opened HazeNow in the last 7 days (counted once per device per calendar week), plus the busiest day of the Android, iPhone and Mac apps. Someone who opens it on both sides of a Monday counts twice, so read it as “about”.</dd></div>" +
+    "<div><dt>Installed</dt><dd>First launches from the Home Screen plus new app downloads from GitHub releases.</dd></div>" +
+    "<div><dt>Share-link visits</dt><dd>Opens of a link that came from a shared card.</dd></div>";
+
+  return '<details><summary>More detail</summary><div class="more">' +
+    '<div class="pair">' +
+    block("People per day", "Opens, once per device per day.", bars(opensDays, cur, "Opens per day")) +
+    block("Visits per day", "Website and web app (Cloudflare, no cookies).", visitsBlock) +
+    "</div>" +
+    '<div class="pair">' +
+    block("Where they open it", "Browser, Home Screen or an app.", rows(byA("app_open", cur), SURFACE)) +
+    block("Countries", since, rows(ev("app_open").countries, null, 10)) +
+    "</div>" +
+    '<div class="pair">' +
+    block("How they found their place", "The first time they saw their air.", rows(byA("eureka", cur), VIA)) +
+    block("Places picked", "Every time someone chose a place.", rows(byA("place_set", cur), VIA)) +
+    "</div>" +
+    '<div class="pair">' +
+    block("Shares per day", "", bars(ev("share_sent").days, cur, "Shares per day")) +
+    block("Share-link visits per day", "", bars(c.landDays, cur, "Share-link visits per day")) +
+    "</div>" +
+    '<div class="pair">' +
+    block("Cards shared", "", rows(byA("share_sent", cur), CARD, 10, "No shares yet — the first one is the hardest.")) +
+    block("Cards that brought visits", "", rows(c.landCardsCur, CARD)) +
+    "</div>" +
+    '<div class="pair">' +
+    block("How they shared", since, rows(ev("share_sent").b, HOW)) +
+    block("Alerts", "Turned on and off in this period.", rows({ "Turned on": over(ev("alerts_on").days, cur), "Turned off": over(ev("alerts_off").days, cur) }, null, 2, "No alert changes in this period.")) +
+    "</div>" +
+    '<div class="pair">' +
+    block("Installs by phone", "First launch from the Home Screen.", rows(byA("installed", cur), PLATFORM)) +
+    block("Install tips shown", "", rows(byA("install_prompt_shown", cur), HINT)) +
+    "</div>" +
+    '<div class="pair">' +
+    block("Download buttons clicked", "On the site.", rows(byA("download_click", cur), PLATFORM)) +
+    block("Other", "", rows({ "“Open on your phone” QR shown": over(ev("qr_shown").days, cur), "Scriptable widget fetched": over(ev("scriptable_file").days, cur), "App downloads (new)": now.downloads, "Native app opens": over(nativeDays, cur) }, null, 6, "Nothing in this period.")) +
+    "</div>" +
+    block("GitHub", ghState + (latest ? " · " + fmt(latest.stars) + " stars · " + fmt(latest.forks) + " forks" : ""),
+      '<div class="pair"><div><p class="sub">Repo views per day</p>' + bars(views, cur, "Repo views per day") + '</div><div><p class="sub">Clones per day</p>' + bars(clones, cur, "Clones per day") + "</div></div>" +
+      '<p class="sub" style="margin-top:20px">Where visitors came from (GitHub’s last 14 days)</p>' + rows(Object.fromEntries(((latest && latest.referrers) || []).map((r) => [r.referrer, r.count]))) +
+      '<p style="margin:20px 0 0"><button class="btn" data-act="gh">Refresh GitHub</button></p>') +
+    block("Data server requests", "Calls to the air-quality API per day.", bars(reqDays, cur, "Requests per day")) +
+    block("What each number counts", "Every number is a +1 on a (day, event, small label) counter. No IDs, IPs, user agents or coordinates are kept anywhere.", '<dl class="defs">' + defs + "</dl>") +
+    "</div></details>";
+}
+
+/* ---------------------------------------------------------------- load */
+
 async function load(refresh) {
-  const t = token();
+  const t = ss.get(KEY);
   if (!t) return login();
   app.setAttribute("aria-busy", "true");
   try {
-    const r = await fetch("/v1/stats?days=" + days + (refresh ? "&refresh=github" : ""), { headers: { authorization: "Bearer " + t }, cache: "no-store" });
-    if (r.status === 401 || r.status === 404) { try { sessionStorage.removeItem(KEY); } catch {} return login("That token didn't work. Try again."); }
+    const want = Math.max(2 * days, 56);
+    const r = await fetch("/v1/stats?days=" + want + (refresh ? "&refresh=github" : ""), { headers: { authorization: "Bearer " + t }, cache: "no-store" });
+    if (r.status === 401 || r.status === 404) { ss.del(KEY); return login("That PIN didn’t work. Try again."); }
     if (!r.ok) throw new Error("HTTP " + r.status);
+    const open = !!app.querySelector("details[open]");
     render(await r.json());
+    if (open) app.querySelector("details").open = true;
   } catch (e) {
-    app.innerHTML = '<p class="note">Couldn\\'t load the numbers (' + esc(e.message) + '). <button data-act="retry">Retry</button></p>';
+    app.innerHTML = '<p class="loading">Couldn’t load the numbers (' + esc(e.message) + '). <button class="btn" data-act="retry">Try again</button></p>';
   } finally {
     app.removeAttribute("aria-busy");
   }
@@ -242,20 +423,11 @@ async function load(refresh) {
 app.addEventListener("click", (e) => {
   const b = e.target.closest("button");
   if (!b) return;
-  if (b.dataset.days) { days = Number(b.dataset.days); try { sessionStorage.setItem("hazenow-dash-days", String(days)); } catch {} load(); }
+  if (b.dataset.days) { days = Number(b.dataset.days); ss.set(DKEY, String(days)); if (last && last.days >= Math.max(2 * days, 56)) { const open = !!app.querySelector("details[open]"); render(last); if (open) app.querySelector("details").open = true; } else load(); }
   else if (b.dataset.act === "gh") load(true);
   else if (b.dataset.act === "retry") load();
-  else if (b.dataset.act === "out") { try { sessionStorage.removeItem(KEY); } catch {} login(); }
+  else if (b.dataset.act === "out") { ss.del(KEY); last = null; login(); }
 });
-app.addEventListener("mousemove", (e) => {
-  const g = e.target.closest && e.target.closest("[data-tip]");
-  if (!g) { tip.style.display = "none"; return; }
-  tip.textContent = g.dataset.tip;
-  tip.style.display = "block";
-  tip.style.left = Math.min(innerWidth - tip.offsetWidth - 8, e.clientX + 12) + "px";
-  tip.style.top = e.clientY + 14 + "px";
-});
-app.addEventListener("mouseleave", () => (tip.style.display = "none"));
 load();
 })();
 </script>
