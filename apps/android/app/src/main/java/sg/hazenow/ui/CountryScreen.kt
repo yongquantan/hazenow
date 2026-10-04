@@ -157,6 +157,8 @@ fun CountryContent(
     onInfo: () -> Unit,
     onAbout: () -> Unit,
     onLicences: () -> Unit,
+    showHomeOffer: Boolean = false,
+    onHomeOfferDone: () -> Unit = {},
 ) {
     val ctx = LocalContext.current
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
@@ -216,6 +218,7 @@ fun CountryContent(
                 item { CountryVerdictCard(s, w, state.settings.profiles, dim = r.fromCache && r.problem == CountryProblem.OFFLINE, onWho = onWho,
                     onShare = { shareCountryText(ctx, s, w) }) }
                 item { CountryProvenance(s, w) }
+                if (showHomeOffer) item { HomeOfferCard(onDone = onHomeOfferDone) }
                 val band = Verdicts.adviceBand(s)
                 if (band != null) item { CountryActions(s, state.settings.profiles, band) }
                 if (s.history.size >= 2) item { CountryChart(s, w) }
@@ -235,6 +238,7 @@ fun CountryContent(
         state.guess?.takeIf { w.guessed && !it.sure && it.start.notCoveredFrom == null }?.let {
             item { WhereCheckingCard(proxy, onCountry = onChange) }
         }
+        item { HomeShortcutsCard() }
         item {
             Column(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 TextButton(onClick = onInfo) { Text("How we calculate this") }

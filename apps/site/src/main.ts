@@ -9,6 +9,10 @@ import {
   deviceGuessInput,
   findArea,
   getSnapshot,
+  locationDeniedLine,
+  nearestArea,
+  roundCoord,
+  searchAreas,
   guessCountry,
   wantsServerHint,
   type CountryGuess,
@@ -24,6 +28,9 @@ import {
 } from "hazenow";
 import { initSea } from "./sea";
 import { countShareLanding } from "./hit";
+import { initFind, type FindOption } from "./place-find";
+// Shared with the web app (one copy of the in-app-browser hint, COPY §21).
+import { showInAppHint } from "../../web/src/install-hints";
 
 const APP_BASE = __APP_BASE__;
 const STORE_KEY = "hazenow-site-place";
@@ -34,7 +41,9 @@ type Place =
   | { kind: "region"; region: string }
   | { kind: "area"; name: string; point: LatLon }
   /** SPEC v2.1: a place outside Singapore (catalogue slug; the name fills in once hero-country.ts loads). */
-  | { kind: "city"; cc: string; id: string; name: string };
+  | { kind: "city"; cc: string; id: string; name: string }
+  /** "Use my location" in Singapore: a point rounded to 2 decimals (~1 km, SPEC v1.4 §5), kept on this device. */
+  | { kind: "gps"; point: LatLon };
 
 type HeroModule = typeof import("./hero-country");
 let heroMod: Promise<HeroModule> | null = null;
@@ -65,6 +74,10 @@ function placeFromValue(v: string | null | undefined): Place | null {
     const [, cc, id] = v.split(":");
     return cc && id ? { kind: "city", cc: cc.toUpperCase(), id, name: "" } : null;
   }
+  if (v.startsWith("g:")) {
+    const [lat, lon] = v.slice(2).split(",").map(Number);
+    return Number.isFinite(lat) && Number.isFinite(lon) ? { kind: "gps", point: { lat: roundCoord(lat), lon: roundCoord(lon) } } : null;
+  }
   if (v.startsWith("a:")) {
     const a = findArea(v.slice(2));
     return a ? { kind: "area", name: a.name, point: { lat: a.lat, lon: a.lon } } : null;
@@ -72,7 +85,15 @@ function placeFromValue(v: string | null | undefined): Place | null {
   return null;
 }
 const placeValue = (p: Place) =>
-  p.kind === "island" ? "island" : p.kind === "region" ? `r:${p.region}` : p.kind === "city" ? `c:${p.cc}:${p.id}` : `a:${p.name}`;
+  p.kind === "island"
+    ? "island"
+    : p.kind === "region"
+      ? `r:${p.region}`
+      : p.kind === "city"
+        ? `c:${p.cc}:${p.id}`
+        : p.kind === "gps"
+          ? `g:${p.point.lat},${p.point.lon}`
+          : `a:${p.name}`;
 
 const REGIONS = ["north", "south", "east", "west", "central"];
 
@@ -100,6 +121,7 @@ function sharedPlace(q: URLSearchParams): Place | null {
 
 /** "air in Tampines" / "air in the West" / "air in Central" / "air across Singapore" */
 function airPhrase(p: Place): string {
+  if (p.kind === "gps") return "air near you";
   if (p.kind === "city") return `air in ${p.name}`;
   if (p.kind === "area") return `air in ${p.name}`;
   if (p.kind === "island") return "air across Singapore";
@@ -148,44 +170,76 @@ function appLink(p: Place): string {
   if (fromGuess && !guess.country) return APP_BASE;
   if (p.kind === "island") return `${APP_BASE}?region=island`;
   if (p.kind === "region") return `${APP_BASE}?region=${encodeURIComponent(p.region)}`;
+  // Near you: the app gets the nearest town's name, never the coordinates.
+  if (p.kind === "gps") return `${APP_BASE}?area=${encodeURIComponent(nearestArea(p.point).name)}`;
   return `${APP_BASE}?area=${encodeURIComponent(p.name)}`;
 }
 
 function cliFlags(p: Place): string {
   if (p.kind === "island" || p.kind === "city") return " --region island";
   if (p.kind === "region") return ` --region ${p.region}`;
+  if (p.kind === "gps") return ` --area "${nearestArea(p.point).name}"`;
   return ` --area "${p.name}"`;
 }
 
-/** Show the rest of Southeast Asia in the menu (not for a Singapore guess, whose page stays exactly as it was). */
+/** Show the rest of Southeast Asia in the empty list (not for a Singapore guess, whose page stays exactly as it was). */
 const seaMenu = () => place.kind === "city" || (fromGuess && guess.country !== "SG") || (!fromGuess && !shared && savedPlace()?.kind === "city");
 
-async function buildSelect(sel: HTMLSelectElement, current: Place) {
-  let seaGroup = "";
-  if (seaMenu()) {
-    const m = await loadHero();
-    const list = m.menuPlaces();
-    if (current.kind === "city" && !list.some((c) => c.country === current.cc && c.id === current.id)) {
-      const c = m.findPlace(current.cc, current.id);
-      if (c) list.unshift(c);
+let heroLoaded: HeroModule | null = null;
+const hero = () => loadHero().then((m) => (heroLoaded = m));
+
+const ISLAND_LABEL = "Singapore (island average)";
+const stationLabel = (r: string) => `${regionLabel(r)} station`;
+
+/** What the "Your area" field shows for a place. */
+function placeLabel(p: Place): string {
+  if (p.kind === "island") return ISLAND_LABEL;
+  if (p.kind === "region") return stationLabel(p.region);
+  if (p.kind === "area") return p.name;
+  if (p.kind === "gps") return "Near you";
+  return p.name && heroLoaded ? `${p.name}, ${heroLoaded.countryName(p.cc as never)}` : p.name;
+}
+
+const norm = (x: string) => x.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+
+/** The list under the field: everything when it's empty, matches as the visitor types. All on the device. */
+function findOptions(query: string): FindOption[] {
+  const q = norm(query);
+  const out: FindOption[] = [];
+  const island: FindOption = { value: "island", label: ISLAND_LABEL, group: "Singapore" };
+  const stations = REGIONS.map((r): FindOption => ({ value: `r:${r}`, label: stationLabel(r), group: "NEA stations" }));
+  if (!q) {
+    out.push(island, ...stations);
+    for (const a of [...SG_AREAS].sort((x, y) => x.name.localeCompare(y.name))) out.push({ value: `a:${a.name}`, label: a.name, group: "Towns and planning areas" });
+    if (heroLoaded && seaMenu()) {
+      const m = heroLoaded;
+      const list = m.menuPlaces();
+      const here = place;
+      if (here.kind === "city" && !list.some((c) => c.country === here.cc && c.id === here.id)) {
+        const c = m.findPlace(here.cc, here.id);
+        if (c) list.unshift(c);
+      }
+      for (const c of list) out.push({ value: `c:${c.country}:${c.id}`, label: `${c.name}, ${m.countryName(c.country)}`, group: "Southeast Asia" });
     }
-    seaGroup = `<optgroup label="Southeast Asia">${list
-      .map((c) => `<option value="c:${c.country}:${esc(c.id)}">${esc(`${c.name}, ${m.countryName(c.country)}`)}</option>`)
-      .join("")}</optgroup>`;
+    return out;
   }
-  const regions = ["north", "south", "east", "west", "central"]
-    .map((r) => `<option value="r:${r}">${regionLabel(r)} station</option>`)
-    .join("");
-  const areas = [...SG_AREAS]
-    .map((a) => a.name)
-    .sort((a, b) => a.localeCompare(b))
-    .map((n) => `<option value="a:${esc(n)}">${esc(n)}</option>`)
-    .join("");
-  sel.innerHTML = `<option value="island">Singapore (island average)</option>
-<optgroup label="NEA stations">${regions}</optgroup>
-<optgroup label="Towns and planning areas">${areas}</optgroup>${seaGroup}`;
-  sel.value = placeValue(current);
-  sel.disabled = false;
+  if ("singapore island average".includes(q) || norm(ISLAND_LABEL).startsWith(q)) out.push(island);
+  for (const a of searchAreas(query, 8))
+    out.push({ value: `a:${a.name}`, label: a.name, group: "Singapore", sub: a.matched ? `Includes ${a.matched}` : undefined });
+  out.push(...stations.filter((o) => norm(o.label).split(" ").some((w) => w.startsWith(q))));
+  // The rest of the region, from the same bundled catalogue (loaded on demand, still nothing sent).
+  if (q.length >= 2) {
+    if (!heroLoaded) hero().then(() => find?.refresh());
+    else
+      for (const { place: c, matched } of heroLoaded.sea.searchPlaces(query, 6))
+        out.push({
+          value: `c:${c.country}:${c.id}`,
+          label: `${c.name}, ${heroLoaded.countryName(c.country)}`,
+          group: "Southeast Asia",
+          sub: matched ? `Includes ${matched}` : undefined,
+        });
+  }
+  return out;
 }
 
 /* ------------------------------------------------------------------ icons (never colour alone, COPY §3) */
@@ -238,19 +292,19 @@ function bandColor(s: Snapshot): string {
 
 function render(s: Snapshot, place: Place) {
   const body = $("#live-body");
+  const more = $("#live-more-body");
   const card = $("#live");
   if (!body || !card) return;
   const info = bandInfo(s.band);
   const color = bandColor(s);
-  const point = place.kind === "area" ? place.point : null;
+  const point = place.kind === "area" || place.kind === "gps" ? place.point : null;
   const placeName = place.kind === "area" ? place.name : undefined;
   const v = verdict(s.band, ["general"], s.trend, { stale: s.stale, observedAt: s.observedAt, history: s.history });
   const prov = provenance(s, point, Date.now(), { placeName });
   const trendTxt = s.stale ? "" : trendWords(s.history);
   const psi = officialPsiLabel(s.officialPsi24h, psiLabel);
 
-  card.style.setProperty("--band", color);
-  card.dataset.band = s.band;
+  setBand(color, s.band);
   body.setAttribute("aria-busy", "false");
   body.innerHTML = `
     <p class="verdict">${esc(v.headline)}</p>
@@ -263,7 +317,9 @@ function render(s: Snapshot, place: Place) {
     <p class="chips">
       <span class="chip${s.stale ? " chip-old" : ""}">${bandShape(info.shape, color)}${esc(info.label)}${s.stale ? " (old)" : ""}</span>
       ${trendTxt && !trendTxt.startsWith("Trend not") ? `<span class="trend">${trendIcon(s.trend.direction)}${esc(trendTxt)}</span>` : ""}
-    </p>
+    </p>`;
+  if (more)
+    more.innerHTML = `
     <p class="anchor">${esc(bandAnchor(s.band))}</p>
     <div class="official">
       <p><strong>${esc(psi)}</strong><span>24-hour average</span></p>
@@ -282,8 +338,20 @@ function render(s: Snapshot, place: Place) {
   document.querySelectorAll<HTMLElement>("[data-live-flags]").forEach((el) => (el.innerHTML = flags));
 }
 
+/** The band colour on the card's top rule and pip, and on the details panel under it. */
+function setBand(color: string, band?: string) {
+  for (const el of [$("#live"), $("#live-more")]) {
+    if (!el) continue;
+    el.style.setProperty("--band", color);
+    if (band) el.dataset.band = band;
+    else delete el.dataset.band;
+  }
+}
+
 function renderError(retry: () => void) {
   const body = $("#live-body");
+  const more = $("#live-more-body");
+  if (more) more.innerHTML = "";
   if (!body) return;
   body.setAttribute("aria-busy", "false");
   body.innerHTML = `<p class="verdict">Can't reach NEA's data right now</p>
@@ -302,8 +370,8 @@ let inflight: AbortController | null = null;
 const HERO_SG = {
   eyebrow: $(".hero .eyebrow")?.textContent ?? "",
   lede: $(".hero .lede")?.textContent ?? "",
-  lede2: $(".hero .lede-2")?.textContent ?? "",
   title: $("#live-title")?.innerHTML ?? "",
+  why: $("#loc-why")?.textContent ?? "",
 };
 function heroWords(country: string | null, agency: string | null, preview: boolean) {
   const set = (sel: string, text: string, html = false) => {
@@ -313,15 +381,16 @@ function heroWords(country: string | null, agency: string | null, preview: boole
   if (!country) {
     set(".hero .eyebrow", HERO_SG.eyebrow);
     set(".hero .lede", HERO_SG.lede);
-    set(".hero .lede-2", HERO_SG.lede2);
     set("#live-title", HERO_SG.title, true);
+    set("#loc-why", HERO_SG.why);
     return;
   }
-  const who = agency && agency !== "community sensors" ? `${agency}'s` : "The";
+  const named = agency && agency !== "community sensors";
   set(".hero .eyebrow", `${country} · the last hour's PM2.5, by place`);
-  set(".hero .lede", "Official indexes often average 24 hours. PM2.5 shows the last hour.");
-  set(".hero .lede-2", "HazeNow puts the last hour first, with the local authority's own words and advice in plain language, so you can decide what to do right now.");
-  set("#live-title", `<span class="live-pip" aria-hidden="true"></span>${esc(preview ? "Recorded reading (preview)" : `${who} latest reading`)}`, true);
+  // COPY §21: the same sub-line, with the place's own authority in NEA's place.
+  set(".hero .lede", `${named ? `${agency}'s` : "The"} 1-hour PM2.5 for your area, turned into plain advice you can act on right now.`);
+  set("#live-title", `<span class="live-pip" aria-hidden="true"></span>${esc(preview ? "Recorded reading (preview)" : `${named ? `${agency}'s` : "The"} latest reading`)}`, true);
+  set("#loc-why", "We only use this to find your nearest station. It stays on your phone.");
 }
 
 /** "Showing Bangkok · Change" over the card, for a guessed place (and a hint for visitors from outside SEA). */
@@ -344,12 +413,19 @@ function guessLineUpdate() {
     return;
   }
   el.hidden = false;
-  el.querySelector("[data-guess-change]")?.addEventListener("click", () => $<HTMLSelectElement>("#place")?.focus());
+  el.querySelector("[data-guess-change]")?.addEventListener("click", () => find?.focus());
+}
+
+/** Keep the field and the "Open HazeNow" links in step with the place on screen. */
+function syncPlaceUi(p: Place) {
+  find?.set(placeValue(p), placeLabel(p));
+  const link = appLink(p);
+  document.querySelectorAll<HTMLAnchorElement>("[data-app-link]").forEach((a) => (a.href = link));
 }
 
 /** A place outside Singapore: resolve it against the catalogue (a guess gets startPlace's nearest-covered rule). */
 async function loadCity(ctrl: AbortController, forPlace: Place & { kind: "city" }): Promise<void> {
-  const m = await loadHero();
+  const m = await hero();
   let c = m.findPlace(forPlace.cc, forPlace.id);
   if (fromGuess) {
     const start = m.sea.startPlace(guess);
@@ -361,27 +437,24 @@ async function loadCity(ctrl: AbortController, forPlace: Place & { kind: "city" 
     place = { kind: "island" };
     heroWords(null, null, false);
     guessLineUpdate();
+    syncPlaceUi(place);
     return load();
   }
   forPlace.name = c.name;
   forPlace.id = c.id;
   forPlace.cc = c.country;
   if (forPlace === shared) showSharedLine();
-  document.querySelectorAll<HTMLAnchorElement>("[data-app-link]").forEach((a) => (a.href = appLink(forPlace)));
-  const sel = $<HTMLSelectElement>("#place");
-  if (sel && ![...sel.options].some((o) => o.value === placeValue(forPlace))) await buildSelect(sel, forPlace);
-  else if (sel) sel.value = placeValue(forPlace);
+  syncPlaceUi(forPlace);
   guessLineUpdate();
   const body = $("#live-body");
-  const card = $("#live");
-  if (!body || !card) return;
+  const more = $("#live-more-body");
+  if (!body) return;
   try {
-    const r = await m.renderCountryHero(body, c, ctrl.signal, (sh, color) => bandShape(sh, color));
+    const r = await m.renderCountryHero(body, more, c, ctrl.signal, (sh, color) => bandShape(sh, color));
     if (!r || forPlace !== place) return;
     lastOk = Date.now();
     body.setAttribute("aria-busy", "false");
-    card.style.setProperty("--band", r.color);
-    delete card.dataset.band;
+    setBand(r.color);
     heroWords(m.countryName(c.country), r.agency, r.mode === "preview");
   } catch (e) {
     if (ctrl.signal.aborted) return;
@@ -397,7 +470,11 @@ async function load(): Promise<void> {
   if (place.kind === "city") return loadCity(ctrl, place);
   heroWords(null, null, false);
   const q =
-    place.kind === "island" ? { region: "island" } : place.kind === "region" ? { region: place.region } : { lat: place.point.lat, lon: place.point.lon };
+    place.kind === "island"
+      ? { region: "island" }
+      : place.kind === "region"
+        ? { region: place.region }
+        : { lat: place.point.lat, lon: place.point.lon };
   const forPlace = place;
   try {
     const s = await getSnapshot({ ...q, signal: ctrl.signal });
@@ -424,8 +501,7 @@ function setPlace(p: Place) {
   } catch {
     /* private mode: fine, the choice just isn't remembered */
   }
-  const link = appLink(p);
-  document.querySelectorAll<HTMLAnchorElement>("[data-app-link]").forEach((a) => (a.href = link));
+  syncPlaceUi(p);
   const body = $("#live-body");
   body?.setAttribute("aria-busy", "true");
   body?.classList.add("is-loading");
@@ -440,18 +516,71 @@ function showSharedLine() {
 }
 showSharedLine();
 
-const sel = $<HTMLSelectElement>("#place");
-if (sel) {
-  buildSelect(sel, place);
-  sel.addEventListener("change", () => {
-    const p = placeFromValue(sel.value);
-    if (p) setPlace(p);
-  });
-}
-document.querySelectorAll<HTMLAnchorElement>("[data-app-link]").forEach((a) => (a.href = appLink(place)));
+const placeInput = $<HTMLInputElement>("#place");
+const placeList = $<HTMLUListElement>("#place-list");
+const find =
+  placeInput && placeList
+    ? initFind(placeInput, placeList, findOptions, (v) => {
+        const p = placeFromValue(v);
+        if (!p) return;
+        if (p.kind === "city") hero().then(() => setPlace(p));
+        else setPlace(p);
+      })
+    : null;
+// A place outside Singapore (or a menu that lists them) needs the catalogue for its name.
+if (seaMenu()) hero().then(() => syncPlaceUi(place));
+syncPlaceUi(place);
 guessLineUpdate();
 load();
 firmUpGuess();
+// A share link opened inside WhatsApp & co: say how to reach Safari or Chrome, with the link (and its place) to copy.
+showInAppHint(() => (shared && place === shared ? location.href : `${location.origin}/${appLink(place).slice(APP_BASE.length)}`));
+
+/* ------------------------------------------------------------------ use my location (on this device only) */
+
+const locBtn = $<HTMLButtonElement>("#use-loc");
+const locLabel = locBtn?.querySelector("span");
+function locNote(text: string | null) {
+  const why = $("#loc-why");
+  if (!why) return;
+  if (text === null) heroWords(null, null, false); // restores the privacy line (country pages re-set it on load)
+  else why.textContent = text;
+}
+locBtn?.addEventListener("click", () => {
+  if (!("geolocation" in navigator)) {
+    locNote(locationDeniedLine(placeLabel(place)));
+    return;
+  }
+  locBtn.disabled = true;
+  if (locLabel) locLabel.textContent = "Finding your spot…";
+  const done = () => {
+    locBtn.disabled = false;
+    if (locLabel) locLabel.textContent = "Use my location";
+  };
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      done();
+      // Rounded to ~1 km straight away (SPEC v1.4 §5). It's used here, on the device, and never sent.
+      const point = { lat: roundCoord(pos.coords.latitude), lon: roundCoord(pos.coords.longitude) };
+      const inSg = point.lat >= 1.2 && point.lat <= 1.44 && point.lon >= 103.6 && point.lon <= 104.05;
+      const m = inSg ? null : await hero();
+      // SPEC v2.0 §3: the reading's jurisdiction decides (a Johor Bahru point never gets NEA's reading).
+      const cc = m ? m.sea.countryAt(point.lat, point.lon) : "SG";
+      if (cc === "SG" && (inSg || m)) {
+        setPlace({ kind: "gps", point });
+        return;
+      }
+      const c = cc && m ? m.nearestCity(cc, point) : null;
+      if (c) setPlace({ kind: "city", cc: c.country, id: c.id, name: c.name });
+      else locNote("HazeNow doesn't cover where you are yet. Type a place to see its air.");
+    },
+    (err) => {
+      done();
+      locNote(err.code === err.PERMISSION_DENIED ? locationDeniedLine(placeLabel(place)) : "Couldn't find your spot. Type your area instead.");
+    },
+    { enableHighAccuracy: false, maximumAge: 10 * 60_000, timeout: 15_000 },
+  );
+});
 
 /**
  * SPEC v2.1 optional server hint: only when the device guess isn't sure, ask /api/where (this site's Pages Function,
@@ -481,8 +610,7 @@ async function firmUpGuess() {
   }
   place = guessPlace(next);
   notCoveredFrom = null;
-  if (sel) await buildSelect(sel, place);
-  document.querySelectorAll<HTMLAnchorElement>("[data-app-link]").forEach((a) => (a.href = appLink(place)));
+  syncPlaceUi(place);
   guessLineUpdate();
   load();
 }

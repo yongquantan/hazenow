@@ -69,6 +69,7 @@ let cLoading: Promise<CountryModule> | null = null;
 const loadC = (): Promise<CountryModule> => (cLoading ??= import("./country").then((m) => (C = m)));
 import { mapSvg } from "./map";
 import { bandShape, esc, store, trendIcon } from "./util";
+import { installStepsUrl, maybeShowCoachMark, showInAppHint } from "./install-hints";
 
 // Opened from a share link (?s=<card>): one anonymous +1 on the data server's share-landing counter (hit.ts).
 countShareLanding((import.meta.env.VITE_HIT_URL as string | undefined) || (import.meta.env.VITE_PROXY_URL as string | undefined));
@@ -934,7 +935,7 @@ function appsSection() {
   <h2 id="apps-h">HazeNow, wherever you look</h2>
   <p class="apps-intro">Same numbers and the same rules everywhere. Free and open source.</p>
   <ul class="alist">
-    ${item("Add to Home Screen", "This page works offline and installs like an app.", "Now")}
+    ${item("Add to Home Screen", "This page works offline and installs like an app.", `<a href="${installStepsUrl()}">How to add</a>`)}
     ${item("Mac menu bar", "<code>● 105 ▲</code> next to your clock.", `<a href="${DOWNLOAD_URL}#mac">Download</a>`)}
     ${item("iPhone &amp; iPad widget", "A free Home Screen widget through the Scriptable app.", `<a href="${DOWNLOAD_URL}#iphone">Get it</a>`)}
     ${item("Android &amp; widgets", "The app, home-screen widgets and a Quick Settings tile.", `<a href="${DOWNLOAD_URL}#android">Download</a>`)}
@@ -1207,6 +1208,8 @@ function render() {
   const caret = active instanceof HTMLInputElement ? active.selectionStart : null;
   app.innerHTML = EMBED ? embedView() : mainView();
   app.classList.toggle("is-first", first);
+  // COPY §21: once the first verdict is on screen, Safari on iPhone gets the Add to Home Screen tip (once per device).
+  if (!EMBED && (s || (cs && state.cmode !== "unavailable"))) maybeShowCoachMark();
   document.documentElement.classList.toggle("sheet-open", !!state.sheet);
   if (!EMBED) watchStickyColumn();
   if (focusKey) {
@@ -1583,6 +1586,8 @@ if (bootCountry()) {
 }
 
 firmUpGuess();
+// COPY §21: in a chat app's built-in browser, a slim strip says how to get to Safari or Chrome (never over the reading).
+if (!EMBED) showInAppHint();
 
 // Register right away (not on "load") so the precache is in place as early as possible.
 if (import.meta.env.PROD && "serviceWorker" in navigator && !EMBED && !MOCK) {

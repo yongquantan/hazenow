@@ -69,6 +69,13 @@ data class UiState(
 ) {
     /** The v1.4 first-run card: only for a sure Singapore guess (pixel for pixel as before), never for other guesses. */
     val showFirstRun: Boolean get() = settingsLoaded && !settings.firstRunDone && (guess == null || guess.sureSingapore)
+
+    /**
+     * The one-time widget/tile card: only once the place and profile steps are done (so it never stacks on them)
+     * and a real verdict is on screen. The screens place it under the verdict, so it never hides the reading.
+     */
+    val showHomeOffer: Boolean get() = settingsLoaded && settings.firstRunDone && settings.profilesChosen && !settings.homeOfferDone &&
+        (if (city != null) country is CountryResult.Data else data != null)
 }
 
 data class GuessUi(val guess: CountryGuess, val start: StartPlace) {
@@ -243,6 +250,7 @@ class HazeViewModel(app: Application) : AndroidViewModel(app) {
     fun setBandAlerts(on: Boolean) = viewModelScope.launch { settingsRepo.setBandAlerts(on) }
     fun setElevatedAlerts(on: Boolean) = viewModelScope.launch { settingsRepo.setElevatedAlerts(on) }
     fun markNotifAsked() = viewModelScope.launch { settingsRepo.setNotifAsked() }
+    fun markHomeOfferDone() = viewModelScope.launch { settingsRepo.setHomeOfferDone() }
     fun setMock(scenario: String?) = viewModelScope.launch { settingsRepo.setMock(scenario) }
 
     /** SPEC v1.4 §3: denied → never re-prompt automatically; remember it for the quiet chip. */

@@ -345,11 +345,6 @@ h1 {
   letter-spacing: -0.01em;
   max-width: 34ch;
 }
-.lede-2 {
-  margin-top: 16px;
-  color: var(--muted);
-  max-width: 54ch;
-}
 .ctas {
   display: flex;
   flex-wrap: wrap;
@@ -379,27 +374,77 @@ h1 {
   background: var(--mist);
 }
 
-/* Small screens: the live number comes straight after the headline (people come for the number). */
+.hero-code {
+  margin-top: 18px;
+  font-size: 14px;
+}
+.hero-code a {
+  color: var(--muted);
+  text-underline-offset: 3px;
+}
+.hero-code a:hover {
+  color: var(--text);
+}
+
+/*
+ * Small screens: the first screen is the live card and one button (people come for the number, then act).
+ * Order: eyebrow, headline, sub-line, the card's verdict and number, Open HazeNow, the promises, then the card's
+ * details, then the quiet code link.
+ */
 @media (max-width: 959px) {
+  .hero {
+    padding-top: 24px;
+  }
   .hero-grid {
     gap: 0;
   }
-  .hero-copy {
+  .hero-copy,
+  .live-col {
     display: contents;
-  }
-  .hero-copy > * {
-    order: 4;
   }
   .hero-copy > .eyebrow {
     order: 1;
+    margin-bottom: 10px;
   }
   .hero-copy > h1 {
     order: 2;
+    font-size: clamp(2.6rem, 11vw, 3.4rem);
   }
-  .live-col {
+  .hero-copy > .lede {
     order: 3;
+    margin-top: 12px;
+    font-size: 1.02rem;
+    line-height: 1.4;
+    color: var(--muted);
+  }
+  .live-col > .shared,
+  .live-col > .guess-line {
+    order: 4;
+    margin: 18px 0 0;
+  }
+  .live-col > .live {
+    order: 5;
+    margin-top: 16px;
+  }
+  .hero-copy > .ctas {
+    order: 6;
+    margin-top: 16px;
+  }
+  .btn-cta {
+    width: 100%;
+  }
+  .hero-copy > .trust {
+    order: 7;
+    margin-top: 14px;
+    gap: 4px 16px;
+    font-size: 13px;
+  }
+  .live-col > .live-more {
+    order: 8;
     margin-top: 28px;
-    margin-bottom: 8px;
+  }
+  .hero-copy > .hero-code {
+    order: 9;
   }
 }
 .shared {
@@ -485,9 +530,140 @@ h1 {
   opacity: 0.6;
 }
 .live-body {
-  padding-top: 22px;
-  min-height: 330px;
+  padding-top: 18px;
+  min-height: 190px;
   transition: none;
+}
+
+/* "Use my location" and the "Your area" type-ahead (both on this device only) */
+.loc-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 14px 0 11px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--text);
+  font: 500 14px/1 var(--font);
+  cursor: pointer;
+}
+.loc-btn:hover {
+  border-color: var(--text);
+}
+.loc-btn:disabled {
+  opacity: 0.65;
+  cursor: progress;
+}
+.find {
+  margin-top: 14px;
+}
+.find-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 16px 0 40px;
+  font: 500 16px/1.2 var(--font);
+  color: var(--text);
+  background: var(--bg)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Ccircle cx='7' cy='7' r='4.8' fill='none' stroke='%239FB3BB' stroke-width='1.8'/%3E%3Cpath d='m10.6 10.6 3.4 3.4' stroke='%239FB3BB' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E")
+    no-repeat 15px center;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  text-overflow: ellipsis;
+}
+.find-input::placeholder {
+  color: var(--muted);
+  opacity: 0.8;
+}
+.find-input:focus {
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
+}
+.find-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 4px;
+  max-height: 264px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+}
+.find-list[hidden] {
+  display: none;
+}
+.find-group {
+  padding: 10px 12px 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.find-opt {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 12px;
+  min-height: 44px;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 16px;
+  line-height: 1.25;
+  cursor: pointer;
+}
+.find-opt span {
+  font-size: 13px;
+  color: var(--muted);
+}
+.find-opt[aria-selected="true"],
+.find-opt:hover {
+  background: var(--tint);
+}
+.find-opt[data-current] {
+  font-weight: 600;
+}
+.find-empty {
+  padding: 12px;
+  font-size: 14px;
+  color: var(--muted);
+}
+.loc-why {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+/* The reading's details: joined under the card on wide screens, after the button on phones. */
+.live-more {
+  position: relative;
+  display: flow-root;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 4px clamp(20px, 3vw, 32px) clamp(18px, 2.4vw, 24px);
+  box-shadow: var(--shadow);
+}
+.live-more .anchor:first-child {
+  margin-top: 14px;
+}
+@media (min-width: 960px) {
+  .live {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-bottom: 0;
+    box-shadow: none;
+    padding-bottom: 8px;
+  }
+  .live-more {
+    border-top: 0;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    padding-top: 0;
+    box-shadow: none;
+  }
+  .live-col {
+    filter: drop-shadow(0 12px 24px rgba(20, 35, 43, 0.08));
+  }
 }
 .live-body.is-loading {
   opacity: 0.55;
@@ -1724,4 +1900,50 @@ figcaption strong {
   border-radius: 10px;
   font-size: 14px;
   color: var(--muted);
+}
+
+/* /download/: desktop → phone QR (COPY §21) */
+.dl-qr {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-top: 28px;
+  max-width: 560px;
+  padding: 16px 22px 16px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+}
+.dl-qr[hidden] {
+  display: none;
+}
+.dl-qr-code {
+  flex: none;
+  width: 132px;
+  height: 132px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+.dl-qr-code .qr {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.dl-qr h2 {
+  font-size: 1.25rem;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+.dl-qr p {
+  margin-top: 6px;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+/* Two equal ways side by side when the card is wide (Mac: the app and SwiftBar) */
+.dl-ways {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  column-gap: 32px;
 }

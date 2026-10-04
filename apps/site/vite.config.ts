@@ -65,6 +65,7 @@ export default defineConfig({
   plugins: [siteMeta()],
   define: {
     __APP_BASE__: JSON.stringify(APP_BASE),
+    __SITE_URL__: JSON.stringify(SITE_URL),
     __REPO_URL__: JSON.stringify(REPO_URL),
     __RELEASES_REPO__: JSON.stringify(RELEASES_REPO),
   },

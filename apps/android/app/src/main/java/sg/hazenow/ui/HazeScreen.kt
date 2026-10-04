@@ -288,6 +288,8 @@ fun HazeScreen(vm: HazeViewModel) {
                 onInfo = { showInfo = true },
                 onAbout = { showAbout = true },
                 onLicences = { showLicences = true },
+                showHomeOffer = state.showHomeOffer && !showProfiles,
+                onHomeOfferDone = { vm.markHomeOfferDone() },
             )
         } else if (data == null) {
             EmptyState(state, Modifier.padding(pad), onRetry = { vm.refresh() })
@@ -340,6 +342,8 @@ fun HazeScreen(vm: HazeViewModel) {
                 }
                 item { VerdictCard(data, offline, onWho = { showProfiles = true }, onWhy = { showWhy = true }, onShare = { shareFromWhy = false; showShare = true }) }
                 item { Provenance(data.insight, state, data) }
+                // Once, after the first verdict, under it (never above the reading, never over a first-run sheet).
+                if (state.showHomeOffer && !showProfiles) item { HomeOfferCard(onDone = { vm.markHomeOfferDone() }) }
                 // SPEC v2.1 §4: an unsure (or non-SEA) guess still shows the default reading, with this card under it.
                 state.guess?.takeIf { !it.sureSingapore && !state.settings.firstRunDone }?.let {
                     item { WhereCheckingCard(proxy = sg.hazenow.data.SeaRepository.edge(state.settings) != null, onCountry = { cc -> picker = cc.name }) }
@@ -357,6 +361,7 @@ fun HazeScreen(vm: HazeViewModel) {
                         onElevated = vm::setElevatedAlerts,
                     )
                 }
+                item { HomeShortcutsCard() }
                 item { Footer(onInfo = { showInfo = true }, onNea = ::openNea, onLicences = { showLicences = true }, onAbout = { showAbout = true }) }
             }
         }

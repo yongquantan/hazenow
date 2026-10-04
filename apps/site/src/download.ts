@@ -38,6 +38,58 @@ if (list && card) {
   }
 }
 
+/* ------------------------------------------------------------------ QR: desktop → phone */
+
+/**
+ * "Scan to open HazeNow on your phone": the site, with the place picked on the home page (or in this page's own link),
+ * so the phone lands on the same reading. Made on this page by src/qr.ts, no network. A "Near you" spot is never put
+ * in the code: the phone finds its own.
+ */
+function qrTarget(): { url: string; place: string } {
+  const here = new URLSearchParams(location.search);
+  const q = new URLSearchParams();
+  let place = "";
+  for (const k of ["country", "area", "region"]) {
+    const v = here.get(k);
+    if (v) q.set(k, v);
+  }
+  if (![...q.keys()].length) {
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem("hazenow-site-place");
+    } catch {
+      /* storage blocked */
+    }
+    if (saved?.startsWith("a:")) {
+      place = saved.slice(2);
+      q.set("area", place);
+    } else if (saved?.startsWith("r:")) q.set("region", saved.slice(2));
+    else if (saved?.startsWith("c:")) {
+      const [, cc, id] = saved.split(":");
+      if (cc && id) {
+        q.set("country", cc.toLowerCase());
+        q.set("area", id);
+      }
+    }
+  } else place = q.get("area") ?? "";
+  const qs = q.toString();
+  return { url: `${__SITE_URL__}/${qs ? `?${qs}` : ""}`, place: /^[a-z0-9-]+$/.test(place) && q.has("country") ? "" : place };
+}
+
+const qrBox = document.getElementById("dl-qr");
+if (qrBox && (platform === "mac" || platform === "web")) {
+  import("./qr").then(({ qrSvg }) => {
+    const { url, place } = qrTarget();
+    const svg = qrSvg(url, `QR code that opens ${url}`);
+    const code = document.getElementById("dl-qr-code");
+    if (!svg || !code) return;
+    code.innerHTML = svg;
+    const where = document.getElementById("dl-qr-place");
+    if (where && place) where.textContent = ` for ${place}`;
+    qrBox.hidden = false;
+  });
+}
+
 /* ------------------------------------------------------------------ latest release */
 
 type Release = { tag: string; date: string; url: string };

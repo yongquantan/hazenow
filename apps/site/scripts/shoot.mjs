@@ -45,7 +45,7 @@ for (const { width, scheme, query, name } of runs) {
     console.log(`${name}: live PM2.5 = ${num ?? "none"}`);
     if (query) {
       const line = await page.textContent("#shared-line");
-      const place = await page.inputValue("#place");
+      const place = await page.getAttribute("#place", "data-value");
       const href = await page.getAttribute(".ctas a[data-app-link]", "href");
       console.log(`  shared line: "${line}" · picker: ${place} · Open HazeNow → ${href}`);
       if (line !== "Shared with you: air in Tampines" || place !== "a:Tampines" || !href?.endsWith("?area=Tampines&s=now"))

@@ -1,11 +1,6 @@
 package sg.hazenow.ui
 
-import android.app.StatusBarManager
-import android.appwidget.AppWidgetManager
-import android.content.ComponentName
 import android.content.Intent
-import android.graphics.drawable.Icon
-import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -17,14 +12,10 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
 import sg.hazenow.BuildConfig
-import sg.hazenow.R
 import sg.hazenow.core.Areas
 import sg.hazenow.data.AreaList
 import sg.hazenow.data.LocationHelper
 import sg.hazenow.data.MockData
-import sg.hazenow.tile.HazeTileService
-import sg.hazenow.widget.MediumWidgetReceiver
-import sg.hazenow.widget.SmallWidgetReceiver
 import sg.hazenow.work.RefreshWorker
 
 /**
@@ -106,26 +97,8 @@ class MainActivity : ComponentActivity() {
         listOf("mock", "edge", "country", "region", "location", "pinWidget", "addTile", "refresh", "area", "place", "island", "resetFirstRun", EXTRA_SHARE).forEach { intent.removeExtra(it) }
     }
 
-    fun pinWidget(which: String) {
-        val mgr = getSystemService(AppWidgetManager::class.java) ?: return
-        if (!mgr.isRequestPinAppWidgetSupported) {
-            Toast.makeText(this, "This launcher can't add widgets from apps. Long-press the home screen → Widgets → HazeNow.", Toast.LENGTH_LONG).show()
-            return
-        }
-        val cls = if (which == "medium") MediumWidgetReceiver::class.java else SmallWidgetReceiver::class.java
-        mgr.requestPinAppWidget(ComponentName(this, cls), null, null)
-    }
+    /** Also used by the debug `pinWidget` / `addTile` extras; the UI calls [HomeShortcuts] directly. */
+    fun pinWidget(which: String) = HomeShortcuts.pinWidget(this, which)
 
-    fun addTile() {
-        if (Build.VERSION.SDK_INT < 33) {
-            Toast.makeText(this, "Edit Quick Settings and drag in \"Haze now\".", Toast.LENGTH_LONG).show()
-            return
-        }
-        getSystemService(StatusBarManager::class.java)?.requestAddTileService(
-            ComponentName(this, HazeTileService::class.java),
-            getString(R.string.tile_label),
-            Icon.createWithResource(this, R.drawable.ic_stat_haze),
-            mainExecutor,
-        ) { }
-    }
+    fun addTile() = HomeShortcuts.addTile(this)
 }

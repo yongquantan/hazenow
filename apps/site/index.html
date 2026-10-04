@@ -19,7 +19,7 @@
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="HazeNow" />
     <meta property="og:title" content="HazeNow · Your air, right now" />
-    <meta property="og:description" content="NEA's latest hourly PM2.5 for your area, in plain words. Both numbers are from NEA: the PSI averages 24 hours, PM2.5 shows the last hour." />
+    <meta property="og:description" content="NEA's 1-hour PM2.5 for your area, turned into plain advice you can act on right now." />
     <meta property="og:url" content="%SITE_URL%/" />
     <meta property="og:image" content="%SITE_URL%/og.png" />
     <meta property="og:image:width" content="1200" />
@@ -96,20 +96,16 @@
           <div class="hero-copy">
             <p class="eyebrow">Singapore · NEA's hourly reading, by area</p>
             <h1 id="hero-title">Your air, right now.</h1>
-            <p class="lede">Both are from NEA: the PSI averages 24 hours, PM2.5 shows the last hour.</p>
-            <p class="lede-2">HazeNow puts NEA's last-hour reading first, with NEA's advice in plain words, so you can decide what to do right now. The 24-hr PSI stays alongside, for planning tomorrow.</p>
+            <p class="lede">NEA's 1-hour PM2.5 for your area, turned into plain advice you can act on right now.</p>
             <div class="ctas">
-              <a class="btn btn-primary" href="%APP_BASE%" data-app-link>Open HazeNow</a>
-              <a class="btn btn-ghost" href="%REPO_URL%" rel="noopener">
-                <svg class="gh" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 0a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.65-.89-3.65-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 8 0Z"/></svg>
-                View on GitHub
-              </a>
+              <a class="btn btn-primary btn-cta" href="%APP_BASE%" data-app-link>Open HazeNow</a>
             </div>
             <ul class="trust" aria-label="What HazeNow promises">
               <li>Data: NEA via data.gov.sg</li>
               <li>Free &amp; open source (MIT)</li>
               <li>No ads, no accounts, never tracked</li>
             </ul>
+            <p class="hero-code"><a href="%REPO_URL%" rel="noopener">View the code on GitHub</a></p>
           </div>
 
           <div class="live-col">
@@ -118,17 +114,26 @@
           <div class="live" id="live" aria-labelledby="live-title">
             <div class="live-head">
               <h2 id="live-title" class="live-title"><span class="live-pip" aria-hidden="true"></span>NEA's latest reading</h2>
-              <label class="place">
-                <span class="sr-only">Show the reading for</span>
-                <select id="place" disabled>
-                  <option value="island">Singapore (island average)</option>
-                </select>
-              </label>
+              <button class="loc-btn" type="button" id="use-loc" aria-describedby="loc-why">
+                <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="4.6" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="1.6" fill="currentColor"/><path d="M8 1v2.2M8 12.8V15M1 8h2.2M12.8 8H15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <span>Use my location</span>
+              </button>
             </div>
+            <div class="find" id="find">
+              <label class="sr-only" for="place" id="place-label">Show the reading for</label>
+              <input id="place" class="find-input" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false"
+                aria-controls="place-list" autocomplete="off" autocapitalize="words" spellcheck="false" enterkeyhint="search"
+                value="Singapore (island average)" data-value="island" placeholder="Type your area, e.g. Tampines" />
+              <ul class="find-list" id="place-list" role="listbox" aria-labelledby="place-label" hidden></ul>
+            </div>
+            <p class="loc-why" id="loc-why">We only use this to find your nearest NEA station. It stays on your phone.</p>
             <div id="live-body" class="live-body" aria-busy="true">
               <p class="live-loading">Getting NEA's latest reading…</p>
               <noscript><p class="live-loading">The live reading needs JavaScript. <a href="%APP_BASE%">Open HazeNow</a> for NEA's latest reading.</p></noscript>
             </div>
+          </div>
+          <div class="live-more" id="live-more">
+            <div id="live-more-body"></div>
             <p class="live-foot">For you, generally healthy. <a href="%APP_BASE%" id="live-open" data-app-link>Advice for kids, older adults and more in the app</a>.</p>
           </div>
           </div>
@@ -272,7 +277,7 @@
           <div class="clocks-copy">
             <p class="kicker">Why two numbers?</p>
             <h2 id="clocks-title">Same NEA data. Two clocks.</h2>
-            <p class="clocks-lead">NEA's 24-hr PSI is an average of the last 24 hours, so it changes slowly and is best for planning tomorrow. The 1-hr PM2.5 shows the last hour, and NEA recommends it for deciding what to do right now.</p>
+            <p class="clocks-lead">Both are from NEA. The 24-hr PSI averages the last 24 hours, so it changes slowly and is best for planning tomorrow. The 1-hr PM2.5 shows the last hour, and NEA recommends it for deciding what to do right now.</p>
             <p>The chart shows it instead of saying it: hourly bars for the 1-hr PM2.5, and NEA's own 24-hour average as a line, both in µg/m³. No invented index.</p>
             <dl class="clocks-dl">
               <div><dt>For right now</dt><dd>NEA's 1-hr PM2.5 and its band.</dd></div>

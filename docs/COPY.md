@@ -536,3 +536,34 @@ SPEC principle 1: the headline always answers "is it OK to be out?".
 | 50 – under 100 | Go easy outdoors for now. | Go easy outdoors | WHO guide: high |
 | 100 and up | Limit time outside for now. | Limit time outside | WHO guide: very high |
 
+
+## 21. Install funnel: site hero, install hints, download page, native nudges (4 Oct 2026)
+
+Calm and specific, like the rest of this file. Never block the reading to ask for an install.
+
+**Site hero (hazenow.pages.dev).** The headline is unchanged (the founder decides it separately).
+- Sub-line: "NEA's 1-hour PM2.5 for your area, turned into plain advice you can act on right now." Outside Singapore, the place's authority replaces NEA ("PCD's 1-hour PM2.5 for your area, …"); with community sensors only, "The 1-hour PM2.5 for your area, …".
+- One primary button: "Open HazeNow" (carries the place). Under it, the three promises: "Data: NEA via data.gov.sg" · "Free & open source (MIT)" · "No ads, no accounts, never tracked". Lower down, a quiet text link: "View the code on GitHub".
+- The PSI-vs-PM2.5 explanation lives in "Two clocks": "Both are from NEA. The 24-hr PSI averages the last 24 hours, so it changes slowly and is best for planning tomorrow. The 1-hr PM2.5 shows the last hour, and NEA recommends it for deciding what to do right now."
+- Live card: button "Use my location" (while locating: "Finding your spot…"). Field label (screen readers): "Show the reading for"; placeholder "Type your area, e.g. Tampines". Under them, the v1.4 explainer, always visible so one tap goes straight to the OS prompt: "We only use this to find your nearest NEA station. It stays on your phone." (outside Singapore: "We only use this to find your nearest station. It stays on your phone.").
+- List groups: "Singapore" · "NEA stations" · "Towns and planning areas" · "Southeast Asia". An alias match adds "Includes {alias}". No match: "No match. Try a town like Tampines, or a city like Bangkok."
+- Location results: in Singapore the field reads "Near you" (the "Open HazeNow" link carries the nearest town's name, never the coordinates). Denied: the shared `locationDeniedLine` ("Showing {place}. Pick your area, or allow location for a closer reading."). Other errors: "Couldn't find your spot. Type your area instead." Outside Southeast Asia: "HazeNow doesn't cover where you are yet. Type a place to see its air."
+
+**Web app and site, install hints.**
+- "Add to Home Screen" row in the app: status link "How to add" → /download/#iphone (or #android on Android).
+- Coach mark, Safari on iPhone and iPad only, once per device, after the first verdict: "**Add HazeNow to your Home Screen:** tap Share, then Add to Home Screen." Links: "Show me how" · button "Got it".
+- In a chat app's built-in browser (WhatsApp, Instagram, Facebook, LinkedIn, Telegram), a slim strip at the top: "Open in Safari to add HazeNow to your Home Screen." ("Chrome" on Android) · "Copy link" · close (×). After copying: "Link copied. Paste it into Safari." If copying fails: "Couldn't copy. Use the ••• menu, then Open in Safari."
+
+**Download page (/download/).**
+- QR (computers only): "Scan to open HazeNow on your phone" / "Point your phone's camera at the code. It opens HazeNow{ for Tampines}, ready to add to your Home Screen." The code carries the place picked on the home page; a "Near you" spot is never put in it.
+- Android intro: "Two ways, both free, no Play Store needed. Start with the first. Add the second if you want a widget."
+  - "1. Install from Chrome": "**3 taps, no warnings.** The full HazeNow in its own window, on your Home Screen. It works offline." Button "Open HazeNow in Chrome".
+  - "2. Full app with widget and Quick Settings tile": "Adds Home Screen widgets, a Quick Settings tile and calm band alerts. Android 8 or newer. It doesn't come from the Play Store, so Android checks with you before installing it. That's expected, and it only happens once." Steps name Allow from this source, Play Protect's "More details → Install anyway", and Samsung/Xiaomi's own check. "Why the checks? HazeNow is free, and we don't list it on the Play Store yet. The code is open, and every download is built from it."
+- Mac intro: "{● 105 ▲} in your menu bar. Two ways, both free. Pick either one." Side by side: "The app" ("… macOS warns you once, because we don't pay Apple to verify it.") and "SwiftBar plugin, no warning" ("One small file with the same reading. It runs inside SwiftBar, a free, open-source menu bar app, so macOS doesn't ask."), button "Download the plugin".
+
+**Android app.**
+- One-time card after the first verdict (never over the first-run sheets): title "See the air without opening the app", body "Add the widget to your Home Screen, or a tile to Quick Settings.", buttons "Add the widget" · "Add the Quick Settings tile" (Android 13+) · "Not now". Any button retires it for good.
+- Permanent card "Widget and tile" with the same two entries. Android 8–12, instead of the tile button: "To add the tile: swipe down twice, tap the pencil, then drag “Haze now” into your tiles."
+- Toasts: "The tile is already in Quick Settings." · "Couldn't add the tile just now. {tile hint}" · "This launcher can't add widgets from apps. Long-press the Home Screen, tap Widgets, then pick HazeNow."
+
+**Mac app.** First launch only, a small popover from the menu-bar item: "HazeNow lives up here." + on a notched Mac with the pill on, "On a MacBook with a notch, the pill beside it shows the same reading. Hover it to see more."; otherwise "Click the reading any time for the full picture." Button "Got it". It closes by itself after about 12 seconds.

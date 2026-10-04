@@ -64,6 +64,8 @@ data class Settings(
     val quietEnd: Int = Alerts.QUIET_END_HOUR,
     val alertState: AlertState = AlertState(),
     val notifAsked: Boolean = false,
+    /** The one-time "add the widget / tile" card has been answered (any button). Never reset. */
+    val homeOfferDone: Boolean = false,
     /** Debug-only QA scenario (see MockData). */
     val mock: String? = null,
     /** SPEC v2.0: a picked place outside Singapore (CITY mode): country code + catalogue slug. */
@@ -120,6 +122,7 @@ object SettingsKeys {
     val ELEVATED_ALERTS = booleanPreferencesKey("elevated_alerts")
     val ALERT_STATE = stringPreferencesKey("alert_state")
     val NOTIF_ASKED = booleanPreferencesKey("notif_asked")
+    val HOME_OFFER_DONE = booleanPreferencesKey("home_offer_done")
     val MOCK = stringPreferencesKey("mock_scenario")
     val CITY_COUNTRY = stringPreferencesKey("city_country")
     val CITY_ID = stringPreferencesKey("city_id")
@@ -208,6 +211,7 @@ class SettingsRepo(private val context: Context) {
         if (scenario == null) it.remove(SettingsKeys.MOCK) else it[SettingsKeys.MOCK] = scenario
     }
     suspend fun setNotifAsked() = update { it[SettingsKeys.NOTIF_ASKED] = true }
+    suspend fun setHomeOfferDone() = update { it[SettingsKeys.HOME_OFFER_DONE] = true }
     suspend fun setAlertState(s: AlertState) = update {
         it[SettingsKeys.ALERT_STATE] = HazeApi.json.encodeToString(AlertState.serializer(), s)
     }
@@ -236,6 +240,7 @@ class SettingsRepo(private val context: Context) {
             runCatching { HazeApi.json.decodeFromString(AlertState.serializer(), it) }.getOrNull()
         } ?: AlertState(),
         notifAsked = this[SettingsKeys.NOTIF_ASKED] ?: false,
+        homeOfferDone = this[SettingsKeys.HOME_OFFER_DONE] ?: false,
         mock = if (MockData.enabled) this[SettingsKeys.MOCK] else null,
         cityCountry = this[SettingsKeys.CITY_COUNTRY],
         cityId = this[SettingsKeys.CITY_ID],

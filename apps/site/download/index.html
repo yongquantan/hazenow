@@ -74,6 +74,13 @@
           <h1 id="dl-title">Get HazeNow on your device.</h1>
           <p class="sub">Free and open source. No ads, no accounts, and we never track you. We only count visits and downloads in total. Nothing here goes through an app store yet, so each option has a couple of extra steps. We've kept them short.</p>
           <p class="dl-release" id="dl-release" aria-live="polite"><a href="https://github.com/%RELEASES_REPO%/releases" rel="noopener">Latest version on GitHub Releases</a></p>
+          <aside class="dl-qr" id="dl-qr" aria-labelledby="dl-qr-title" hidden>
+            <div class="dl-qr-code" id="dl-qr-code"></div>
+            <div>
+              <h2 id="dl-qr-title">Scan to open HazeNow on your phone</h2>
+              <p>Point your phone's camera at the code. It opens HazeNow<span id="dl-qr-place"></span>, ready to add to your Home Screen.</p>
+            </div>
+          </aside>
           <nav class="dl-jump" aria-label="Platforms">
             <a href="#iphone">iPhone</a>
             <a href="#android">Android</a>
@@ -232,26 +239,43 @@
                 </div>
                 <span class="status s-beta"><i aria-hidden="true"></i>Beta</span>
               </div>
-              <p class="dl-intro">The app, with Home Screen widgets, a Quick Settings tile and calm band alerts. Android 8 or newer.</p>
-              <ol class="steps">
-                <li>Tap <strong>Download for Android</strong> below and open the file when it's done.</li>
-                <li>The first time, Android asks whether your browser may install apps. Tap <strong>Settings</strong>, turn on <strong>Allow from this source</strong>, then go back. You only do this once.</li>
-                <li>Tap <strong>Install</strong>. If Android shows an extra safety check for apps from outside an app store, follow its steps.</li>
-              </ol>
-              <p class="dl-actions">
-                <a class="btn btn-primary" href="%DL%/HazeNow-android.apk"><svg class="ic ic-btn" aria-hidden="true"><use href="#i-dl"/></svg>Download for Android</a>
-                <span class="dl-file">HazeNow-android.apk</span>
-              </p>
-              <details class="dl-more">
-                <summary>Get updates automatically with Obtainium (optional)</summary>
-                <p><a href="https://github.com/ImranR98/Obtainium" rel="noopener">Obtainium</a> is a free, open-source app that installs updates straight from our GitHub releases.</p>
+              <p class="dl-intro">Two ways, both free, no Play Store needed. Start with the first. Add the second if you want a widget.</p>
+
+              <div class="dl-way">
+                <h3>1. Install from Chrome</h3>
+                <p class="dl-note"><strong>3 taps, no warnings.</strong> The full HazeNow in its own window, on your Home Screen. It works offline.</p>
                 <ol class="steps">
-                  <li>Install Obtainium from <a href="https://github.com/ImranR98/Obtainium/releases" rel="noopener">its GitHub releases</a> or <a href="https://f-droid.org/packages/dev.imranr.obtainium.fdroid/" rel="noopener">F-Droid</a>.</li>
-                  <li>On your phone, tap <strong>Add to Obtainium</strong> below. Or in Obtainium, tap <strong>Add app</strong> and paste <code class="wrap-code">https://github.com/%RELEASES_REPO%</code>.</li>
-                  <li>Obtainium checks for new versions and tells you when one is ready.</li>
+                  <li>Open <a href="%APP_BASE%">HazeNow</a> in <strong>Chrome</strong>.</li>
+                  <li>Tap <strong>⋮</strong> at the top right, then <strong>Add to Home screen</strong> (or <strong>Install app</strong>).</li>
+                  <li>Tap <strong>Install</strong>.</li>
                 </ol>
-                <p class="dl-actions"><a class="btn btn-ghost btn-sm" href="obtainium://add/https://github.com/%RELEASES_REPO%">Add to Obtainium</a></p>
-              </details>
+                <p class="dl-actions"><a class="btn btn-primary" href="%APP_BASE%">Open HazeNow in Chrome</a></p>
+              </div>
+
+              <div class="dl-way" id="android-app">
+                <h3>2. Full app with widget and Quick Settings tile</h3>
+                <p class="dl-note">Adds Home Screen widgets, a Quick Settings tile and calm band alerts. Android 8 or newer. It doesn't come from the Play Store, so Android checks with you before installing it. That's expected, and it only happens once.</p>
+                <ol class="steps">
+                  <li>Tap <strong>Download for Android</strong> below and open the file when it's done.</li>
+                  <li>Android asks whether your browser may install apps. Tap <strong>Settings</strong>, turn on <strong>Allow from this source</strong>, then go back.</li>
+                  <li>Tap <strong>Install</strong>. Google Play Protect may offer to scan the app, which is fine. If it says it doesn't recognise the app, that's because it's new and not in the Play Store: tap <strong>More details</strong>, then <strong>Install anyway</strong>. Samsung and Xiaomi phones may run their own check too; choose <strong>Install anyway</strong> or <strong>Continue</strong>.</li>
+                </ol>
+                <p class="dl-actions">
+                  <a class="btn btn-ghost" href="%DL%/HazeNow-android.apk"><svg class="ic ic-btn" aria-hidden="true"><use href="#i-dl"/></svg>Download for Android</a>
+                  <span class="dl-file">HazeNow-android.apk</span>
+                </p>
+                <p class="dl-why">Why the checks? HazeNow is free, and we don't list it on the Play Store yet. The code is open, and every download is built from it.</p>
+                <details class="dl-more">
+                  <summary>Get updates automatically with Obtainium (optional)</summary>
+                  <p><a href="https://github.com/ImranR98/Obtainium" rel="noopener">Obtainium</a> is a free, open-source app that installs updates straight from our GitHub releases.</p>
+                  <ol class="steps">
+                    <li>Install Obtainium from <a href="https://github.com/ImranR98/Obtainium/releases" rel="noopener">its GitHub releases</a> or <a href="https://f-droid.org/packages/dev.imranr.obtainium.fdroid/" rel="noopener">F-Droid</a>.</li>
+                    <li>On your phone, tap <strong>Add to Obtainium</strong> below. Or in Obtainium, tap <strong>Add app</strong> and paste <code class="wrap-code">https://github.com/%RELEASES_REPO%</code>.</li>
+                    <li>Obtainium checks for new versions and tells you when one is ready.</li>
+                  </ol>
+                  <p class="dl-actions"><a class="btn btn-ghost btn-sm" href="obtainium://add/https://github.com/%RELEASES_REPO%">Add to Obtainium</a></p>
+                </details>
+              </div>
             </li>
 
             <!-- Mac -->
@@ -264,28 +288,38 @@
                 </div>
                 <span class="status s-beta"><i aria-hidden="true"></i>Beta</span>
               </div>
-              <p class="dl-intro"><span class="mono">● 105 ▲</span> in your menu bar, with an optional pill beside the notch. macOS 14 or newer.</p>
-              <ol class="steps">
-                <li>Tap <strong>Download for Mac</strong> below. Double-click the zip to unzip it.</li>
-                <li>Drag <strong>HazeNow</strong> into your <strong>Applications</strong> folder, then open it.</li>
-                <li>macOS says <q>“HazeNow” Not Opened</q> because <q>Apple could not verify “HazeNow” is free of malware</q>. Click <strong>Done</strong>.</li>
-                <li>Open <strong>System Settings</strong> → <strong>Privacy &amp; Security</strong>. Scroll down to <strong>Security</strong>. Next to the line <q>“HazeNow” was blocked to protect your Mac</q>, click <strong>Open Anyway</strong>. The button stays there for about an hour after you tried.</li>
-                <li>Click <strong>Open Anyway</strong> again and enter your password. From now on, HazeNow opens normally.</li>
-              </ol>
-              <p class="dl-why">Why the warning? HazeNow is free, and we don't pay Apple's US$99 a year to have it verified. The code is open, so anyone can check it.</p>
-              <p class="dl-actions">
-                <a class="btn btn-primary" href="%DL%/HazeNow-mac.zip"><svg class="ic ic-btn" aria-hidden="true"><use href="#i-dl"/></svg>Download for Mac</a>
-                <span class="dl-file">HazeNow-mac.zip</span>
-              </p>
-              <details class="dl-more">
-                <summary>No warning: use SwiftBar instead</summary>
-                <p>A one-file menu bar plugin with the same reading. It runs inside <a href="https://swiftbar.app" rel="noopener">SwiftBar</a>, so macOS doesn't ask.</p>
-                <ol class="steps">
-                  <li>Install SwiftBar: <code>brew install --cask swiftbar</code>, then pick a plugin folder.</li>
-                  <li>Download <a href="%DL%/hazenow.2m.py" rel="noopener">hazenow.2m.py</a> into that folder.</li>
-                  <li>Run <code>chmod +x hazenow.2m.py</code> in that folder. The reading appears in your menu bar.</li>
-                </ol>
-              </details>
+              <p class="dl-intro"><span class="mono">● 105 ▲</span> in your menu bar. Two ways, both free. Pick either one.</p>
+              <div class="dl-ways">
+                <div class="dl-way">
+                  <h3>The app</h3>
+                  <p class="dl-note">The reading in your menu bar, with an optional pill beside the notch. macOS 14 or newer. macOS warns you once, because we don't pay Apple to verify it.</p>
+                  <ol class="steps">
+                    <li>Click <strong>Download for Mac</strong> below. Double-click the zip to unzip it.</li>
+                    <li>Drag <strong>HazeNow</strong> into your <strong>Applications</strong> folder, then open it.</li>
+                    <li>macOS says <q>“HazeNow” Not Opened</q> because <q>Apple could not verify “HazeNow” is free of malware</q>. Click <strong>Done</strong>.</li>
+                    <li>Open <strong>System Settings</strong> → <strong>Privacy &amp; Security</strong>. Scroll down to <strong>Security</strong>. Next to the line <q>“HazeNow” was blocked to protect your Mac</q>, click <strong>Open Anyway</strong>. The button stays there for about an hour after you tried.</li>
+                    <li>Click <strong>Open Anyway</strong> again and enter your password. From now on, HazeNow opens normally, up in your menu bar.</li>
+                  </ol>
+                  <p class="dl-why">Why the warning? HazeNow is free, and we don't pay Apple's US$99 a year to have it verified. The code is open, so anyone can check it.</p>
+                  <p class="dl-actions">
+                    <a class="btn btn-primary" href="%DL%/HazeNow-mac.zip"><svg class="ic ic-btn" aria-hidden="true"><use href="#i-dl"/></svg>Download for Mac</a>
+                    <span class="dl-file">HazeNow-mac.zip</span>
+                  </p>
+                </div>
+                <div class="dl-way">
+                  <h3>SwiftBar plugin, no warning</h3>
+                  <p class="dl-note">One small file with the same reading. It runs inside <a href="https://swiftbar.app" rel="noopener">SwiftBar</a>, a free, open-source menu bar app, so macOS doesn't ask.</p>
+                  <ol class="steps">
+                    <li>Install SwiftBar from <a href="https://swiftbar.app" rel="noopener">swiftbar.app</a>, or run <code>brew install --cask swiftbar</code>. Open it and pick a plugin folder.</li>
+                    <li>Download <strong>hazenow.2m.py</strong> below into that folder.</li>
+                    <li>In Terminal, run <code>chmod +x hazenow.2m.py</code> in that folder. The reading appears in your menu bar.</li>
+                  </ol>
+                  <p class="dl-actions">
+                    <a class="btn btn-primary" href="%DL%/hazenow.2m.py" rel="noopener"><svg class="ic ic-btn" aria-hidden="true"><use href="#i-dl"/></svg>Download the plugin</a>
+                    <span class="dl-file">hazenow.2m.py</span>
+                  </p>
+                </div>
+              </div>
             </li>
 
             <!-- Web -->

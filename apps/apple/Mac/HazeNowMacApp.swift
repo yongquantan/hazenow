@@ -45,6 +45,163 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if env["HAZENOW_DEBUG_POPOVER_CYCLE"] != nil { DebugRender.cyclePopover() }
         #endif
+        firstLaunchHint.scheduleIfNeeded(settings: store.settings, notch: notch)
+    }
+
+    private let firstLaunchHint = FirstLaunchHint()
+}
+
+// MARK: - First-launch hint
+
+/// One-time "HazeNow lives up here." popover under the menu-bar item. A menu-bar-only app (LSUIElement)
+/// otherwise shows nothing on first launch. Transient: closes on "Got it", a click elsewhere, opening the
+/// menu (so it never sits on top of the first-run place onboarding), or after ~12 s.
+///
+/// Anchoring: MenuBarExtra exposes no NSStatusItem, but its button lives in this app's own
+/// `NSStatusBarWindow`; the popover is shown relative to that window's content view.
+@MainActor
+final class FirstLaunchHint: NSObject, NSPopoverDelegate {
+    static let shownKey = "hazenow.mac.firstLaunchHintShown"
+
+    private var popover: NSPopover?
+    private var observers: [NSObjectProtocol] = []
+    private var monitors: [Any] = []
+    private var autoClose: DispatchWorkItem?
+
+    func scheduleIfNeeded(settings: HazeSettings, notch: NotchController) {
+        let defaults = settings.defaults
+        var force = false
+        #if DEBUG
+        force = ProcessInfo.processInfo.environment["HAZENOW_DEBUG_FIRST_LAUNCH_HINT"] != nil  // not persisted
+        #endif
+        guard force || !defaults.bool(forKey: Self.shownKey) else { return }
+        // Someone upgrading who already picked a place has found the menu bar; don't greet them.
+        if !force && settings.hasSavedPlaceChoice {
+            defaults.set(true, forKey: Self.shownKey)
+            return
+        }
+        // ~1 s so the status item has a frame; retry briefly if it isn't there yet.
+        attempt(remaining: 5, after: 1.0) { [weak self] anchor in
+            guard let self else { return }
+            if !force { defaults.set(true, forKey: Self.shownKey) }
+            self.show(at: anchor, notchLine: notch.hasNotchedScreen && settings.showNotch)
+        }
+    }
+
+    private func attempt(remaining: Int, after delay: TimeInterval, _ body: @escaping @MainActor (NSView) -> Void) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                if let anchor = Self.statusItemView() {
+                    body(anchor)
+                } else if remaining > 1 {
+                    self.attempt(remaining: remaining - 1, after: 0.5, body)
+                }
+                // No status item found (e.g. hidden by a menu-bar manager): skip; the flag stays unset.
+            }
+        }
+    }
+
+    /// The content view of this app's status-bar window (the MenuBarExtra button), if it is actually showing.
+    /// With several displays there is one such window per menu bar; an item crowded out by app menus (or behind
+    /// the notch) still has a window but it is occluded, so only visible ones count. The active screen wins.
+    static func statusItemView() -> NSView? {
+        let candidates = NSApp.windows.filter {
+            String(describing: type(of: $0)).contains("StatusBarWindow") && $0.isVisible
+                && $0.frame.width > 0 && $0.occlusionState.contains(.visible)
+        }
+        let preferred = candidates.first { $0.screen == NSScreen.main } ?? candidates.first
+        return preferred?.contentView
+    }
+
+    private func show(at anchor: NSView, notchLine: Bool) {
+        guard popover == nil, anchor.window != nil else { return }
+        let p = NSPopover()
+        p.behavior = .transient
+        p.animates = true
+        p.delegate = self
+        p.contentViewController = NSHostingController(rootView: FirstLaunchHintView(notchLine: notchLine) { [weak self] in
+            self?.close()
+        })
+        popover = p
+        // Bring the (Dock-less) app forward so the popover can take keyboard focus and VoiceOver lands on it.
+        NSApp.activate(ignoringOtherApps: true)
+        p.show(relativeTo: anchor.bounds, of: anchor, preferredEdge: .minY)
+        p.contentViewController?.view.window?.makeKey()
+
+        // Opening the menu (or any other window of ours becoming key) dismisses the hint.
+        observers.append(NotificationCenter.default.addObserver(
+            forName: NSWindow.didBecomeKeyNotification, object: nil, queue: .main
+        ) { [weak self] note in
+            MainActor.assumeIsolated {
+                guard let self, let w = note.object as? NSWindow,
+                      w !== self.popover?.contentViewController?.view.window else { return }
+                self.close()
+            }
+        })
+        // Belt and braces for a non-active accessory app: any click outside the popover closes it.
+        if let m = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown], handler: { [weak self] _ in
+            MainActor.assumeIsolated { self?.close() }
+        }) { monitors.append(m) }
+        if let m = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown], handler: { [weak self] event in
+            MainActor.assumeIsolated {
+                if let self, event.window !== self.popover?.contentViewController?.view.window { self.close() }
+            }
+            return event
+        }) { monitors.append(m) }
+
+        let work = DispatchWorkItem { [weak self] in MainActor.assumeIsolated { self?.close() } }
+        autoClose = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 12, execute: work)
+    }
+
+    func close() {
+        popover?.performClose(nil)
+        teardown()
+    }
+
+    nonisolated func popoverDidClose(_ notification: Notification) {
+        MainActor.assumeIsolated { teardown() }
+    }
+
+    private func teardown() {
+        autoClose?.cancel(); autoClose = nil
+        observers.forEach(NotificationCenter.default.removeObserver)
+        observers = []
+        monitors.forEach(NSEvent.removeMonitor)
+        monitors = []
+        popover = nil
+    }
+}
+
+struct FirstLaunchHintView: View {
+    static let title = "HazeNow lives up here."
+    static let notchLine = "On a MacBook with a notch, the pill beside it shows the same reading. Hover it to see more."
+    static let fallbackLine = "Click the reading any time for the full picture."
+
+    let notchLine: Bool
+    let onDone: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(Self.title)
+                .font(.headline)
+                .accessibilityAddTraits(.isHeader)
+            Text(notchLine ? Self.notchLine : Self.fallbackLine)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Spacer()
+                Button("Got it", action: onDone)
+                    .keyboardShortcut(.defaultAction)
+                    .controlSize(.regular)
+            }
+            .padding(.top, 2)
+        }
+        .padding(14)
+        .frame(width: 260, alignment: .leading)
+        .accessibilityElement(children: .contain)
     }
 }
 
