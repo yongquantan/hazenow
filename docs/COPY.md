@@ -601,3 +601,10 @@ one sentence). "We never track you" stays everywhere.
 
 **Download page, iPhone:** "**Alerts:** add HazeNow to your Home Screen, then tap “Get alerts”. You'll hear from it only when
 the air changes in your area, and when it's clear again. Free, and it needs iOS 16.4 or newer."
+
+**Download page, alerts on every platform (5 Oct 2026).**
+- Sub-line: "Your area’s air on every screen, and an alert when it changes. Free and open source: no ads, no accounts, and we never track you (we only count totals, never who). No app store yet, so each option takes a few extra taps."
+- iPhone: "…Free, iOS 16.4 or newer, Singapore only for now."
+- Android (Chrome install): "Alerts: open HazeNow and tap “Get alerts”. You'll hear from it only when the air changes in your area, and when it's clear again. Free, Singapore only for now."
+- Any browser: "Alerts: tap “Get alerts” and your computer tells you when the air changes in your area. Works in Chrome, Edge, Firefox and Safari. Free, Singapore only for now."
+- Mac app note adds: "…and a quiet notification when the air changes (Singapore)."
