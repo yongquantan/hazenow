@@ -541,7 +541,7 @@ SPEC principle 1: the headline always answers "is it OK to be out?".
 
 Calm and specific, like the rest of this file. Never block the reading to ask for an install.
 
-**Site hero (hazenow.pages.dev).** The headline is unchanged (the founder decides it separately).
+**Site hero (hazenow.pages.dev).** Headline (founder-approved 5 Oct 2026): "Know in seconds if it’s OK to go out."
 - Sub-line: "NEA's 1-hour PM2.5 for your area, turned into plain advice you can act on right now." Outside Singapore, the place's authority replaces NEA ("PCD's 1-hour PM2.5 for your area, …"); with community sensors only, "The 1-hour PM2.5 for your area, …".
 - One primary button: "Open HazeNow" (carries the place). Under it, the three promises: "Data: NEA via data.gov.sg" · "Free & open source (MIT)" · "No ads, no accounts, never tracked". Lower down, a quiet text link: "View the code on GitHub".
 - The PSI-vs-PM2.5 explanation lives in "Two clocks": "Both are from NEA. The 24-hr PSI averages the last 24 hours, so it changes slowly and is best for planning tomorrow. The 1-hr PM2.5 shows the last hour, and NEA recommends it for deciding what to do right now."
