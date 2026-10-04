@@ -80,6 +80,16 @@ a{color:inherit;text-underline-offset:3px}
 .ladder li{flex:1;border-top:2px solid var(--tint);padding-top:6px}
 .ladder li.done{border-color:var(--up);color:var(--ink)}
 .ladder li.now{border-color:var(--ink);color:var(--ink);font-weight:500}
+.ladder li{position:relative}
+.ladder button{all:unset;cursor:pointer;display:block;width:100%}
+.ladder button:focus-visible{outline:2px solid var(--ink);outline-offset:3px;border-radius:2px}
+.ladder .gtip{display:none;position:absolute;z-index:3;top:calc(100% + 8px);left:0;width:220px;padding:10px 12px;border-radius:10px;background:var(--ink);color:var(--paper);font-size:13px;line-height:1.4;font-weight:400;box-shadow:0 6px 20px rgba(0,0,0,.2)}
+.ladder li:nth-child(n+3) .gtip{left:auto;right:0}
+.ladder .gtip b{display:block;font-size:15px;font-weight:500;margin-bottom:4px}
+.ladder .gtip span{display:block;opacity:.75}
+.ladder .gtip em{display:block;font-style:normal;margin-top:6px}
+@media (hover:hover){.ladder li:hover .gtip{display:block}}
+.ladder li:has(button:focus-visible) .gtip,.ladder li.open .gtip{display:block}
 
 /* sections */
 section{margin-top:56px}
@@ -164,10 +174,10 @@ const PERIOD = { 7: "last week", 30: "the prior 30", 90: "the prior 90" };
 const THIS = { 7: "this week", 30: "in 30 days", 90: "in 90 days" };
 /** Real goals (weekly people), each with what it proves and what it unlocks. Progress uses the best week so far. */
 const GOALS = [
-  { n: 25, name: "Strangers, not just friends", unlocks: "Send the agency permission emails", by: "30 Nov 2026" },
-  { n: 100, name: "A real community", unlocks: "Start the WhatsApp channel, go big for Thai burning season", by: "Mar 2027" },
-  { n: 1000, name: "A public tool", unlocks: "Pitch press and NEA; the iPhone app is worth US$99", by: "SG haze season 2027" },
-  { n: 10000, name: "How Southeast Asia checks the haze", unlocks: "Kairos case study, partnerships", by: "A major haze episode" },
+  { n: 25, name: "Strangers, not just friends", unlocks: "Send the agency permission emails; publish the build story", by: "by 30 Nov 2026" },
+  { n: 100, name: "A real community", unlocks: "Start the WhatsApp channel; go big for Thai burning season", by: "by Mar 2027" },
+  { n: 1000, name: "A public tool", unlocks: "Pitch press, NEA and the data.gov.sg showcase; the iPhone app is worth US$99", by: "by SG haze season 2027" },
+  { n: 10000, name: "How Southeast Asia checks the haze", unlocks: "Free embeds for schools and employers; a Kairos case study with real numbers", by: "during a major haze episode" },
 ];
 const CARD = { now: "Air right now", clocks: "Two clocks", group: "Group plan", clear: "All clear" };
 const PLATFORM = { android: "Android", mac: "Mac", cli: "CLI", scriptable: "Scriptable", scriptable_js: "Scriptable (JS)", home_assistant: "Home Assistant", swiftbar: "SwiftBar", shell: "Shell", iphone_web: "iPhone web app", android_web: "Android web app", ios: "iPhone", other: "Other" };
@@ -343,9 +353,14 @@ function render(s) {
     '<p class="status">' + esc(statusLine(weeks)) + "</p>" +
     '<div class="goal"><p class="gname">Next goal: <b>' + fmt(goal.n) + ' people a week</b> <span>· ' + esc(goal.name) + "</span></p>" +
     '<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="' + goal.n + '" aria-valuenow="' + best + '"><i style="width:' + pct.toFixed(1) + '%"></i></div>' +
-    "<p>Best week <b>" + fmt(best) + "</b> of " + fmt(goal.n) + " · aim by " + esc(goal.by) + "</p>" +
+    "<p>Best week <b>" + fmt(best) + "</b> of " + fmt(goal.n) + " · aim " + esc(goal.by) + "</p>" +
     '<p class="unl">Unlocks: ' + esc(goal.unlocks) + "</p>" +
-    '<ol class="ladder">' + GOALS.map((g) => '<li class="' + (best >= g.n ? "done" : g === goal ? "now" : "") + '">' + (best >= g.n ? "✓ " : "") + (g.n >= 1000 ? g.n / 1000 + "k" : g.n) + "</li>").join("") + "</ol></div>" +
+    '<ol class="ladder">' + GOALS.map((g) => {
+      const done = best >= g.n;
+      const status = done ? "Reached ✓" : g === goal ? fmt(g.n - best) + " more people a week to go" : "Comes after " + fmt(GOALS[GOALS.indexOf(g) - 1].n);
+      return '<li class="' + (done ? "done" : g === goal ? "now" : "") + '"><button data-act="goal" aria-label="Goal ' + fmt(g.n) + '">' + (done ? "✓ " : "") + (g.n >= 1000 ? g.n / 1000 + "k" : g.n) + "</button>" +
+        '<div class="gtip" role="tooltip"><b>' + fmt(g.n) + " a week · " + esc(g.name) + "</b><span>Unlocks: " + esc(g.unlocks) + "</span><span>Aim " + esc(g.by) + "</span><em>" + status + "</em></div></li>";
+    }).join("") + "</ol></div>" +
 
     "<section><h2>" + (days === 7 ? "This week" : "Last " + days + " days") + ", vs " + esc(PERIOD[days]) + '</h2><div class="tiles">' +
     tile(fmt(now.newPeople), "New people", tileDelta(now.newPeople, was.newPeople), "First reading on a new device") +
@@ -448,6 +463,8 @@ async function load(refresh) {
 
 app.addEventListener("click", (e) => {
   const b = e.target.closest("button");
+  if (!b || b.dataset.act !== "goal") app.querySelectorAll(".ladder li.open").forEach((l) => l.classList.remove("open"));
+  if (b && b.dataset.act === "goal") { const li = b.closest("li"); const was = li.classList.contains("open"); app.querySelectorAll(".ladder li.open").forEach((l) => l.classList.remove("open")); if (!was) li.classList.add("open"); return; }
   if (!b || b.dataset.act !== "tip") app.querySelectorAll(".tile .tip:not([hidden])").forEach((t) => { t.hidden = true; t.parentNode.querySelector(".i").setAttribute("aria-expanded", "false"); });
   if (!b) return;
   if (b.dataset.days) { days = Number(b.dataset.days); ss.set(DKEY, String(days)); if (last && last.days >= Math.max(2 * days, 56)) { const open = !!app.querySelector("details[open]"); render(last); if (open) app.querySelector("details").open = true; } else load(); }
