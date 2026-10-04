@@ -4,7 +4,7 @@
  *
  *   POST /v1/push/subscribe    {subscription:{endpoint,keys:{p256dh,auth}}, place:{country,area|region}, prefs:{profiles,elevated}}
  *   POST /v1/push/unsubscribe  {endpoint}                     deletes the row; 200 even if it was already gone
- *   POST /v1/push/test         {endpoint}  + Bearer STATS_TOKEN   one test message to an existing subscriber (debug)
+ *   POST /v1/push/test         {endpoint}  + Bearer ADMIN_TOKEN   one test message to an existing subscriber (debug)
  *
  * Alerts: every minute, alongside the data jobs (index.ts), the cron checks whether NEA has a new hour in
  * D1 (the SG job's `sg:raw`). For each new hour it walks the subscribers in place order, builds each place's
@@ -216,8 +216,8 @@ export async function handlePush(req: Request, env: PushEnv, opts: { now?: numbe
 
   if (path === "/v1/push/test") {
     const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
-    if (!env.STATS_TOKEN) return out(404, { error: "Not found" });
-    if (!sameSecret(token, env.STATS_TOKEN)) return out(401, { error: "Unauthorized" }, { "www-authenticate": "Bearer" });
+    if (!env.ADMIN_TOKEN) return out(404, { error: "Not found" });
+    if (!sameSecret(token, env.ADMIN_TOKEN)) return out(401, { error: "Unauthorized" }, { "www-authenticate": "Bearer" });
     const vapid = vapidOf(env);
     if (!vapid) return out(503, { error: "VAPID keys are not configured" });
     const row = await db.prepare("SELECT endpoint, p256dh, auth, place FROM push_subs WHERE endpoint = ?1").bind(String(body.endpoint ?? "")).first<SubRow>();

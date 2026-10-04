@@ -11,6 +11,8 @@ export interface Env {
   NEA_API_KEY?: string;
   /** Bearer token for GET /v1/stats (`wrangler secret put STATS_TOKEN`). Without it, /v1/stats answers 404. */
   STATS_TOKEN?: string;
+  /** Long random bearer for operator actions (POST /v1/push/test). Separate from the dashboard PIN. */
+  ADMIN_TOKEN?: string;
   /** GitHub token for the daily traffic archive (github.ts). Needs read access to the repo's traffic. Optional. */
   GITHUB_TOKEN?: string;
   /** Cloudflare API token with Account Analytics: Read, for site visits on /dash (metrics.ts). Optional. */

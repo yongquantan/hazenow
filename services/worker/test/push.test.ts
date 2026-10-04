@@ -118,7 +118,7 @@ const at = (hhmm: string) => Date.parse(`2026-10-05T${hhmm}:00+08:00`);
 async function setup() {
   const d1 = new FakeD1();
   const keys = await generateVapidKeys();
-  const env: PushEnv = { DB: asD1(d1), VAPID_PUBLIC_KEY: keys.publicKey, VAPID_PRIVATE_KEY: keys.privateKey, STATS_TOKEN: "secret-token" };
+  const env: PushEnv = { DB: asD1(d1), VAPID_PUBLIC_KEY: keys.publicKey, VAPID_PRIVATE_KEY: keys.privateKey, ADMIN_TOKEN: "secret-token" };
   const sent: { url: string; headers: Record<string, string>; body: Uint8Array }[] = [];
   const statusFor = new Map<string, number>();
   const fetchFn: FetchFn = async (url, init) => {
