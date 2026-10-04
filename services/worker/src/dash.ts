@@ -83,9 +83,11 @@ h2{font-size:14px;font-weight:400;color:var(--soft);margin:0 0 14px}
 .tile .l{display:block;font-size:15px;margin-top:8px}
 .tile .d{display:block;font-size:13px;color:var(--soft);margin-top:3px;font-variant-numeric:tabular-nums}
 .tile .d.up{color:var(--up)}
-.tile .i{margin-left:6px;width:18px;height:18px;border-radius:50%;border:1px solid var(--soft);background:none;color:var(--soft);font:600 11px/16px inherit;font-style:italic;cursor:pointer;vertical-align:1px;padding:0}
-.tile .i[aria-expanded="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
-.tile .tip{font-size:13px;line-height:1.45;color:var(--soft);margin:10px 0 0;max-width:30ch}
+.tile{position:relative}
+.tile .i{display:inline-flex;align-items:center;justify-content:center;margin-left:6px;width:16px;height:16px;border-radius:50%;border:1px solid var(--soft);background:none;color:var(--soft);font:500 10px/1 inherit;font-style:normal;cursor:pointer;vertical-align:2px;padding:0}
+.tile .i[aria-expanded="true"]{border-color:currentColor;color:inherit}
+.tile:nth-child(2n) .tip{left:auto;right:0}
+.tile .tip{position:absolute;z-index:2;left:0;top:calc(100% + 6px);margin:0;padding:8px 10px;border-radius:8px;background:var(--ink);color:var(--paper);font-size:13px;line-height:1.35;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.18)}
 .line{font-size:22px;line-height:1.35;letter-spacing:-.01em;margin:0;font-variant-numeric:tabular-nums}
 .line .ar{color:var(--mist);padding:0 .15em}
 .line .weak{text-decoration:underline;text-decoration-color:var(--mist);text-decoration-thickness:2px;text-underline-offset:6px}
@@ -281,7 +283,7 @@ function render(s) {
 
   // Tiles
   const subs = typeof s.alertsActive === "number";
-  const ALERT_TIP = "Phones and browsers currently subscribed to haze alerts (web push, Singapore). They hear from HazeNow when their area's air changes, so these are your most engaged people. The change counts alerts turned on minus turned off.";
+  const ALERT_TIP = "Signed up for alerts right now";
   const alertsTile = subs
     ? tile(fmt(s.alertsActive), "Alerts on", now.alertsNet ? { up: now.alertsNet > 0, html: (now.alertsNet > 0 ? "▲ " : "▼ ") + fmt(Math.abs(now.alertsNet)) + " " + esc(THIS[days]) } : { html: "No change " + esc(THIS[days]) }, ALERT_TIP)
     : tile(fmt(now.alertsNet), "Alerts on (net)", tileDelta(now.alertsNet, was.alertsNet), ALERT_TIP);
@@ -328,12 +330,9 @@ function render(s) {
     '<div class="goal"><div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="' + next + '" aria-valuenow="' + w0 + '"><i style="width:' + pct.toFixed(1) + '%"></i></div><p><b>' + fmt(w0) + "</b> of " + fmt(next) + " to your next milestone</p></div>" +
 
     "<section><h2>" + (days === 7 ? "This week" : "Last " + days + " days") + ", vs " + esc(PERIOD[days]) + '</h2><div class="tiles">' +
-    tile(fmt(now.newPeople), "New people", tileDelta(now.newPeople, was.newPeople),
-      "Devices that saw their air for the first time ever: the moment HazeNow clicks. Comes from visitors who stay long enough to see a reading. More shares and a clearer first screen move it.") +
-    tile(fmt(now.installed), "Installed", tileDelta(now.installed, was.installed),
-      "People who kept HazeNow: " + fmt(now.installs) + " added the web app to their Home Screen, " + fmt(now.downloads) + " downloaded an app (Android, Mac, widget, command line). Installed people come back next haze season.") +
-    tile(fmt(now.shared), "Shared", tileDelta(now.shared, was.shared),
-      "Cards sent, downloaded or link-copied from the app. Each share brings new people in (see Spreading). Spikes on hazy days are normal.") +
+    tile(fmt(now.newPeople), "New people", tileDelta(now.newPeople, was.newPeople), "First reading on a new device") +
+    tile(fmt(now.installed), "Installed", tileDelta(now.installed, was.installed), fmt(now.installs) + " Home Screen · " + fmt(now.downloads) + " app downloads") +
+    tile(fmt(now.shared), "Shared", tileDelta(now.shared, was.shared), "Cards sent or links copied") +
     alertsTile +
     "</div></section>" +
 
@@ -431,9 +430,10 @@ async function load(refresh) {
 
 app.addEventListener("click", (e) => {
   const b = e.target.closest("button");
+  if (!b || b.dataset.act !== "tip") app.querySelectorAll(".tile .tip:not([hidden])").forEach((t) => { t.hidden = true; t.parentNode.querySelector(".i").setAttribute("aria-expanded", "false"); });
   if (!b) return;
   if (b.dataset.days) { days = Number(b.dataset.days); ss.set(DKEY, String(days)); if (last && last.days >= Math.max(2 * days, 56)) { const open = !!app.querySelector("details[open]"); render(last); if (open) app.querySelector("details").open = true; } else load(); }
-  else if (b.dataset.act === "tip") { const tp = b.closest(".tile").querySelector(".tip"); const on = tp.hidden; tp.hidden = !on; b.setAttribute("aria-expanded", String(on)); }
+  else if (b.dataset.act === "tip") { const tp = b.closest(".tile").querySelector(".tip"); const on = tp.hidden; app.querySelectorAll(".tile .tip").forEach((t) => { t.hidden = true; t.parentNode.querySelector(".i").setAttribute("aria-expanded", "false"); }); tp.hidden = !on; b.setAttribute("aria-expanded", String(on)); }
   else if (b.dataset.act === "gh") load(true);
   else if (b.dataset.act === "retry") load();
   else if (b.dataset.act === "out") { ss.del(KEY); last = null; login(); }
