@@ -73,6 +73,13 @@ a{color:inherit;text-underline-offset:3px}
 .goal .bar i{display:block;height:100%;background:var(--ink);border-radius:999px;min-width:6px}
 .goal p{font-size:14px;color:var(--soft);margin:8px 0 0}
 .goal p b{color:var(--ink)}
+.goal .gname{font-size:17px;color:var(--ink);margin:0 0 10px}
+.goal .gname span{color:var(--soft)}
+.goal .unl{margin-top:4px}
+.ladder{display:flex;gap:6px;margin:14px 0 0;padding:0;list-style:none;font-size:13px;color:var(--soft);font-variant-numeric:tabular-nums}
+.ladder li{flex:1;border-top:2px solid var(--tint);padding-top:6px}
+.ladder li.done{border-color:var(--up);color:var(--ink)}
+.ladder li.now{border-color:var(--ink);color:var(--ink);font-weight:500}
 
 /* sections */
 section{margin-top:56px}
@@ -155,7 +162,13 @@ const shortDate = (d) => new Date(d + "T00:00:00Z").toLocaleDateString("en-GB", 
 
 const PERIOD = { 7: "last week", 30: "the prior 30", 90: "the prior 90" };
 const THIS = { 7: "this week", 30: "in 30 days", 90: "in 90 days" };
-const MILESTONES = [10, 50, 100, 500, 1000, 5000, 10000, 50000, 100000];
+/** Real goals (weekly people), each with what it proves and what it unlocks. Progress uses the best week so far. */
+const GOALS = [
+  { n: 25, name: "Strangers, not just friends", unlocks: "Send the agency permission emails", by: "30 Nov 2026" },
+  { n: 100, name: "A real community", unlocks: "Start the WhatsApp channel, go big for Thai burning season", by: "Mar 2027" },
+  { n: 1000, name: "A public tool", unlocks: "Pitch press and NEA; the iPhone app is worth US$99", by: "SG haze season 2027" },
+  { n: 10000, name: "How Southeast Asia checks the haze", unlocks: "Kairos case study, partnerships", by: "A major haze episode" },
+];
 const CARD = { now: "Air right now", clocks: "Two clocks", group: "Group plan", clear: "All clear" };
 const PLATFORM = { android: "Android", mac: "Mac", cli: "CLI", scriptable: "Scriptable", scriptable_js: "Scriptable (JS)", home_assistant: "Home Assistant", swiftbar: "SwiftBar", shell: "Shell", iphone_web: "iPhone web app", android_web: "Android web app", ios: "iPhone", other: "Other" };
 const SURFACE = { app: "Home Screen web app", browser: "Browser", android: "Android app", ios: "iPhone app", mac: "Mac app" };
@@ -278,8 +291,9 @@ function render(s) {
   // Hero and goal gradient
   const dw = w0 - weeks[1];
   const trend = !dw ? "Same as last week" : (dw > 0 ? '<span class="up">▲ ' + fmt(dw) + " more than last week</span>" : "▼ " + fmt(-dw) + " fewer than last week");
-  const next = MILESTONES.find((m) => m > w0) || MILESTONES[MILESTONES.length - 1];
-  const pct = Math.min(100, (w0 / next) * 100);
+  const best = Math.max(...weeks);
+  const goal = GOALS.find((g) => g.n > best) || GOALS[GOALS.length - 1];
+  const pct = Math.min(100, (best / goal.n) * 100);
 
   // Tiles
   const subs = typeof s.alertsActive === "number";
@@ -327,7 +341,11 @@ function render(s) {
     '<p class="hero">' + fmt(w0) + "</p>" +
     '<p class="trend">' + trend + "</p>" +
     '<p class="status">' + esc(statusLine(weeks)) + "</p>" +
-    '<div class="goal"><div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="' + next + '" aria-valuenow="' + w0 + '"><i style="width:' + pct.toFixed(1) + '%"></i></div><p><b>' + fmt(w0) + "</b> of " + fmt(next) + " to your next milestone</p></div>" +
+    '<div class="goal"><p class="gname">Next goal: <b>' + fmt(goal.n) + ' people a week</b> <span>· ' + esc(goal.name) + "</span></p>" +
+    '<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="' + goal.n + '" aria-valuenow="' + best + '"><i style="width:' + pct.toFixed(1) + '%"></i></div>' +
+    "<p>Best week <b>" + fmt(best) + "</b> of " + fmt(goal.n) + " · aim by " + esc(goal.by) + "</p>" +
+    '<p class="unl">Unlocks: ' + esc(goal.unlocks) + "</p>" +
+    '<ol class="ladder">' + GOALS.map((g) => '<li class="' + (best >= g.n ? "done" : g === goal ? "now" : "") + '">' + (best >= g.n ? "✓ " : "") + (g.n >= 1000 ? g.n / 1000 + "k" : g.n) + "</li>").join("") + "</ol></div>" +
 
     "<section><h2>" + (days === 7 ? "This week" : "Last " + days + " days") + ", vs " + esc(PERIOD[days]) + '</h2><div class="tiles">' +
     tile(fmt(now.newPeople), "New people", tileDelta(now.newPeople, was.newPeople), "First reading on a new device") +
