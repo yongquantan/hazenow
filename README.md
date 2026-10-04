@@ -248,14 +248,20 @@ Every app has a mock mode for testing any air state without waiting for haze. Fo
 
 ## Usage counts (aggregate only)
 
-HazeNow promises no ads, no accounts and no tracking. It counts, in total only, with no identifiers stored anywhere:
+HazeNow promises no ads, no accounts and no tracking: **count, never identify.** Every signal is a +1 on a total keyed by (UTC day, event, small fixed labels). No user or device IDs, IPs, user agents, coordinates or fingerprints are stored anywhere, and any "once a day" dedupe happens on the device with a local flag. [`docs/PRIVACY.md`](docs/PRIVACY.md) is the public list of every counter; keep it in sync.
 
-- **Downloads:** GitHub's own per-file `download_count` on each release.
-- **Visits:** Cloudflare Web Analytics on the two Pages projects (cookieless, no fingerprinting). Turn it on once per project in the dashboard: **Workers & Pages → hazenow → Metrics → Web Analytics → Enable**, then the same for **hazenow-app**. Cloudflare then adds its beacon itself. Alternative, if you'd rather not use the automatic setup: build with `HAZENOW_CF_BEACON_TOKEN=<site token>` (both `apps/site` and `apps/web` read it) to embed the beacon snippet. Never both, or visits count twice.
-- **Data server:** the Worker adds 1 to a `(UTC day, country, endpoint)` counter for each `/v1/*` request (country = Cloudflare's `request.cf.country`, endpoint = a fixed label like `sg/observations`). No IP, user agent, coordinate or query string is stored. Writes are batched per isolate (one upsert per key every few seconds).
-- **Share-card landings:** when the site or web app opens with `?s=<card>`, it sends one `navigator.sendBeacon` to `/v1/hit?e=share_landing&card=<card>`, which adds 1 to a `(day, card, country)` counter. Fire-and-forget, after first paint, once per tab session.
+- **Product events:** the web app, site and native apps send `navigator.sendBeacon` / one POST to `/v1/hit?e=<event>&<dim>=<value>` (fire-and-forget; never on localhost, `?mock` or embeds; native apps never in Debug). The Worker accepts only the allow-list in `services/worker/src/metrics.ts` and answers 400 to anything else. Events: `app_open` (daily, by surface and new/returning), `app_open_week`, `eureka` (first verdict on a device), `place_set`, `share_sent`, `share_landing`, `install_prompt_shown`, `installed`, `alerts_on`/`alerts_off`, `download_click`, `qr_shown`, `scriptable_file` (counted by `apps/site/functions/widget/[file].js` when the file is served). Clients: `apps/web/src/count.ts`, `apps/site/src/count-site.ts`, `DailyCount.kt` / `HazeDailyCount.swift`.
+- **Data server:** the Worker adds 1 to a `(UTC day, country, endpoint)` counter for each `/v1/*` request (endpoint = a fixed label like `sg/observations`). Writes are batched per isolate (one upsert per key every few seconds).
+- **Downloads:** GitHub's per-file `download_count`, archived daily with the repo's traffic (below).
+- **Visits:** Cloudflare Web Analytics on both Pages projects (automatic setup, cookieless). Don't also set `HAZENOW_CF_BEACON_TOKEN`, or visits count twice.
 
-`scripts/stats.sh` prints all four. It reads the Worker's `GET /v1/stats` with the bearer token in `~/.config/hazenow/stats-token.txt` (also the Worker secret `STATS_TOKEN`; never committed). Rotate it with `openssl rand -hex 32 > ~/.config/hazenow/stats-token.txt && tr -d '\n' < ~/.config/hazenow/stats-token.txt | npx wrangler secret put STATS_TOKEN` from `services/worker`.
+**Native apps.** In Singapore the native apps fetch NEA's data directly, not through the data server, so their users are invisible to the request counters. They show up only through release downloads and the anonymous daily `app_open` (`surface=android|ios|mac`, the picked place's country, new/returning; at most once per UTC day per install). The Mac menu-bar app counts on any day it's running. Widgets don't count.
+
+**GitHub archive.** GitHub keeps views, clones and referrers for only 14 days. The Worker cron (`services/worker/src/github.ts`, hourly at :03) stores per-day views/clones, plus a daily snapshot of stars, forks, top referrers and cumulative downloads per release asset, in D1. It needs the Worker secret `GITHUB_TOKEN`, a token that can read the repo's traffic. The narrowest one is a fine-grained token for this repo only with "Administration: Read-only" (`tr -d '\n' < token.txt | npx wrangler secret put GITHUB_TOKEN` from `services/worker`). The default `GITHUB_TOKEN` in Actions can't read traffic.
+
+**Dashboard.** <https://hazenow-data.yongquan26.workers.dev/dash> (private, noindex): paste the stats token once per tab (kept in sessionStorage). It shows the funnel, daily and weekly active devices, new vs returning, installed vs browser vs native, countries, first verdicts, shares and landings per card, downloads per platform, GitHub stars, views and referrers, and site visits. It reads `GET /v1/stats?days=N` (add `&refresh=github` to take a GitHub snapshot now). Site visits need the Worker secret `CF_ANALYTICS_TOKEN` (a Cloudflare API token with Account Analytics: Read); without it the dashboard links to Web Analytics instead.
+
+`scripts/stats.sh [days]` prints the same in a terminal. Both read the bearer token in `~/.config/hazenow/stats-token.txt` (also the Worker secret `STATS_TOKEN`; never committed). Rotate it with `openssl rand -hex 32 > ~/.config/hazenow/stats-token.txt && tr -d '\n' < ~/.config/hazenow/stats-token.txt | npx wrangler secret put STATS_TOKEN` from `services/worker`.
 
 ## Docs
 
@@ -263,6 +269,7 @@ HazeNow promises no ads, no accounts and no tracking. It counts, in total only, 
 |---|---|
 | [`SPEC.md`](SPEC.md) | Product rules, data, bands, verdicts, location, sharing |
 | [`docs/COPY.md`](docs/COPY.md) | Every word on every screen |
+| [`docs/PRIVACY.md`](docs/PRIVACY.md) | Every counter HazeNow keeps (totals only, never who) |
 | [`docs/UX_PSYCHOLOGY.md`](docs/UX_PSYCHOLOGY.md) | The research behind the calm, verdict-first design |
 | [`docs/SHARING.md`](docs/SHARING.md) | How people share haze information, and why the cards look the way they do |
 | [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md) | Every Singapore data source, tested live |

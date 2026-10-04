@@ -9,6 +9,7 @@ import { runScheduled } from "./jobs.js";
 import { handle } from "./routes.js";
 import type { Env } from "./store.js";
 import { scheduleFlush } from "./usage.js";
+import { githubDue, githubSnapshot } from "./github.js";
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -34,5 +35,6 @@ export default {
 
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(runScheduled(env, { fetch: (url, init) => fetch(url, init), now: controller.scheduledTime, neaKey: env.NEA_API_KEY }));
+    if (env.GITHUB_TOKEN && githubDue(controller.scheduledTime)) ctx.waitUntil(githubSnapshot(env, controller.scheduledTime)); // hourly traffic archive
   },
 } satisfies ExportedHandler<Env>;

@@ -579,9 +579,9 @@ export const PRIVACY_LINE = "Your location stays on your device. We never send i
 /** SPEC v2.1: shown wherever the web asks /api/where for the connection's country (COPY.md §13). */
 export const COUNTRY_HINT_LINE = "We use your country, from your connection, to pick a starting place. Nothing is stored.";
 export const FOOTER_LINE = "Data: NEA via data.gov.sg · Free & open source · No ads, no tracking, no account";
-/** COPY §13: the web app and site count page visits in total (Cloudflare Web Analytics, cookieless) and share-card
- * landings, so they say so. Native apps and integrations send nothing new and keep FOOTER_LINE. */
-export const COUNT_LINE = "No ads, no accounts, and we never track you. We only count visits and downloads in total.";
+/** COPY §13: the web app, site and native apps count things in total only (docs/PRIVACY.md lists every counter),
+ * so they say so. Integrations send nothing new and keep FOOTER_LINE. */
+export const COUNT_LINE = "No ads, no accounts, and we never track you. We only count things in total, like visits, downloads and shares — never who did them.";
 export const WEB_FOOTER_LINE = "Data: NEA via data.gov.sg · Free & open source";
 
 export const CHART_COPY = {

@@ -412,7 +412,7 @@ describe("aggregate usage counters (no identifiers)", () => {
     expect(r.status).toBe(200);
     expect(r.headers["cache-control"]).toBe("no-store");
     const day = new Date(NOW).toISOString().slice(0, 10);
-    expect(r.body.totals).toEqual({ requests: 5, shareLandings: 2 });
+    expect(r.body.totals).toMatchObject({ requests: 5, shareLandings: 2 });
     expect(r.body.usage).toEqual([
       { day, total: 5, countries: { SG: 3, MY: 1, XX: 1 }, endpoints: { countries: 2, "sg/observations": 1, "auto/snapshot": 1, "sensors/uptime": 1 } },
     ]);

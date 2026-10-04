@@ -27,6 +27,8 @@ export interface ShareSheetOptions {
   placeName: string;
   /** Link for a card (carries ?area= / ?region= and ?s=card). */
   linkFor: (card: ShareCardId) => string;
+  /** Counted (count.ts) once a card actually leaves: shared, downloaded or copied. Never on cancel. */
+  onSent?: (card: ShareCardId, via: "share" | "download" | "copy_text" | "copy_link") => void;
   /** Force the first card shown (e.g. "clocks" from the chart). */
   initial?: ShareCardId;
   toast: (msg: string) => void;
@@ -127,6 +129,7 @@ export async function openShareSheet(o: ShareSheetOptions): Promise<void> {
         if (navigator.canShare?.({ files: [file] })) {
           try {
             await navigator.share({ files: [file], text, url, title: "HazeNow" });
+            o.onSent?.(selected, "share");
             return;
           } catch (err) {
             if ((err as Error).name === "AbortError") return;
@@ -135,24 +138,29 @@ export async function openShareSheet(o: ShareSheetOptions): Promise<void> {
         if (navigator.share) {
           try {
             await navigator.share({ text, url, title: "HazeNow" });
+            o.onSent?.(selected, "share");
             return;
           } catch (err) {
             if ((err as Error).name === "AbortError") return;
           }
         }
         download(blob, name);
+        o.onSent?.(selected, "download");
         await copyText(`${text}\n${url}`, toast, "Image saved and text copied. Paste it with the picture.");
         break;
       }
       case "download":
         download(blob, name);
+        o.onSent?.(selected, "download");
         toast("Image saved.");
         break;
       case "copy-text":
         await copyText(text, toast, "Text copied.");
+        o.onSent?.(selected, "copy_text");
         break;
       case "copy-link":
         await copyText(url, toast, "Link copied.");
+        o.onSent?.(selected, "copy_link");
         break;
     }
   });

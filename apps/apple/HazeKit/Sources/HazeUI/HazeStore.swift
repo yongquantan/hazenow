@@ -416,6 +416,7 @@ public final class HazeStore {
             var includeV2 = true
             while !Task.isCancelled {
                 guard let self else { return }
+                self.countDailyOpen()
                 let delay: TimeInterval
                 if let target = self.countryTarget {
                     await self.refreshCountry(target)
@@ -445,7 +446,16 @@ public final class HazeStore {
         pollTask = nil
     }
 
+    /// The anonymous daily +1 (HazeDailyCount): once per UTC day at most, fire-and-forget, off in Debug and mock runs.
+    /// Called from the poll loop and each refresh (the iOS app refreshes when it comes to the foreground).
+    func countDailyOpen() {
+        guard mockScenario == nil else { return }
+        HazeDailyCount.maybeSend(base: HazeEdge.configured(), cc: countryTarget?.country ?? .SG,
+                                 existingInstall: settings.onboarded || settings.hasStoredPlaceMode)
+    }
+
     public func refresh(includeV2: Bool = true) async {
+        countDailyOpen()
         if let target = countryTarget {
             await refreshCountry(target)
             return

@@ -49,7 +49,7 @@ fun AboutSheet(onDismiss: () -> Unit) {
             )
             Spacer(Modifier.height(10.dp))
             Text(
-                "It's free and open source (MIT). No ads, no tracking, no account. Your location stays on your phone.",
+                "It's free and open source (MIT). No ads, no accounts, and we never track you. We only count things in total, like visits, downloads and shares — never who did them. Your location stays on your phone.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

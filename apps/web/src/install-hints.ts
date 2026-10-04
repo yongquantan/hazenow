@@ -97,8 +97,8 @@ function style() {
  * The in-app-browser strip, at the very top of the page (it pushes the page down a little, never covers it).
  * @param getLink the link to copy (the page with its place)
  */
-export function showInAppHint(getLink: () => string = () => location.href, d: Device = detectDevice()): void {
-  if (!d.inApp || d.standalone || seen(HINT_KEY) || document.querySelector(".hn-inapp")) return;
+export function showInAppHint(getLink: () => string = () => location.href, d: Device = detectDevice()): boolean {
+  if (!d.inApp || d.standalone || seen(HINT_KEY) || document.querySelector(".hn-inapp")) return false;
   style();
   const browser = d.android ? "Chrome" : "Safari";
   const bar = document.createElement("div");
@@ -119,11 +119,12 @@ export function showInAppHint(getLink: () => string = () => location.href, d: De
     bar.remove();
   });
   document.body.prepend(bar);
+  return true;
 }
 
-/** The one-time Add to Home Screen coach mark, for Safari on iPhone and iPad. Call it once a verdict is on screen. */
-export function maybeShowCoachMark(d: Device = detectDevice()): void {
-  if (!d.iosSafari || d.standalone || seen(COACH_KEY) || document.querySelector(".hn-coach")) return;
+/** The one-time Add to Home Screen coach mark, for Safari on iPhone and iPad. Call it once a verdict is on screen. True when shown. */
+export function maybeShowCoachMark(d: Device = detectDevice()): boolean {
+  if (!d.iosSafari || d.standalone || seen(COACH_KEY) || document.querySelector(".hn-coach")) return false;
   remember(COACH_KEY); // once, even if they never tap "Got it"
   style();
   const box = document.createElement("div");
@@ -136,4 +137,5 @@ export function maybeShowCoachMark(d: Device = detectDevice()): void {
   box.querySelector("button")!.addEventListener("click", close);
   document.addEventListener("keydown", (e) => e.key === "Escape" && close(), { once: true });
   document.body.append(box);
+  return true;
 }

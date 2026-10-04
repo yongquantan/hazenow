@@ -3,6 +3,8 @@
  * No analytics, no cookies. The only network call is the public GitHub Releases API (and the copy fetch).
  */
 
+import "./count-site"; // download clicks and the QR code, counted in total only
+
 const REPO = __RELEASES_REPO__;
 const RELEASES_URL = `https://github.com/${REPO}/releases`;
 

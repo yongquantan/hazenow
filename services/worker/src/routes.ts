@@ -9,8 +9,9 @@
  *   GET /v1/{cc|auto}/snapshot?lat&lon   built snapshot for dumb clients; coordinates rounded to 2 dp, never logged
  *   GET /v1/sg/nea/{pm25|psi}            the latest NEA v2 payload (mirrored every 15 min; no historical dates)
  *   GET /v1/sensors/{id}/uptime          a community sensor's 7/30-day uptime and agreement (new in the Worker)
- *   POST|GET /v1/hit?e=share_landing&card={now|clocks|group|clear}   +1 on a (day, card, country) counter; 204
- *   GET /v1/stats?days=30                daily totals; needs `Authorization: Bearer <STATS_TOKEN>`
+ *   POST|GET /v1/hit?e=<event>&<dim>=<value>   +1 on an allow-listed (day, event, dims, country) counter (metrics.ts); 204
+ *   GET /v1/stats?days=30[&refresh=github]   all counters, the funnel and the GitHub archive; needs `Authorization: Bearer <STATS_TOKEN>`
+ *   GET /dash                            the private metrics dashboard (static page; it asks for the token; noindex)
  *
  * Usage counting (usage.ts): every /v1/* request adds 1 to a (UTC day, country, endpoint label) counter. Counts
  * only: no IP, user agent, coordinate, query string or identifier is stored.
@@ -41,7 +42,11 @@ import { SOURCES, sourceHealth } from "./poll.js";
 import { K, kvGet, kvGetMany, kvPrefix, parseOr, type Env, type KvRow } from "./store.js";
 import { SENSOR_ID, sensorUptime } from "./uptime.js";
 import { budget } from "./budget.js";
-import { CARDS, EVENTS, countRequest, countShareLanding, clearUsageBuffer, countryCode, endpointLabel, flushUsage, readStats, sameSecret } from "./usage.js";
+import { countRequest, clearUsageBuffer, countryCode, endpointLabel, flushUsage, sameSecret } from "./usage.js";
+import { countHit } from "./metrics.js";
+import { readAllStats } from "./stats.js";
+import { githubSnapshot } from "./github.js";
+import { dashPage } from "./dash.js";
 
 export const VERSION = "0.2.0";
 
@@ -168,28 +173,27 @@ export async function handle(req: Req, env: Env, opts: HandleOpts = {}): Promise
   if (label) countRequest(label, country, now);
 
   if (isHit) {
-    // Fire-and-forget beacon from the site / web app. Only a fixed event and card id are accepted.
-    const e = u.searchParams.get("e");
-    const card = u.searchParams.get("card");
-    if (!EVENTS.includes(e as (typeof EVENTS)[number]) || !CARDS.includes(card as (typeof CARDS)[number]))
-      return err(400, `e must be ${EVENTS.join("|")} and card one of ${CARDS.join("|")}`, []);
-    countShareLanding(card as string, country, now);
+    // Fire-and-forget beacon from the site, web app and native apps. Only allow-listed events and values (metrics.ts).
+    const r = countHit(u.searchParams, country, now);
+    if (!r.ok) return err(400, r.error, []);
     return { status: 204, headers: { ...CORS, "access-control-allow-methods": "GET, POST, OPTIONS", "cache-control": "no-store" }, body: "" };
   }
+  if (path === "/dash") return dashPage();
   if (path === "/v1/stats") {
     const token = (req.authorization ?? "").replace(/^Bearer\s+/i, "");
     if (!env.STATS_TOKEN) return err(404, "Not found");
     if (!sameSecret(token, env.STATS_TOKEN)) return err(401, "Unauthorized", [], {}, { "www-authenticate": "Bearer" });
     const days = Math.min(400, Math.max(1, Math.floor(Number(u.searchParams.get("days") ?? 30)) || 30));
+    if (u.searchParams.get("refresh") === "github") await githubSnapshot(env, now);
     await flushUsage(db); // this isolate's buffered counts first
-    return json(200, await readStats(db, days, now), "no-store");
+    return json(200, await readAllStats(env, days, now), "no-store");
   }
 
   if (path === "/") {
     return json(200, {
       service: "hazenow-data",
       runtime: "Cloudflare Worker (free plan): cron-polled upstreams, stored in D1",
-      endpoints: ["/health", "/v1/countries", "/v1/scales", "/v1/{cc}/observations", "/v1/{cc|auto}/snapshot?lat=&lon=", "/v1/sg/nea/{pm25|psi}", "/v1/sensors/{id}/uptime", "/v1/hit?e=share_landing&card="],
+      endpoints: ["/health", "/v1/countries", "/v1/scales", "/v1/{cc}/observations", "/v1/{cc|auto}/snapshot?lat=&lon=", "/v1/sg/nea/{pm25|psi}", "/v1/sensors/{id}/uptime", "/v1/hit?e=&…"],
       countries: SERVED.map((c) => c.toLowerCase()),
       source: "https://github.com/yongquantan/hazenow",
       attribution: ALL_ATTRIBUTION,

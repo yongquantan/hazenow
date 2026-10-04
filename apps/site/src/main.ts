@@ -31,6 +31,8 @@ import { countShareLanding } from "./hit";
 import { initFind, type FindOption } from "./place-find";
 // Shared with the web app (one copy of the in-app-browser hint, COPY §21).
 import { showInAppHint } from "../../web/src/install-hints";
+import { count } from "../../web/src/count";
+import "./count-site"; // download clicks, counted in total only
 
 const APP_BASE = __APP_BASE__;
 const STORE_KEY = "hazenow-site-place";
@@ -534,7 +536,8 @@ guessLineUpdate();
 load();
 firmUpGuess();
 // A share link opened inside WhatsApp & co: say how to reach Safari or Chrome, with the link (and its place) to copy.
-showInAppHint(() => (shared && place === shared ? location.href : `${location.origin}/${appLink(place).slice(APP_BASE.length)}`));
+if (showInAppHint(() => (shared && place === shared ? location.href : `${location.origin}/${appLink(place).slice(APP_BASE.length)}`)))
+  count("install_prompt_shown", { kind: "inapp" });
 
 /* ------------------------------------------------------------------ use my location (on this device only) */
 

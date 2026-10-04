@@ -203,7 +203,7 @@ public struct AboutView: View {
             Text("About HazeNow").hazeHeadline(.title3)
             Text("I built HazeNow because the number most of us check during a haze, the 24-hr PSI, moves slowly. NEA also publishes the last hour's PM2.5, and recommends it for deciding what to do right now. HazeNow puts that number first, in plain words, using only NEA's data.")
                 .font(.haze(.callout))
-            Text("It's free and open source (MIT). No ads, no tracking, no account. Your location stays on your phone.")
+            Text("It's free and open source (MIT). No ads, no accounts, and we never track you. We only count things in total, like visits, downloads and shares — never who did them. Your location stays on your phone.")
                 .font(.haze(.callout))
             Text("— \(ShareCredit.name)").font(.haze(.callout, weight: .semibold))
             VStack(alignment: .leading, spacing: 12) {

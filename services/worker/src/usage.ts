@@ -34,12 +34,13 @@ export function endpointLabel(path: string): string | null {
   return "other";
 }
 
-type Table = "usage_daily" | "share_landings";
-const buf = new Map<string, number>(); // `${table}\t${day}\t${a}\t${b}` → count
+type Table = "usage_daily" | "share_landings" | "metric_daily";
+const buf = new Map<string, number>(); // `${table}\t${day}\t${key columns…}` → count
 let pending: Promise<void> | null = null;
 
-function bump(table: Table, day: string, a: string, b: string) {
-  const k = `${table}\t${day}\t${a}\t${b}`;
+/** +1 on a buffered counter. Every key column is a fixed, allow-listed label (never free text from a request). */
+export function bump(table: Table, day: string, ...cols: string[]) {
+  const k = [table, day, ...cols].join("\t");
   buf.set(k, (buf.get(k) ?? 0) + 1);
 }
 
@@ -54,6 +55,8 @@ export function countShareLanding(card: string, country: string, now: number) {
 const SQL: Record<Table, string> = {
   usage_daily: "INSERT INTO usage_daily (day, country, endpoint, n) VALUES (?1, ?2, ?3, ?4) ON CONFLICT (day, country, endpoint) DO UPDATE SET n = n + excluded.n",
   share_landings: "INSERT INTO share_landings (day, card, country, n) VALUES (?1, ?2, ?3, ?4) ON CONFLICT (day, card, country) DO UPDATE SET n = n + excluded.n",
+  // metrics.ts: (day, event, country, a, b) — the product funnel (app opens, first verdicts, shares, installs…).
+  metric_daily: "INSERT INTO metric_daily (day, event, country, a, b, n) VALUES (?1, ?2, ?3, ?4, ?5, ?6) ON CONFLICT (day, event, country, a, b) DO UPDATE SET n = n + excluded.n",
 };
 
 /** Write everything buffered in this isolate (one upsert per key). On failure the counts go back into the buffer. */
@@ -63,8 +66,8 @@ export async function flushUsage(db: D1Database): Promise<void> {
   buf.clear();
   try {
     await db.batch(items.map(([k, n]) => {
-      const [table, day, a, b] = k.split("\t") as [Table, string, string, string];
-      return db.prepare(SQL[table]).bind(day, a, b, n);
+      const [table, ...cols] = k.split("\t") as [Table, ...string[]];
+      return db.prepare(SQL[table]).bind(...cols, n);
     }));
   } catch {
     for (const [k, n] of items) buf.set(k, (buf.get(k) ?? 0) + n);

@@ -69,7 +69,8 @@ let cLoading: Promise<CountryModule> | null = null;
 const loadC = (): Promise<CountryModule> => (cLoading ??= import("./country").then((m) => (C = m)));
 import { mapSvg } from "./map";
 import { bandShape, esc, store, trendIcon } from "./util";
-import { installStepsUrl, maybeShowCoachMark, showInAppHint } from "./install-hints";
+import { detectDevice, installStepsUrl, maybeShowCoachMark, showInAppHint } from "./install-hints";
+import { count, countAppOpen, firstTime } from "./count";
 
 // Opened from a share link (?s=<card>): one anonymous +1 on the data server's share-landing counter (hit.ts).
 countShareLanding((import.meta.env.VITE_HIT_URL as string | undefined) || (import.meta.env.VITE_PROXY_URL as string | undefined));
@@ -170,6 +171,27 @@ const nowMs = () => (mockScenario ? Date.parse(mockScenario._meta.now) : Date.no
  */
 const deviceInput = deviceGuessInput();
 const init = resolveStart(params, store.get, EMBED || MOCK ? null : guessCountry(deviceInput), EMBED);
+
+/*
+ * Counting, never identifying (count.ts, docs/PRIVACY.md): app_open once a day, app_open_week once a week, installed
+ * on the first Home Screen launch, eureka on the first verdict this device ever shows. Local flags decide; only fixed
+ * labels are sent. `placeVia` is how the place on screen was found (never the place itself).
+ */
+type Via = "location" | "typed" | "list" | "saved" | "link" | "guess";
+let placeVia: Via = init.source === "link" ? "link" : init.source === "saved" ? "saved" : "guess";
+const device = detectDevice();
+const opened = (() => {
+  if (EMBED || MOCK) return null;
+  let hadState = false;
+  try {
+    hadState = Object.keys(localStorage).some((k) => k.startsWith("hn.") && !k.startsWith("hn.m."));
+  } catch {
+    /* storage blocked */
+  }
+  return countAppOpen(device.standalone, device.ios ? "ios" : device.android ? "android" : "other", hadState);
+})();
+// A device that used HazeNow before counting existed has had its first verdict already.
+if (opened?.preexisting) firstTime("hn.m.eureka");
 
 /** A point in another covered jurisdiction (locate() never mixes readings across a border), else null. */
 function abroadAt(m: CountryModule, pt: LatLon): CityWhere | null {
@@ -342,7 +364,7 @@ async function refresh(): Promise<void> {
 /* ---------------------------------------------------------------- choosing a place */
 
 /** Switch to a place (and optionally save it into a slot). Persists rounded coordinates only. */
-function choose(place: Place, opts: { assign?: Slot | null; keepNote?: boolean } = {}) {
+function choose(place: Place, opts: { assign?: Slot | null; keepNote?: boolean; via?: Exclude<Via, "link" | "guess"> } = {}) {
   if (!opts.keepNote) state.locNote = null;
   if (opts.assign) {
     state.places = { ...state.places, [opts.assign]: place };
@@ -359,6 +381,10 @@ function choose(place: Place, opts: { assign?: Slot | null; keepNote?: boolean }
     return;
   }
   if (!MOCK) store.set("hn.where", place);
+  if (opts.via) {
+    placeVia = opts.via;
+    if (!MOCK && !EMBED) count("place_set", { via: opts.via });
+  }
   if (place.kind === "city" && C) {
     state.sheetCountry = place.country;
     state.snap = null;
@@ -424,19 +450,19 @@ function onPosition(point: LatLon, assign: Slot | null) {
             : `You're in ${abroad.name}. ${COUNTRY_NAME(abroad.country)} has no official air-quality scale, so we show the number and the WHO guideline.`;
           store.set("hn.seenCountries", [...seen, abroad.country]);
         }
-        choose(abroad, { assign, keepNote: true });
+        choose(abroad, { assign, keepNote: true, via: "location" });
         return;
       }
       const nearestKm = Math.min(...Object.values(REGION_COORDS).map((c) => haversineKm(point, c)));
       if (nearestKm > 40) {
         const r = nearestRegionAny(REGION_COORDS, point) ?? "central";
         state.locNote = `You seem to be outside Singapore. Showing NEA's ${regionLabel(r)} station, the closest.`;
-        choose({ kind: "region", region: r }, { keepNote: true });
+        choose({ kind: "region", region: r }, { keepNote: true, via: "location" });
         return;
       }
       state.geoBlocked = false;
       store.set("hn.geoBlocked", false);
-      choose({ kind: "gps", point }, { assign });
+      choose({ kind: "gps", point }, { assign, via: "location" });
 }
 
 /** Denied / unavailable: never re-prompt. Quietly open the area list; the island view stays underneath. */
@@ -526,6 +552,7 @@ function openShare(opts: { initial?: ShareCardId; fromWhy?: boolean } = {}) {
           placeName: card.placeName,
           linkFor: () => card.link,
           toast,
+          onSent: (c, via) => count("share_sent", { card: c, via }),
         }),
       )
       .catch((e) => {
@@ -546,6 +573,7 @@ function openShare(opts: { initial?: ShareCardId; fromWhy?: boolean } = {}) {
     linkFor: shareLink,
     initial: opts.initial,
     toast,
+    onSent: (c, via) => count("share_sent", { card: c, via }),
   })).catch((e) => {
     console.warn(e);
     toast("Couldn't make the picture.");
@@ -1209,7 +1237,11 @@ function render() {
   app.innerHTML = EMBED ? embedView() : mainView();
   app.classList.toggle("is-first", first);
   // COPY §21: once the first verdict is on screen, Safari on iPhone gets the Add to Home Screen tip (once per device).
-  if (!EMBED && (s || (cs && state.cmode !== "unavailable"))) maybeShowCoachMark();
+  if (!EMBED && (s || (cs && state.cmode !== "unavailable"))) {
+    if (maybeShowCoachMark()) count("install_prompt_shown", { kind: "coach" });
+    // The first verdict this device has ever shown ("eureka"), and how its place was found.
+    if (opened && firstTime("hn.m.eureka")) count("eureka", { via: placeVia });
+  }
   document.documentElement.classList.toggle("sheet-open", !!state.sheet);
   if (!EMBED) watchStickyColumn();
   if (focusKey) {
@@ -1329,7 +1361,7 @@ app.addEventListener("click", (e) => {
       break;
     }
     case "use-slot":
-      if (slot && state.places[slot]) choose(state.places[slot]!);
+      if (slot && state.places[slot]) choose(state.places[slot]!, { via: "saved" });
       break;
     case "geo-ask":
       // Explain first; the OS prompt only follows "Continue".
@@ -1346,11 +1378,11 @@ app.addEventListener("click", (e) => {
       break;
     case "pick-area": {
       const a = findArea(el.dataset.area ?? "");
-      if (a) choose({ kind: "area", name: a.name, point: rounded(a) }, { assign: state.sheet?.assign ?? null });
+      if (a) choose({ kind: "area", name: a.name, point: rounded(a) }, { assign: state.sheet?.assign ?? null, via: state.search.trim() ? "typed" : "list" });
       break;
     }
     case "island":
-      choose({ kind: "island" });
+      choose({ kind: "island" }, { via: "list" });
       break;
     case "sheet-country":
       // From step 1, or straight from a "Where are you checking?" chip: that country's places (step 2).
@@ -1360,12 +1392,13 @@ app.addEventListener("click", (e) => {
       if (!C) break;
       const c = C.sea.findCity(el.dataset.city ?? "", el.dataset.cc as CountryCode);
       if (!c) break;
-      if (c.country === "SG") choose({ kind: "island" }, { assign: state.sheet?.assign ?? null });
-      else choose(C.cityWhere(c), { assign: state.sheet?.assign ?? null });
+      const via = state.search.trim() ? "typed" : "list";
+      if (c.country === "SG") choose({ kind: "island" }, { assign: state.sheet?.assign ?? null, via });
+      else choose(C.cityWhere(c), { assign: state.sheet?.assign ?? null, via });
       break;
     }
     case "region":
-      choose({ kind: "region", region: el.dataset.region! });
+      choose({ kind: "region", region: el.dataset.region! }, { via: "list" });
       break;
     case "profile-toggle":
       state.profileOpen = !state.profileOpen;
@@ -1416,10 +1449,10 @@ app.addEventListener("keydown", (e) => {
     e.preventDefault();
     const q = state.search.trim();
     const first = q ? searchAreas(q, 1)[0] : null;
-    if (first) choose({ kind: "area", name: first.name, point: rounded(first) }, { assign: state.sheet?.assign ?? null });
+    if (first) choose({ kind: "area", name: first.name, point: rounded(first) }, { assign: state.sheet?.assign ?? null, via: "typed" });
     else if (C && q) {
       const c = C.firstPlaceHit(q);
-      if (c) choose(C.cityWhere(c), { assign: state.sheet?.assign ?? null });
+      if (c) choose(C.cityWhere(c), { assign: state.sheet?.assign ?? null, via: "typed" });
     }
   }
   if (e.key === "Tab" && state.sheet) trapFocus(e);
@@ -1587,7 +1620,7 @@ if (bootCountry()) {
 
 firmUpGuess();
 // COPY §21: in a chat app's built-in browser, a slim strip says how to get to Safari or Chrome (never over the reading).
-if (!EMBED) showInAppHint();
+if (!EMBED && showInAppHint()) count("install_prompt_shown", { kind: "inapp" });
 
 // Register right away (not on "load") so the precache is in place as early as possible.
 if (import.meta.env.PROD && "serviceWorker" in navigator && !EMBED && !MOCK) {

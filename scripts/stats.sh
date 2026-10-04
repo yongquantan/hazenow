@@ -8,6 +8,8 @@
 # 2. Web visits                    Cloudflare GraphQL Analytics (Web Analytics / RUM) for both Pages hosts
 # 3. Data server requests          the Worker's GET /v1/stats, daily totals by country and endpoint
 # 4. Share-card landings           same endpoint, by card
+# 5. Funnel, active devices, events   same endpoint (docs/PRIVACY.md lists every counter)
+# 6. GitHub archive                stars, views, clones, referrers, downloads per platform (Worker cron)
 #
 # Needs: curl, jq. Tokens (never in the repo):
 #   ~/.config/hazenow/stats-token.txt  bearer token for /v1/stats (same value as the Worker secret STATS_TOKEN)
@@ -93,3 +95,27 @@ echo "== Share-card landings (?s=<card>) =="
 echo "$s" | jq -r "\"Total: \(.totals.shareLandings)\",
   (.shareLandings[] | \"  \(.day)  \(.total | tostring | (\" \" * (4 - length)) + .)   cards: \(.cards | $fmt)   countries: \(.countries | $fmt)\"),
   \"By card: \([.shareLandings[].cards | to_entries[]] | group_by(.key) | map({key: .[0].key, value: (map(.value) | add)}) | from_entries | $fmt)\""
+
+# ------------------------------------------------------------------ 5-7. product events, funnel, GitHub archive
+echo
+echo "== Funnel (last $DAYS days) =="
+echo "$s" | jq -r '.funnel.steps[] | "  \(.n // "–" | tostring | (" " * (7 - length)) + .)  \(.label)"'
+echo "$s" | jq -r '"  Shares per first verdict: \(.funnel.sharesPerEureka // "–")   Landings per share: \(.funnel.landingsPerShare // "–")"'
+echo
+echo "== Active devices (app_open once per device per UTC day; app_open_week once per ISO week) =="
+echo "$s" | jq -r ".events.app_open as \$o | \"By surface: \(\$o.a | $fmt)\", \"New vs returning: \(\$o.b | $fmt)\", \"Countries: \(\$o.countries | $fmt)\",
+  (\$o.days | to_entries | sort_by(.key)[] | \"  \(.key)  \(.value)\"),
+  \"Weekly (app_open_week, by day it was sent): \(.events.app_open_week.total)\""
+echo
+echo "== Events (totals; see docs/PRIVACY.md) =="
+echo "$s" | jq -r ".events | to_entries[] | select(.key != \"app_open\") | \"  \(.value.total | tostring | (\" \" * (6 - length)) + .)  \(.key)\(if (.value.a | length) > 0 then \"   \(.value.a | $fmt)\" else \"\" end)\(if (.value.b | length) > 0 then \"   (\(.value.b | $fmt))\" else \"\" end)\""
+echo
+echo "== GitHub archive (Worker cron) =="
+echo "$s" | jq -r ".github as \$g | if \$g.latest == null then \"No snapshot yet: \(\$g.state.lastError // \"set the Worker secret GITHUB_TOKEN\")\" else
+  \"Snapshot \(\$g.latest.day): \(\$g.latest.stars) stars, \(\$g.latest.forks) forks, \(\$g.latest.watchers) watchers\",
+  \"Downloads by platform (all time): \(\$g.latest.downloadsByPlatform | $fmt)\",
+  \"Repo views in window: \(\$g.totals.views), clones: \(\$g.totals.clones)\",
+  \"Top referrers (14 days): \([\$g.latest.referrers[] | \"\(.referrer) \(.count)\"] | join(\", \"))\",
+  \"Last run: \(\$g.state.lastRunAt // \"–\")\(if \$g.state.lastError then \" FAILED: \(\$g.state.lastError)\" else \"\" end)\" end"
+echo
+echo "Dashboard: $WORKER/dash"

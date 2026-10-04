@@ -52,6 +52,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        // The anonymous daily +1 (DailyPing): once per UTC day at most, off the main thread, never blocking.
+        val app = applicationContext
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching { sg.hazenow.data.DailyPing.maybeSend(app, sg.hazenow.data.SettingsRepo(app).current()) }
+        }
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)

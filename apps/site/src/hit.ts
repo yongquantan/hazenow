@@ -1,5 +1,5 @@
 /**
- * Share-card landings (COPY §13: "We only count visits and downloads in total"). When a page opens from a share
+ * Share-card landings (COPY §13, docs/PRIVACY.md: "We only count things in total"). When a page opens from a share
  * link (?s=<card>), send one beacon to the data server, which adds 1 to a (day, card, country) counter. The beacon
  * carries no identifier, no place and no body: just the fixed card id. Fire-and-forget, after first paint, once per
  * tab session, and never when the build has no data-server URL.

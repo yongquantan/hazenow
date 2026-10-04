@@ -416,9 +416,9 @@ For `exercising`: "Air's back to Normal (PM2.5 {pm25}). Fine for your run."
 
 ## 13. Privacy line and footer
 
-- **Footer (one line; native apps and integrations, which send nothing new):** "Data: NEA via data.gov.sg · Free & open source · No ads, no tracking, no account"
-- **Privacy line (web app and site):** "No ads, no accounts, and we never track you. We only count visits and downloads in total."
-  The web app and site footer is then "Data: NEA via data.gov.sg · Free & open source" with this line under it. What is counted, all in total and with no identifiers: page visits (Cloudflare Web Analytics, cookieless), release downloads (GitHub's per-file counts), data-server requests per day, country and endpoint, and share-card landings per day, card and country. No IPs, user agents, coordinates or IDs are stored.
+- **Footer (one line; integrations, which send nothing new):** "Data: NEA via data.gov.sg · Free & open source · No ads, no tracking, no account"
+- **Privacy line (web app, site and native apps' About):** "No ads, no accounts, and we never track you. We only count things in total, like visits, downloads and shares — never who did them."
+  The web app and site footer is then "Data: NEA via data.gov.sg · Free & open source" with this line under it. Every counter is a +1 on a (UTC day, event, small fixed label) total; any "once a day" decision is made on the device with a local flag. No IPs, user agents, coordinates, device or user IDs, or fingerprints exist anywhere. The full list of counters is public in [`docs/PRIVACY.md`](PRIVACY.md): keep it in sync whenever a counter is added.
 - **Privacy line (next to location permission and in Settings):** "Your location stays on your device. We never send it anywhere."
 - **Location permission pre-prompt:**
   > **Get the reading for your exact spot?**
@@ -481,7 +481,7 @@ Needs review by a workplace-safety source (MOM haze guidelines for employers) be
 
 Title: "About HazeNow"
 Body 1: "I built HazeNow because the number most of us check during a haze, the 24-hr PSI, moves slowly. NEA also publishes the last hour's PM2.5, and recommends it for deciding what to do right now. HazeNow puts that number first, in plain words, using only NEA's data."
-Body 2: "It's free and open source (MIT). No ads, no tracking, no account. Your location stays on your phone."
+Body 2: "It's free and open source (MIT). No ads, no accounts, and we never track you. We only count things in total, like visits, downloads and shares — never who did them. Your location stays on your phone." (Native apps send one anonymous daily +1, see [`PRIVACY.md`](PRIVACY.md); updated 2026-10-05.)
 Signature: "— Yong Quan Tan"
 Links, in order: "LinkedIn" → https://www.linkedin.com/in/yong-quan-tan · "Kairos Labs · kairoslabs.sg" → https://kairoslabs.sg (subtitle: "I run Kairos Labs, an applied AI studio.") · "Source code on GitHub" → https://github.com/yongquantan/hazenow
 Status: Approved by Yong Quan (2026-09-28).
