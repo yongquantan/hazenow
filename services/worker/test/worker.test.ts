@@ -6,6 +6,7 @@ import { CROWD_COUNTRIES, JOB_SOURCES, jobsForMinute, runJob, runScheduled, type
 import { Poller, SOURCES, hanoiPm25Tail, hanoiPm25TailStream, type FetchLike } from "../src/poll.js";
 import { clearMemo, handle } from "../src/routes.js";
 import { K } from "../src/store.js";
+import { endpointLabel, flushUsage, scheduleFlush } from "../src/usage.js";
 import { asD1, FakeD1 } from "./d1-shim.js";
 
 const MIN = 60_000;
@@ -365,6 +366,76 @@ describe("calibration and privacy", () => {
   test("no console logging in the Worker (no IPs, no query strings, no coordinates)", () => {
     const dir = new URL("../src/", import.meta.url).pathname;
     for (const f of readdirSync(dir)) expect(readFileSync(dir + f, "utf8")).not.toMatch(/console\./);
+  });
+});
+
+describe("aggregate usage counters (no identifiers)", () => {
+  const TOKEN = "t".repeat(40);
+  async function call(env: { DB: D1Database; STATS_TOKEN?: string }, path: string, o: { method?: string; country?: string; auth?: string; now?: number } = {}) {
+    const r = await handle({ method: o.method ?? "GET", url: path, ip: "203.0.113.9", country: o.country, authorization: o.auth }, env, { now: o.now ?? NOW, rateLimitPerMin: 0 });
+    return { status: r.status, headers: r.headers, body: r.body ? JSON.parse(r.body) : null };
+  }
+
+  test("endpoint labels are fixed strings, never values from the URL", () => {
+    expect(endpointLabel("/v1/sg/observations")).toBe("sg/observations");
+    expect(endpointLabel("/v1/auto/snapshot")).toBe("auto/snapshot");
+    expect(endpointLabel("/v1/sensors/ag:12345/uptime")).toBe("sensors/uptime");
+    expect(endpointLabel("/v1/sg/nea/pm25")).toBe("sg/nea/pm25");
+    expect(endpointLabel("/v1/zz/observations")).toBe("other");
+    expect(endpointLabel("/v1/anything/else/1.3521,103.8198")).toBe("other");
+    expect(endpointLabel("/health")).toBeNull();
+    expect(endpointLabel("/v1/hit")).toBeNull();
+    expect(endpointLabel("/v1/stats")).toBeNull();
+  });
+
+  test("/v1/* requests and share landings are counted per day and country; /v1/stats needs the bearer token", async () => {
+    const d1 = new FakeD1();
+    const env = { DB: asD1(d1), STATS_TOKEN: TOKEN };
+    await call(env, "/v1/countries", { country: "SG" });
+    await call(env, "/v1/countries", { country: "SG" });
+    await call(env, "/v1/sg/observations", { country: "MY" });
+    await call(env, "/v1/auto/snapshot?lat=1.3521&lon=103.8198", { country: "SG" });
+    await call(env, "/v1/sensors/ag:999/uptime", {});
+    await call(env, "/health", { country: "SG" }); // not /v1: not counted
+    let r = await call(env, "/v1/hit?e=share_landing&card=now", { method: "POST", country: "SG" });
+    expect(r.status).toBe(204);
+    expect(r.headers["access-control-allow-origin"]).toBe("*");
+    await call(env, "/v1/hit?e=share_landing&card=clocks", { country: "TH" });
+    expect((await call(env, "/v1/hit?e=share_landing&card=1.35,103.8", { method: "POST" })).status).toBe(400);
+    expect((await call(env, "/v1/hit?e=pageview&card=now", { method: "POST" })).status).toBe(400);
+    expect((await call(env, "/v1/countries", { method: "POST" })).status).toBe(405);
+
+    expect((await call(env, "/v1/stats")).status).toBe(401);
+    expect((await call(env, "/v1/stats", { auth: "Bearer wrong" })).status).toBe(401);
+    expect((await call({ DB: env.DB }, "/v1/stats", { auth: `Bearer ${TOKEN}` })).status).toBe(404); // no secret set
+    r = await call(env, "/v1/stats?days=7", { auth: `Bearer ${TOKEN}` });
+    expect(r.status).toBe(200);
+    expect(r.headers["cache-control"]).toBe("no-store");
+    const day = new Date(NOW).toISOString().slice(0, 10);
+    expect(r.body.totals).toEqual({ requests: 5, shareLandings: 2 });
+    expect(r.body.usage).toEqual([
+      { day, total: 5, countries: { SG: 3, MY: 1, XX: 1 }, endpoints: { countries: 2, "sg/observations": 1, "auto/snapshot": 1, "sensors/uptime": 1 } },
+    ]);
+    expect(r.body.shareLandings).toEqual([{ day, total: 2, cards: { now: 1, clocks: 1 }, countries: { SG: 1, TH: 1 } }]);
+
+    // What's stored: only day, country, a fixed label or card, and a count. No IP, no coordinates, no sensor id.
+    const dump = JSON.stringify([d1.q("SELECT * FROM usage_daily"), d1.q("SELECT * FROM share_landings")]);
+    expect(dump).not.toMatch(/203\.0\.113|1\.35|103\.8|ag:999/);
+    expect(Object.keys(d1.q("SELECT * FROM usage_daily")[0]).sort()).toEqual(["country", "day", "endpoint", "n"]);
+  });
+
+  test("writes are batched: one upsert per key, scheduled once per isolate", async () => {
+    const d1 = new FakeD1();
+    const env = { DB: asD1(d1) };
+    for (let i = 0; i < 50; i++) await call(env, "/v1/countries", { country: "SG" });
+    const p = scheduleFlush(env.DB, 1);
+    expect(p).not.toBeNull();
+    expect(scheduleFlush(env.DB, 1)).toBeNull(); // already pending
+    await p;
+    expect(d1.q("SELECT n FROM usage_daily")).toEqual([{ n: 50 }]);
+    await call(env, "/v1/countries", { country: "SG" });
+    await flushUsage(env.DB);
+    expect(d1.q("SELECT n FROM usage_daily")).toEqual([{ n: 51 }]);
   });
 });
 

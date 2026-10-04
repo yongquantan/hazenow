@@ -9,6 +9,8 @@ export interface Env {
   DB: D1Database;
   /** Optional data.gov.sg production key (sent only to api-open.data.gov.sg). Absent by default. */
   NEA_API_KEY?: string;
+  /** Bearer token for GET /v1/stats (`wrangler secret put STATS_TOKEN`). Without it, /v1/stats answers 404. */
+  STATS_TOKEN?: string;
 }
 
 export interface KvRow {

@@ -3,7 +3,7 @@
 Every file below has a stable link that always points at the newest release:
 `https://github.com/{{REPO}}/releases/latest/download/<file name>`. Step-by-step guide with pictures: https://hazenow.pages.dev/download/
 
-**iPhone.** Open the web app in Safari, tap Share, then **Add to Home Screen**. For a Home Screen or Lock Screen widget: install the free **Scriptable** app, open [`HazeNow-scriptable.js`](https://github.com/{{REPO}}/releases/latest/download/HazeNow-scriptable.js), copy it into a new Scriptable script named HazeNow, then add a Scriptable widget and pick **Script: HazeNow**.
+**iPhone.** Open the web app in Safari, tap Share, then **Add to Home Screen**. For a Home Screen or Lock Screen widget: install the free third-party **Scriptable** app, then open [`HazeNow.scriptable`](https://github.com/{{REPO}}/releases/latest/download/HazeNow.scriptable) on the iPhone and choose **Open in Scriptable** (or paste [`HazeNow-scriptable.js`](https://github.com/{{REPO}}/releases/latest/download/HazeNow-scriptable.js) into a new script named HazeNow). Add a Scriptable widget and pick **Script: HazeNow**. Optional **Parameter**: an area such as `Tampines`.
 
 **Android.** Download [`HazeNow-android.apk`](https://github.com/{{REPO}}/releases/latest/download/HazeNow-android.apk) and open it. When asked, allow your browser to install apps (once), then tap **Install**. For automatic updates, use [Obtainium](https://github.com/ImranR98/Obtainium): add `https://github.com/{{REPO}}` or tap `obtainium://add/https://github.com/{{REPO}}`.
 

@@ -59,7 +59,7 @@ Everything is free, and nothing needs an app store. **Step-by-step guide with pi
 | Where | How to install | Status |
 |---|---|---|
 | **Web** ([`apps/web`](apps/web)) | Open [hazenow-app.pages.dev](https://hazenow-app.pages.dev). Installable, works offline | Live |
-| **iPhone** | Safari → [hazenow-app.pages.dev](https://hazenow-app.pages.dev) → Share → **Add to Home Screen**. Widget: free **Scriptable** app + [`HazeNow-scriptable.js`](https://github.com/yongquantan/hazenow/releases/latest/download/HazeNow-scriptable.js). The native app ([`apps/apple`](apps/apple)) needs a paid Apple account, so it isn't distributed | Available |
+| **iPhone** | Safari → [hazenow-app.pages.dev](https://hazenow-app.pages.dev) → Share → **Add to Home Screen**. Widget: free third-party **Scriptable** app + one-tap [`HazeNow.scriptable`](https://hazenow.pages.dev/widget/HazeNow.scriptable). The native app ([`apps/apple`](apps/apple)) needs a paid Apple account, so it isn't distributed | Available |
 | **Android** ([`apps/android`](apps/android)) | [`HazeNow-android.apk`](https://github.com/yongquantan/hazenow/releases/latest/download/HazeNow-android.apk). Updates: [Obtainium](https://github.com/ImranR98/Obtainium) | Available |
 | **Mac** ([`apps/apple`](apps/apple)) | [`HazeNow-mac.zip`](https://github.com/yongquantan/hazenow/releases/latest/download/HazeNow-mac.zip): menu bar `● 105 ▲`, notch pill | Available (not notarised) |
 | **SwiftBar / xbar** ([`integrations/swiftbar`](integrations/swiftbar)) | [`hazenow.2m.py`](https://github.com/yongquantan/hazenow/releases/latest/download/hazenow.2m.py) in your plugin folder | Available |
@@ -71,7 +71,7 @@ Everything is free, and nothing needs an app store. **Step-by-step guide with pi
 ### iPhone
 1. Open [hazenow-app.pages.dev](https://hazenow-app.pages.dev) in **Safari**.
 2. Tap **Share** (the square with an arrow pointing up; on iOS 26, tap **•••** first), then **Add to Home Screen**, then **Add**.
-3. For a Home Screen or Lock Screen widget: install **Scriptable** (free, App Store), open [`HazeNow-scriptable.js`](https://github.com/yongquantan/hazenow/releases/latest/download/HazeNow-scriptable.js), copy it into a new Scriptable script named **HazeNow**, then long-press your Home Screen → **+** → Scriptable → **Add Widget**, tap the widget and pick **Script: HazeNow**.
+3. For a Home Screen or Lock Screen widget: install **Scriptable** (free, App Store, by a third-party developer), open [`HazeNow.scriptable`](https://hazenow.pages.dev/widget/HazeNow.scriptable) on the iPhone and choose **Open in Scriptable** (or paste [`HazeNow-scriptable.js`](https://github.com/yongquantan/hazenow/releases/latest/download/HazeNow-scriptable.js) into a new script named **HazeNow**), then long-press your Home Screen → **+** → Scriptable → **Add Widget**, tap the widget and pick **Script: HazeNow**.
 
 ### Android
 1. Download [`HazeNow-android.apk`](https://github.com/yongquantan/hazenow/releases/latest/download/HazeNow-android.apk) and open it.
@@ -238,13 +238,24 @@ Every app has a mock mode for testing any air state without waiting for haze. Fo
 
 - **Push a tag** `vX.Y.Z` (a tag with `-`, like `v0.3.0-rc1`, becomes a prerelease), or run **Release** from the Actions tab (workflow_dispatch; tag optional, prerelease and draft toggles).
 - **Monthly:** on the 1st, if `main` has changed since the last tag, it bumps the patch, tags and releases.
-- Files: `HazeNow-android.apk` (signed), `HazeNow-mac.zip` (ad-hoc signed, built on `macos-26` with Xcode 26.3; optional, since macOS minutes count 10x), `hazenow-cli.tgz`, `HazeNow-scriptable.js`, `hazenow.2m.py`, `hazenow-home-assistant.zip` and `SHA256SUMS.txt`. The notes list the commits since the last tag, plus how to install.
+- Files: `HazeNow-android.apk` (signed), `HazeNow-mac.zip` (ad-hoc signed, built on `macos-26` with Xcode 26.3; optional, since macOS minutes count 10x), `hazenow-cli.tgz`, `HazeNow-scriptable.js`, `HazeNow.scriptable` (one-tap Scriptable import), `hazenow.2m.py`, `hazenow-home-assistant.zip` and `SHA256SUMS.txt`. The notes list the commits since the last tag, plus how to install.
 - If the Mac job fails or is skipped, `scripts/release-mac-local.sh [tag]` builds the zip on a Mac and uploads it with `gh release upload`.
 - **Where releases go:** one switch. By default they go to this repo. Set the Actions variable `RELEASE_REPO` (e.g. `yongquantan/hazenow-releases`) and a `RELEASES_TOKEN` secret (fine-grained PAT, Contents: read and write on that repo) to publish elsewhere. Build the site with `HAZENOW_RELEASES_REPO` set to the same repo.
 - `releases/latest/download/…` skips prereleases and drafts, so release candidates never replace what people download.
 - **Android signing:** secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD` and `ANDROID_KEY_ALIAS`. Gradle reads them from the environment (`HAZENOW_KEYSTORE_FILE`, `HAZENOW_KEYSTORE_PASSWORD`, `HAZENOW_KEY_ALIAS`); without them, local release builds stay unsigned, as before. **Keep an offline backup of the keystore and its password.** If it's lost, installed apps can't be updated, and everyone has to uninstall and reinstall.
 - **Web and site** are on Cloudflare Pages (`hazenow-app` and `hazenow` projects). `scripts/deploy-pages.sh` builds and deploys both. The release workflow also redeploys them after a full release when a `CLOUDFLARE_API_TOKEN` secret (Cloudflare Pages: Edit) and `CLOUDFLARE_ACCOUNT_ID` exist.
 - **CI** (`.github/workflows/ci.yml`) runs on every push and PR, on Linux only: core tests, web and site builds, proxy tests, Android `:core:test assembleDebug` and the Home Assistant tests.
+
+## Usage counts (aggregate only)
+
+HazeNow promises no ads, no accounts and no tracking. It counts, in total only, with no identifiers stored anywhere:
+
+- **Downloads:** GitHub's own per-file `download_count` on each release.
+- **Visits:** Cloudflare Web Analytics on the two Pages projects (cookieless, no fingerprinting). Turn it on once per project in the dashboard: **Workers & Pages → hazenow → Metrics → Web Analytics → Enable**, then the same for **hazenow-app**. Cloudflare then adds its beacon itself. Alternative, if you'd rather not use the automatic setup: build with `HAZENOW_CF_BEACON_TOKEN=<site token>` (both `apps/site` and `apps/web` read it) to embed the beacon snippet. Never both, or visits count twice.
+- **Data server:** the Worker adds 1 to a `(UTC day, country, endpoint)` counter for each `/v1/*` request (country = Cloudflare's `request.cf.country`, endpoint = a fixed label like `sg/observations`). No IP, user agent, coordinate or query string is stored. Writes are batched per isolate (one upsert per key every few seconds).
+- **Share-card landings:** when the site or web app opens with `?s=<card>`, it sends one `navigator.sendBeacon` to `/v1/hit?e=share_landing&card=<card>`, which adds 1 to a `(day, card, country)` counter. Fire-and-forget, after first paint, once per tab session.
+
+`scripts/stats.sh` prints all four. It reads the Worker's `GET /v1/stats` with the bearer token in `~/.config/hazenow/stats-token.txt` (also the Worker secret `STATS_TOKEN`; never committed). Rotate it with `openssl rand -hex 32 > ~/.config/hazenow/stats-token.txt && tr -d '\n' < ~/.config/hazenow/stats-token.txt | npx wrangler secret put STATS_TOKEN` from `services/worker`.
 
 ## Docs
 

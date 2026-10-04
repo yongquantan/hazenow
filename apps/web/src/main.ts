@@ -10,7 +10,8 @@ import {
   findArea,
   nearestArea,
   type ShareCardId,
-  FOOTER_LINE,
+  COUNT_LINE,
+  WEB_FOOTER_LINE,
   formatSgtTime,
   getSnapshot,
   guessCountry,
@@ -59,6 +60,7 @@ import type { CityWhere, DataMode } from "./country";
 import { PICKER_LITE, surelySingapore } from "./country-lite";
 import { embedWords, placeQuery } from "./embed";
 import { resolveStart, rounded, type Place } from "./start";
+import { countShareLanding } from "./hit";
 
 /* SPEC v2.0: other countries load on demand (catalogue, borders, adapters), so Singapore's bundle stays small. */
 type CountryModule = typeof import("./country");
@@ -67,6 +69,9 @@ let cLoading: Promise<CountryModule> | null = null;
 const loadC = (): Promise<CountryModule> => (cLoading ??= import("./country").then((m) => (C = m)));
 import { mapSvg } from "./map";
 import { bandShape, esc, store, trendIcon } from "./util";
+
+// Opened from a share link (?s=<card>): one anonymous +1 on the data server's share-landing counter (hit.ts).
+countShareLanding((import.meta.env.VITE_HIT_URL as string | undefined) || (import.meta.env.VITE_PROXY_URL as string | undefined));
 
 const SITE = "hazenow.pages.dev";
 const SITE_URL = "https://hazenow.pages.dev/";
@@ -959,7 +964,8 @@ function footer() {
   return `<footer class="foot">
   <p class="status" data-status>${statusText()}</p>
   ${s ? `<p>${esc(provenance(s, point(), nowMs()).detail)}</p>` : ""}
-  <p>${esc(FOOTER_LINE)}</p>
+  <p>${esc(WEB_FOOTER_LINE)}</p>
+  <p>${esc(COUNT_LINE)}</p>
   <p>${esc(PRIVACY_LINE)}${askedWhere ? ` ${esc(COUNTRY_HINT_LINE)}` : ""}</p>
   <p><a href="/how.html">How we calculate this</a> · <a href="${REPO_URL}" rel="noopener">View the code (MIT)</a> · <button class="link" data-action="share-open" data-key="share-foot">Share</button> · <button class="link" data-action="about" data-key="about" aria-expanded="${state.aboutOpen}" aria-controls="about">Made by Yong Quan Tan</button></p>
   ${state.aboutOpen ? aboutSection() : ""}
@@ -972,7 +978,7 @@ function aboutSection() {
   return `<section class="about" id="about" aria-labelledby="about-h">
   <h2 id="about-h">About HazeNow</h2>
   <p>I built HazeNow because the number most of us check during a haze, the 24-hr PSI, moves slowly. NEA also publishes the last hour's PM2.5, and recommends it for deciding what to do right now. HazeNow puts that number first, in plain words, using only NEA's data.</p>
-  <p>It's free and open source (MIT). No ads, no tracking, no account. Your location stays on your phone.</p>
+  <p>It's free and open source (MIT). ${esc(COUNT_LINE)} Your location stays on your phone.</p>
   <p class="about-sig">— Yong Quan Tan</p>
   <ul class="about-links">
     <li><a href="${LINKEDIN_URL}" rel="noopener" target="_blank">LinkedIn</a></li>
@@ -1070,7 +1076,8 @@ function countryFooter(w: CityWhere) {
   return `<footer class="foot">
   <p class="status" data-status>${statusText()}</p>
   ${cs && state.cmode !== "unavailable" ? C.attributionHtml(cs) : ""}
-  <p>Free &amp; open source · No ads, no tracking, no account</p>
+  <p>Free &amp; open source</p>
+  <p>${esc(COUNT_LINE)}</p>
   <p>${esc(PRIVACY_LINE)}${askedWhere ? ` ${esc(COUNTRY_HINT_LINE)}` : ""}</p>
   <p><a href="/how.html">How we calculate this</a> · <a href="${REPO_URL}" rel="noopener">View the code (MIT)</a> · <button class="link" data-action="about" data-key="about" aria-expanded="${state.aboutOpen}" aria-controls="about">Made by Yong Quan Tan</button></p>
   ${state.aboutOpen ? aboutSection() : ""}

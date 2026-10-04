@@ -23,4 +23,5 @@ migrations_dir = "migrations"
 enabled = true
 head_sampling_rate = 0.05
 
+# Secret STATS_TOKEN (set): bearer token for GET /v1/stats. Its value lives outside the repo (~/.config/hazenow/stats-token.txt).
 # Optional: NEA_API_KEY (data.gov.sg production key) as a secret: `wrangler secret put NEA_API_KEY`. Not set.

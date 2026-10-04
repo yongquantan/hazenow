@@ -9,6 +9,11 @@
  *   GET /v1/{cc|auto}/snapshot?lat&lon   built snapshot for dumb clients; coordinates rounded to 2 dp, never logged
  *   GET /v1/sg/nea/{pm25|psi}            the latest NEA v2 payload (mirrored every 15 min; no historical dates)
  *   GET /v1/sensors/{id}/uptime          a community sensor's 7/30-day uptime and agreement (new in the Worker)
+ *   POST|GET /v1/hit?e=share_landing&card={now|clocks|group|clear}   +1 on a (day, card, country) counter; 204
+ *   GET /v1/stats?days=30                daily totals; needs `Authorization: Bearer <STATS_TOKEN>`
+ *
+ * Usage counting (usage.ts): every /v1/* request adds 1 to a (UTC day, country, endpoint label) counter. Counts
+ * only: no IP, user agent, coordinate, query string or identifier is stored.
  *
  * Every response: CORS *, JSON, and an `attribution` array clients must render. Nothing is logged: no IPs, no
  * query strings, no coordinates (observability samples only the Worker's own invocations, and path-only).
@@ -36,6 +41,7 @@ import { SOURCES, sourceHealth } from "./poll.js";
 import { K, kvGet, kvGetMany, kvPrefix, parseOr, type Env, type KvRow } from "./store.js";
 import { SENSOR_ID, sensorUptime } from "./uptime.js";
 import { budget } from "./budget.js";
+import { CARDS, EVENTS, countRequest, countShareLanding, clearUsageBuffer, countryCode, endpointLabel, flushUsage, readStats, sameSecret } from "./usage.js";
 
 export const VERSION = "0.2.0";
 
@@ -103,6 +109,7 @@ async function setRow(db: D1Database, k: string, cc: CountryCode, now: number): 
 export function clearMemo() {
   memo.clear();
   hits.clear();
+  clearUsageBuffer();
 }
 
 /** Per-isolate, per-IP soft rate limit (as the proxy's). IPs stay in memory for a minute and are never logged. */
@@ -125,6 +132,10 @@ export interface Req {
   method: string;
   url: string;
   ip?: string;
+  /** request.cf.country: only ever used as an aggregate counter key. */
+  country?: string;
+  /** The Authorization header (only read by /v1/stats). */
+  authorization?: string;
 }
 
 export interface HandleOpts {
@@ -141,8 +152,10 @@ export async function handle(req: Req, env: Env, opts: HandleOpts = {}): Promise
     return err(400, "Bad URL");
   }
   if (req.method === "OPTIONS") return { status: 204, headers: { ...CORS }, body: "" };
-  if (req.method !== "GET" && req.method !== "HEAD") return err(405, "Method not allowed", ALL_ATTRIBUTION, {}, { allow: "GET, OPTIONS" });
   const path = u.pathname.replace(/\/+$/, "") || "/";
+  const isHit = path === "/v1/hit";
+  if (req.method !== "GET" && req.method !== "HEAD" && !(isHit && req.method === "POST"))
+    return err(405, "Method not allowed", ALL_ATTRIBUTION, {}, { allow: isHit ? "GET, POST, OPTIONS" : "GET, OPTIONS" });
   const db = env.DB;
 
   if (path === "/health") return health(db, now);
@@ -150,11 +163,33 @@ export async function handle(req: Req, env: Env, opts: HandleOpts = {}): Promise
   const retry = rateLimited(req.ip, opts.rateLimitPerMin ?? 60, now);
   if (retry !== null) return err(429, "Too many requests", ALL_ATTRIBUTION, {}, { "retry-after": String(retry) });
 
+  const country = countryCode(req.country);
+  const label = endpointLabel(path);
+  if (label) countRequest(label, country, now);
+
+  if (isHit) {
+    // Fire-and-forget beacon from the site / web app. Only a fixed event and card id are accepted.
+    const e = u.searchParams.get("e");
+    const card = u.searchParams.get("card");
+    if (!EVENTS.includes(e as (typeof EVENTS)[number]) || !CARDS.includes(card as (typeof CARDS)[number]))
+      return err(400, `e must be ${EVENTS.join("|")} and card one of ${CARDS.join("|")}`, []);
+    countShareLanding(card as string, country, now);
+    return { status: 204, headers: { ...CORS, "access-control-allow-methods": "GET, POST, OPTIONS", "cache-control": "no-store" }, body: "" };
+  }
+  if (path === "/v1/stats") {
+    const token = (req.authorization ?? "").replace(/^Bearer\s+/i, "");
+    if (!env.STATS_TOKEN) return err(404, "Not found");
+    if (!sameSecret(token, env.STATS_TOKEN)) return err(401, "Unauthorized", [], {}, { "www-authenticate": "Bearer" });
+    const days = Math.min(400, Math.max(1, Math.floor(Number(u.searchParams.get("days") ?? 30)) || 30));
+    await flushUsage(db); // this isolate's buffered counts first
+    return json(200, await readStats(db, days, now), "no-store");
+  }
+
   if (path === "/") {
     return json(200, {
       service: "hazenow-data",
       runtime: "Cloudflare Worker (free plan): cron-polled upstreams, stored in D1",
-      endpoints: ["/health", "/v1/countries", "/v1/scales", "/v1/{cc}/observations", "/v1/{cc|auto}/snapshot?lat=&lon=", "/v1/sg/nea/{pm25|psi}", "/v1/sensors/{id}/uptime"],
+      endpoints: ["/health", "/v1/countries", "/v1/scales", "/v1/{cc}/observations", "/v1/{cc|auto}/snapshot?lat=&lon=", "/v1/sg/nea/{pm25|psi}", "/v1/sensors/{id}/uptime", "/v1/hit?e=share_landing&card="],
       countries: SERVED.map((c) => c.toLowerCase()),
       source: "https://github.com/yongquantan/hazenow",
       attribution: ALL_ATTRIBUTION,

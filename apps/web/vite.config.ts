@@ -40,8 +40,24 @@ function precacheManifest(): Plugin {
   };
 }
 
+/**
+ * Optional Cloudflare Web Analytics beacon (cookieless; counts visits in total). Set HAZENOW_CF_BEACON_TOKEN at build
+ * time only when Web Analytics is NOT enabled on the Pages project itself (that injects the beacon automatically);
+ * never both, or visits are counted twice. See the root README, "Usage counts".
+ */
+function webAnalytics(): Plugin {
+  const token = (process.env.HAZENOW_CF_BEACON_TOKEN ?? "").trim();
+  return {
+    name: "hazenow-web-analytics",
+    transformIndexHtml: (html) =>
+      /^[A-Za-z0-9]{16,64}$/.test(token)
+        ? html.replace("</head>", `<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "${token}"}'></script>\n  </head>`)
+        : html,
+  };
+}
+
 export default defineConfig({
-  plugins: [precacheManifest()],
+  plugins: [precacheManifest(), webAnalytics()],
   resolve: {
     // Use the core package's TypeScript source directly (no pre-build step needed).
     alias: { hazenow: resolve(here, "../../packages/core/src/index.ts") },

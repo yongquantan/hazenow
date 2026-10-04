@@ -230,6 +230,9 @@ jobs:
         run: |
           set -euo pipefail
           cp integrations/scriptable/HazeNow.js out/HazeNow-scriptable.js
+          # One-tap import: open HazeNow.scriptable on an iPhone → Open in Scriptable.
+          node integrations/scriptable/make-scriptable.mjs out/HazeNow.scriptable
+          node integrations/scriptable/test/check.mjs out/HazeNow.scriptable
           cp integrations/swiftbar/hazenow.2m.py out/hazenow.2m.py
           python3 out/hazenow.2m.py --selftest
           # Unzip into your Home Assistant config folder → config/custom_components/hazenow

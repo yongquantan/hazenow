@@ -2,14 +2,25 @@
 
 The fastest way to put HazeNow on an iPhone home screen or lock screen today. [Scriptable](https://scriptable.app) is a free App Store app that runs JavaScript widgets.
 
-## Install (2 minutes)
-1. Install **Scriptable** from the App Store.
-2. Open `HazeNow.js` on your phone (GitHub → Raw), select all, copy.
-3. Scriptable → **+** → paste → tap the title and name it **HazeNow** → Done. Tap ▶ once to allow location (optional).
-4. Home screen: long-press → **+** → Scriptable → pick Small, Medium or Large → Add → tap the widget → **Script: HazeNow**.
-   Lock screen: customise → add a Scriptable widget (circular, rectangular or inline) → Script: HazeNow.
-5. Optional **Parameter**, comma-separated: an area (`west`, `island`, …) and/or who you're checking for
-   (`kids`, `elderly`, `pregnant`, `heart_lung`, `exercising`, `outdoor_worker`). Example: `west,kids`. Empty means your location, or Central.
+## Install (1 minute)
+1. Install **Scriptable** from the App Store. It's free, and made by a third-party developer, not by HazeNow.
+2. On the iPhone, open **https://hazenow.pages.dev/widget/HazeNow.scriptable** (the site's download page has an
+   "Add the HazeNow widget" button), tap **Download**, then open it from Safari's downloads and choose
+   **Open in Scriptable** (or Share → Scriptable). Scriptable imports it as a script named **HazeNow**.
+   Fallback: open `HazeNow.js` (GitHub → Raw), copy it, then Scriptable → **+** → paste → name it **HazeNow**.
+3. Home screen: long-press → **+** (or **Edit → Add Widget**) → Scriptable → pick Small, Medium or Large → Add →
+   long-press the widget → **Edit Widget** → **Script: HazeNow**.
+   Lock screen: long-press → Customize → Lock Screen → add a Scriptable widget (circular, rectangular or inline) → Script: HazeNow.
+4. Optional **Parameter**, comma-separated: an area (any Singapore planning area or common name: `Tampines`,
+   `Ang Mo Kio`, `CBD`, `Sentosa`; or a region `west`, `island`, …) and/or who you're checking for
+   (`kids`, `elderly`, `pregnant`, `heart_lung`, `exercising`, `outdoor_worker`). Examples: `Tampines`, `west,kids`.
+   Empty means your location if you allowed it in Scriptable, otherwise Singapore island (the average of NEA's stations).
+
+`HazeNow.scriptable` is built from `HazeNow.js` by `make-scriptable.mjs`, in the format Scriptable itself writes when
+it shares a script as a file (`always_run_in_app`, `icon {color, glyph}`, `name`, `script`, `share_sheet_inputs`).
+The site serves it at `/widget/HazeNow.scriptable` as a download (`application/octet-stream`, attachment), and each
+release attaches it as `HazeNow.scriptable`. `node test/check.mjs [file]` checks the format, that the script inside is
+`HazeNow.js` byte for byte, and that the area table matches `packages/core`. Not yet verified on a real iPhone.
 
 ## What it shows (real output, 28 Sep 2026 5pm, from `test/harness.mjs`)
 ```
@@ -30,7 +41,8 @@ Lock:    ◐ 136 ▲ Elevated   (inline)  ·  ● 136 ▲ Elevated / Go easy out
 
 ## Test without a phone
 ```
-node test/harness.mjs                     # Central
+node test/harness.mjs                     # Singapore island
+node test/harness.mjs "Tampines"          # one planning area
 node test/harness.mjs "west,kids"         # area + profile
 node test/harness.mjs "" 1.3521,103.8198  # simulated location
 ```

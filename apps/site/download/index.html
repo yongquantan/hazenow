@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Download HazeNow · iPhone, Android, Mac and more</title>
-    <meta name="description" content="Get HazeNow on your iPhone, Android phone, Mac, command line or Home Assistant. Free and open source. No ads, no tracking, no account. No app store needed." />
+    <meta name="description" content="Get HazeNow on your iPhone, Android phone, Mac, command line or Home Assistant. Free and open source. No ads, no accounts, and we never track you. No app store needed." />
     <link rel="canonical" href="%SITE_URL%/download/" />
     <meta name="theme-color" content="#F3F1EC" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#14232B" media="(prefers-color-scheme: dark)" />
@@ -72,7 +72,7 @@
         <div class="wrap">
           <p class="kicker">Download</p>
           <h1 id="dl-title">Get HazeNow on your device.</h1>
-          <p class="sub">Free and open source. No ads, no tracking, no account. Nothing here goes through an app store yet, so each option has a couple of extra steps. We've kept them short.</p>
+          <p class="sub">Free and open source. No ads, no accounts, and we never track you. We only count visits and downloads in total. Nothing here goes through an app store yet, so each option has a couple of extra steps. We've kept them short.</p>
           <p class="dl-release" id="dl-release" aria-live="polite"><a href="https://github.com/%RELEASES_REPO%/releases" rel="noopener">Latest version on GitHub Releases</a></p>
           <nav class="dl-jump" aria-label="Platforms">
             <a href="#iphone">iPhone</a>
@@ -152,21 +152,73 @@
                 <p class="dl-actions"><a class="btn btn-primary" href="%APP_BASE%">Open HazeNow in Safari</a></p>
               </div>
 
-              <div class="dl-way">
+              <div class="dl-way" id="iphone-widget">
                 <h3>2. A widget, with Scriptable</h3>
-                <p class="dl-note">A Home Screen and Lock Screen widget, through the free Scriptable app.</p>
+                <p class="dl-note">A Home Screen and Lock Screen widget. It runs inside <strong>Scriptable</strong>, a free app by another developer, not by us. Our script is open source, so you can <a href="%REPO_URL%/blob/main/integrations/scriptable/HazeNow.js" rel="noopener">read every line</a> first.</p>
                 <ol class="steps">
-                  <li>Install <a href="https://apps.apple.com/app/scriptable/id1405459188" rel="noopener">Scriptable</a> from the App Store. It's free.</li>
-                  <li>Open <a href="%DL%/HazeNow-scriptable.js" rel="noopener">our script</a>, select all and copy. Or tap <strong>Copy script</strong> below.</li>
-                  <li>In Scriptable, tap <strong>+</strong>, paste, name it <strong>HazeNow</strong> and tap Done. Tap ▶ once to allow location (optional).</li>
-                  <li>Long-press your Home Screen, tap <strong>+</strong>, pick <strong>Scriptable</strong>, choose a size and tap <strong>Add Widget</strong>.</li>
-                  <li>Tap the new widget and set <strong>Script</strong> to <strong>HazeNow</strong>.</li>
+                  <li><strong>Install Scriptable.</strong> It's free on the App Store.</li>
+                  <li><strong>Add the HazeNow widget.</strong> On your iPhone, tap the button below and then <strong>Download</strong>. Open it from Safari's downloads (the arrow in the address bar) and choose <strong>Open in Scriptable</strong>, or tap Share and pick <strong>Scriptable</strong>. HazeNow is now in your Scriptable scripts.</li>
+                  <li><strong>Put it on your Home Screen.</strong> Long-press an empty spot, tap <strong>+</strong> (on newer iPhones, <strong>Edit</strong> then <strong>Add Widget</strong>), pick <strong>Scriptable</strong>, choose a size and tap <strong>Add Widget</strong>. Long-press the new widget, tap <strong>Edit Widget</strong> and set <strong>Script</strong> to <strong>HazeNow</strong>.</li>
                 </ol>
                 <p class="dl-actions">
-                  <button class="btn btn-ghost" type="button" data-copy="/get/HazeNow.js">Copy script</button>
-                  <a href="%DL%/HazeNow-scriptable.js" rel="noopener">Open the script</a>
+                  <a class="btn btn-ghost" href="https://apps.apple.com/app/scriptable/id1405459188" rel="noopener">Install Scriptable (free)</a>
+                  <a class="btn btn-primary" href="/widget/HazeNow.scriptable" download="HazeNow.scriptable">Add the HazeNow widget</a>
                 </p>
-                <p class="copy-status" role="status" aria-live="polite"></p>
+                <div class="ios-figs" aria-hidden="true">
+                  <figure class="ios-fig">
+                    <svg viewBox="0 0 200 120" class="fig-svg">
+                      <rect x="8" y="14" width="184" height="92" rx="16" class="f-panel"/>
+                      <circle cx="30" cy="34" r="11" class="f-hit"/>
+                      <g class="f-strong"><path d="M30 28v12M24 34h12"/></g>
+                      <rect x="52" y="48" width="26" height="26" rx="7" class="f-row"/>
+                      <rect x="87" y="48" width="26" height="26" rx="7" class="f-row"/>
+                      <rect x="122" y="48" width="26" height="26" rx="7" class="f-row"/>
+                      <rect x="157" y="48" width="26" height="26" rx="7" class="f-row" opacity="0.6"/>
+                      <rect x="52" y="80" width="26" height="18" rx="6" class="f-row" opacity="0.6"/>
+                      <rect x="87" y="80" width="26" height="18" rx="6" class="f-row" opacity="0.6"/>
+                      <g class="f-dim"><path d="M60 40l-4-4M65 38v-6M70 40l4-4"/></g>
+                    </svg>
+                    <figcaption>Long-press, then +</figcaption>
+                  </figure>
+                  <figure class="ios-fig">
+                    <svg viewBox="0 0 200 120" class="fig-svg">
+                      <rect x="8" y="14" width="184" height="92" rx="16" class="f-panel"/>
+                      <rect x="20" y="22" width="160" height="22" rx="11" class="f-field"/>
+                      <text x="34" y="38" class="f-text f-small">Scriptable</text>
+                      <rect x="24" y="52" width="36" height="36" rx="9" class="f-rowhit"/>
+                      <rect x="68" y="52" width="76" height="36" rx="9" class="f-row"/>
+                      <rect x="152" y="52" width="26" height="36" rx="7" class="f-row" opacity="0.6"/>
+                      <rect x="62" y="93" width="76" height="9" rx="4.5" class="f-app"/>
+                    </svg>
+                    <figcaption>Scriptable, pick a size</figcaption>
+                  </figure>
+                  <figure class="ios-fig">
+                    <svg viewBox="0 0 200 120" class="fig-svg">
+                      <rect x="8" y="14" width="184" height="92" rx="16" class="f-panel"/>
+                      <rect x="18" y="26" width="164" height="28" rx="8" class="f-rowhit"/>
+                      <text x="26" y="45" class="f-text f-small f-muted">Script</text>
+                      <text x="174" y="45" text-anchor="end" class="f-text f-bold">HazeNow</text>
+                      <rect x="20" y="62" width="160" height="28" rx="8" class="f-row"/>
+                      <text x="26" y="81" class="f-text f-small f-muted">Parameter</text>
+                      <text x="172" y="81" text-anchor="end" class="f-text f-small">Tampines</text>
+                    </svg>
+                    <figcaption>Edit Widget: HazeNow</figcaption>
+                  </figure>
+                </div>
+                <p class="dl-note"><strong>Lock Screen:</strong> long-press the Lock Screen, tap <strong>Customize</strong>, then <strong>Lock Screen</strong>. Tap the widget area, pick <strong>Scriptable</strong> and a shape, then tap it and set <strong>Script</strong> to <strong>HazeNow</strong>.</p>
+                <p class="dl-note"><strong>One area:</strong> it shows Singapore island (or your spot, if you let Scriptable use your location). Type an area such as <code>Tampines</code> in the widget's <strong>Parameter</strong> field to show that area.</p>
+                <details class="dl-more">
+                  <summary>Didn't open in Scriptable? Paste it instead</summary>
+                  <ol class="steps">
+                    <li>Tap <strong>Copy script</strong> below, or open <a href="%DL%/HazeNow-scriptable.js" rel="noopener">our script</a>, select all and copy.</li>
+                    <li>In Scriptable, tap <strong>+</strong>, paste, name it <strong>HazeNow</strong> and tap Done.</li>
+                  </ol>
+                  <p class="dl-actions">
+                    <button class="btn btn-ghost btn-sm" type="button" data-copy="/get/HazeNow.js">Copy script</button>
+                    <a href="%DL%/HazeNow-scriptable.js" rel="noopener">Open the script</a>
+                  </p>
+                  <p class="copy-status" role="status" aria-live="polite"></p>
+                </details>
               </div>
             </li>
 

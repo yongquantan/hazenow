@@ -1,0 +1,7 @@
+# Cloudflare Pages response headers.
+# The Scriptable widget: a download (Safari saves it; opening it offers "Open in Scriptable", which imports it).
+/widget/*
+  Content-Type: application/octet-stream
+  Content-Disposition: attachment; filename="HazeNow.scriptable"
+  Cache-Control: public, max-age=300
+  X-Content-Type-Options: nosniff

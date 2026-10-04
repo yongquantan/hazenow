@@ -4,10 +4,11 @@
  * into public/. Runs before every build. Images are converted to WebP with `cwebp` (`brew install webp`);
  * if cwebp is missing, existing WebPs in public/img are kept, so a normal build doesn't need it.
  */
-import { copyFileSync, existsSync, mkdirSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { makeScriptable } from "../../../integrations/scriptable/make-scriptable.mjs";
 
 const site = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repo = resolve(site, "../..");
@@ -29,6 +30,9 @@ copyFileSync(resolve(repo, "apps/web/docs/cards/og-generic.png"), resolve(pub, "
 copyFileSync(resolve(repo, "integrations/scriptable/HazeNow.js"), resolve(pub, "get/HazeNow.js"));
 copyFileSync(resolve(repo, "integrations/swiftbar/hazenow.2m.py"), resolve(pub, "get/hazenow.2m.py"));
 copyFileSync(resolve(repo, "integrations/shell/hazenow-status.sh"), resolve(pub, "get/hazenow-status.sh"));
+// The one-tap Scriptable import (served with a download content type by public/_headers).
+mkdirSync(resolve(pub, "widget"), { recursive: true });
+writeFileSync(resolve(pub, "widget/HazeNow.scriptable"), JSON.stringify(makeScriptable(), null, 2) + "\n");
 
 let hasCwebp = true;
 try {

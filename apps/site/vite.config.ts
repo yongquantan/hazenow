@@ -13,11 +13,18 @@ const here = fileURLToPath(new URL(".", import.meta.url));
  *   HAZENOW_RELEASES_REPO  owner/repo that hosts the GitHub Releases the download buttons point at
  *                     (default yongquantan/hazenow). Links use /releases/latest/download/<asset>, which only
  *                     works for anonymous visitors once that repo is public (see README, "Downloads").
+ *   HAZENOW_CF_BEACON_TOKEN  optional Cloudflare Web Analytics token (cookieless, counts visits in total). Only
+ *                     needed when Web Analytics is NOT enabled on the Pages project itself, which injects the beacon
+ *                     automatically; never set both, or visits are counted twice. See README, "Usage counts".
  */
 const SITE_URL = (process.env.HAZENOW_SITE_URL ?? "https://hazenow.pages.dev").replace(/\/$/, "");
 const APP_BASE = (process.env.HAZENOW_APP_BASE ?? "https://hazenow-app.pages.dev/").replace(/\/?$/, "/");
 const REPO_URL = (process.env.HAZENOW_REPO_URL ?? "https://github.com/yongquantan/hazenow").replace(/\/$/, "");
 const RELEASES_REPO = (process.env.HAZENOW_RELEASES_REPO ?? "yongquantan/hazenow").replace(/^https:\/\/github\.com\//, "").replace(/\/$/, "");
+const BEACON = (process.env.HAZENOW_CF_BEACON_TOKEN ?? "").trim();
+const BEACON_TAG = /^[A-Za-z0-9]{16,64}$/.test(BEACON)
+  ? `<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "${BEACON}"}'></script>\n  </head>`
+  : "</head>";
 const TOKENS: Record<string, string> = {
   "%SITE_URL%": SITE_URL,
   "%APP_BASE%": APP_BASE,
@@ -29,7 +36,8 @@ const TOKENS: Record<string, string> = {
 function siteMeta(): Plugin {
   return {
     name: "hazenow-site-meta",
-    transformIndexHtml: (html) => html.replace(/%(SITE_URL|APP_BASE|REPO_URL|RELEASES_REPO|DL)%/g, (m) => TOKENS[m]),
+    transformIndexHtml: (html) =>
+      html.replace(/%(SITE_URL|APP_BASE|REPO_URL|RELEASES_REPO|DL)%/g, (m) => TOKENS[m]).replace("</head>", BEACON_TAG),
     generateBundle() {
       const today = new Date().toISOString().slice(0, 10);
       // A sitemap may only list URLs on its own host, so the app is listed only when it's served under this site.

@@ -416,7 +416,9 @@ For `exercising`: "Air's back to Normal (PM2.5 {pm25}). Fine for your run."
 
 ## 13. Privacy line and footer
 
-- **Footer (one line):** "Data: NEA via data.gov.sg · Free & open source · No ads, no tracking, no account"
+- **Footer (one line; native apps and integrations, which send nothing new):** "Data: NEA via data.gov.sg · Free & open source · No ads, no tracking, no account"
+- **Privacy line (web app and site):** "No ads, no accounts, and we never track you. We only count visits and downloads in total."
+  The web app and site footer is then "Data: NEA via data.gov.sg · Free & open source" with this line under it. What is counted, all in total and with no identifiers: page visits (Cloudflare Web Analytics, cookieless), release downloads (GitHub's per-file counts), data-server requests per day, country and endpoint, and share-card landings per day, card and country. No IPs, user agents, coordinates or IDs are stored.
 - **Privacy line (next to location permission and in Settings):** "Your location stays on your device. We never send it anywhere."
 - **Location permission pre-prompt:**
   > **Get the reading for your exact spot?**

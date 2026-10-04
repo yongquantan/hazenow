@@ -8,12 +8,14 @@
  * Data: NEA via data.gov.sg. Your location stays on your device (only used to weight NEA's 5 stations).
  * Copy follows docs/COPY.md verbatim.
  *
- * Setup: Scriptable app → + → paste this file → name it "HazeNow". Long-press the home screen → + →
- * Scriptable → pick a size → tap the widget → Script: HazeNow. Optional "Parameter" (comma-separated):
- *   (empty)                  your location if allowed, else Central
- *   central|north|south|east|west|island    a fixed area
+ * Setup: one tap on https://hazenow.pages.dev/widget/HazeNow.scriptable imports it into Scriptable (or paste this
+ * file into a new script named "HazeNow"). Long-press the home screen → + → Scriptable → pick a size → tap the
+ * widget → Script: HazeNow. Optional "Parameter" (comma-separated):
+ *   (empty)                  your location if you allowed it in Scriptable, else Singapore island (all NEA stations)
+ *   Tampines, Ang Mo Kio, CBD, Sentosa, …   any planning area or a common name for one (estimated for that spot)
+ *   central|north|south|east|west|island    one NEA region, or the islandwide average
  *   general|kids|elderly|pregnant|heart_lung|exercising|outdoor_worker   who you're checking for
- *   e.g. "west,kids"
+ *   e.g. "Tampines" or "west,kids" or "Bukit Timah, elderly"
  * Also works on the lock screen (circular / rectangular / inline) and from Siri Shortcuts.
  */
 
@@ -27,6 +29,17 @@ const FALLBACK = {
   north: [1.41803, 103.82], south: [1.29587, 103.82], east: [1.35735, 103.94],
   west: [1.35735, 103.7], central: [1.35735, 103.82],
 };
+// Planning areas: [name, lat, lon, "alias|alias"]. GENERATED from packages/core/src/areas-data.ts (URA Master Plan
+// 2019, data.gov.sg); test/check.mjs fails if it drifts.
+const AREAS = [["Ang Mo Kio",1.38009,103.8421,"AMK|Cheng San|Teck Ghee|Yio Chu Kang|Sembawang Hills"],["Bedok",1.32405,103.92841,"Bedok North|Bedok South|Bedok Reservoir|Chai Chee|Kembangan|Frankel|Kaki Bukit|Siglap"],["Bishan",1.35496,103.84044,"Bishan North|Sin Ming|Marymount"],["Boon Lay",1.31479,103.70222,"Boon Lay Place|Liu Fang"],["Bukit Batok",1.35566,103.75473,"Bukit Gombak|Hillview|Guilin|Brickworks"],["Bukit Merah",1.27549,103.82314,"Redhill|Tiong Bahru|Telok Blangah|HarbourFront|Henderson|Depot Road|Alexandra|Kampong Bahru|Everton Park"],["Bukit Panjang",1.36682,103.773,"Senja|Fajar|Bangkit|Segar|Pending|Petir|Jelapang|Saujana"],["Bukit Timah",1.33,103.7907,"Sixth Avenue|King Albert Park|Beauty World|Toh Yi|Hillcrest|Coronation Road|Swiss Club|Farrer Court"],["Central Water Catchment",1.37665,103.8012,"MacRitchie|MacRitchie Reservoir|Upper Peirce"],["Changi",1.35032,103.99782,"Changi Airport|Changi Village|Changi Point"],["Changi Bay",1.32407,104.02449,""],["Choa Chu Kang",1.38556,103.74719,"CCK|Chua Chu Kang|Yew Tee|Teck Whye|Keat Hong|Brickland"],["Clementi",1.31759,103.76075,"Clementi West|Clementi Central|West Coast|Sunset Way|Faber"],["Downtown Core",1.28679,103.8555,"CBD|Raffles Place|City Hall|Marina Centre|Tanjong Pagar|Cecil|Bugis|Bayfront|Anson"],["Geylang",1.3209,103.88952,"Aljunied|Geylang East|Kampong Ubi|MacPherson|Eunos"],["Hougang",1.36364,103.8898,"Kovan|Lorong Ah Soo|Upper Paya Lebar|Tai Seng|Defu"],["Jurong East",1.32044,103.73479,"Yuhua|Toh Guan|Teban Gardens|Jurong Gateway|Jurong Lake|Penjuru"],["Jurong West",1.34161,103.7049,"Hong Kah|Taman Jurong|Yunnan|Wenya|Gek Poh|Jurong West Central"],["Kallang",1.31112,103.86654,"Kallang Bahru|Bendemeer|Lavender|Boon Keng|Geylang Bahru|Jalan Besar|Crawford|Kallang Riverside"],["Lim Chu Kang",1.43064,103.71929,"Sungei Gedong"],["Mandai",1.42362,103.80246,"Mandai Estate"],["Marina East",1.28852,103.87235,""],["Marina South",1.28053,103.86563,"Gardens by the Bay|Marina Barrage"],["Marine Parade",1.30023,103.89627,"Katong|Mountbatten|East Coast|East Coast Park|Joo Chiat"],["Museum",1.29592,103.84672,"Dhoby Ghaut|Fort Canning|Bras Basah"],["Newton",1.30866,103.83808,"Newton Circus|Cairnhill|Goodwood Park"],["North-Eastern Islands",1.399,104.0516,"Pulau Ubin|Pulau Tekong"],["Novena",1.32698,103.83531,"Balestier|Moulmein|Thomson|Mount Pleasant"],["Orchard",1.30381,103.83358,"Orchard Road|Somerset|Boulevard"],["Outram",1.28286,103.84206,"Chinatown|Pearl's Hill|People's Park|China Square"],["Pasir Ris",1.37862,103.94829,"Loyang|Elias|Pasir Ris Park|Pasir Ris West"],["Paya Lebar",1.3594,103.91478,"Paya Lebar Airbase"],["Pioneer",1.31259,103.67299,"Pioneer Sector"],["Punggol",1.40536,103.91005,"Punggol Waterway|Matilda|Coney Island|Punggol Field|Northshore"],["Queenstown",1.28908,103.78457,"Commonwealth|Dover|Buona Vista|one-north|Tanglin Halt|Kent Ridge|NUS|Mei Chin|Ghim Moh|Holland Village"],["River Valley",1.29805,103.83398,"Great World|Leonie Hill|Oxley"],["Rochor",1.30414,103.85328,"Little India|Kampong Glam|Farrer Park|Victoria Street|Sungei Road"],["Seletar",1.41438,103.87707,"Seletar Aerospace|Seletar Airport"],["Sembawang",1.45575,103.81883,"Canberra|Sembawang Springs|Admiralty Park"],["Sengkang",1.39128,103.88771,"Anchorvale|Compassvale|Rivervale|Fernvale|Sengkang West"],["Serangoon",1.3652,103.86782,"Serangoon Gardens|Serangoon North|Lorong Chuan|Serangoon Central"],["Simpang",1.44422,103.85003,""],["Singapore River",1.29011,103.84121,"Clarke Quay|Boat Quay|Robertson Quay"],["Southern Islands",1.2497,103.8298,"Sentosa|St John's Island|Kusu Island"],["Straits View",1.27125,103.85877,""],["Sungei Kadut",1.41813,103.75746,"Kranji"],["Tampines",1.34379,103.95403,"Tampines East|Tampines West|Tampines North|Simei"],["Tanglin",1.30837,103.8176,"Botanic Gardens|Dempsey|Nassim|Tyersall|Chatsworth|Ridout"],["Tengah",1.36385,103.72875,"Tengah Garden|Tengah Park"],["Toa Payoh",1.33668,103.86103,"Braddell|Potong Pasir|Woodleigh|Bidadari|Boon Teck|Caldecott"],["Tuas",1.28024,103.6331,"Tuas South|Tuas View|Tuas Link|Joo Koon"],["Western Islands",1.26599,103.69175,"Jurong Island|Pulau Bukom"],["Western Water Catchment",1.38211,103.68974,"Tengeh|Poyan"],["Woodlands",1.44068,103.7877,"Admiralty|Marsiling|Woodlands North|Woodlands South|Causeway"],["Yishun",1.41504,103.83712,"Khatib|Chong Pang|Nee Soon|Yishun East|Yishun West"]];
+const norm = (x) => String(x).toLowerCase().replace(/[^a-z0-9]+/g, "");
+function findArea(q) {
+  const n = norm(q);
+  if (n.length < 2) return null;
+  const hit = AREAS.find((a) => norm(a[0]) === n || a[3].split("|").some((x) => x && norm(x) === n))
+    || (n.length >= 4 ? AREAS.find((a) => norm(a[0]).startsWith(n)) : null);
+  return hit ? { name: hit[0], loc: [hit[1], hit[2]] } : null;
+}
 // COPY §3: text label always; shape carries meaning (SF Symbols); never ▲/▼ in the chip.
 const BANDS = {
   normal: { label: "Normal", color: "#2E9E5B", sf: "circle.fill", glyph: "●" },
@@ -220,8 +233,8 @@ function snapshot(raw, region, loc) {
 function provenance(s) { // COPY §6
   const obs = timeLabel(s.observedAt), age = ` · ${ageText(s.observedAt)}`, R = title(s.spot.nearest || "island");
   if (s.spot.mode === "gps") return s.spot.blended
-    ? `Estimated for your spot from NEA stations · nearest: ${R}, ${s.spot.km.toFixed(1)} km · measured ${obs}${age}`
-    : `NEA ${R} station · ${s.spot.km.toFixed(1)} km away · measured ${obs}${age}`;
+    ? `Estimated for ${s.place || "your spot"} from NEA stations · nearest: ${R}, ${s.spot.km.toFixed(1)} km · measured ${obs}${age}`
+    : `NEA ${R} station · ${s.spot.km.toFixed(1)} km ${s.place ? `from ${s.place}` : "away"} · measured ${obs}${age}`;
   if (s.spot.mode === "island") return s.spot.fellBack ? `${R} station is offline. Showing the average of NEA's other stations.${age}` : `Average of NEA stations islandwide · measured ${obs}${age}`;
   return `NEA ${R} station · measured ${obs}${age}`;
 }
@@ -383,7 +396,7 @@ function build(s, family, p, offline) {
     txt(right, "Last 24 hours", 10, { bold: true, ...muted });
     const W = family === "large" ? 150 : 140, H = family === "large" ? 84 : 76;
     const img = right.addImage(chartImage(s, W, H)); img.imageSize = new Size(W, H);
-    txt(right, s.spot.mode === "gps" ? "Bars: hourly PM2.5 at your spot" : "Bars: hourly PM2.5", 8, muted);
+    txt(right, s.spot.mode === "gps" ? `Bars: hourly PM2.5 ${s.place ? `in ${s.place}` : "at your spot"}` : "Bars: hourly PM2.5", 8, muted);
     txt(right, "Line: NEA 24-hr average PM2.5", 8, muted);
     txt(right, officialLine(s), 9, { ...muted, bold: true });
   }
@@ -418,17 +431,25 @@ function shareText(s) { // COPY §15 (no verdict)
 }
 
 // ------------------------------------------------------------------ main
-const parts = String(args.widgetParameter || args.shortcutParameter || "").toLowerCase().split(/[ ,]+/).filter(Boolean);
-const profile = parts.find((x) => PROFILES.includes(x)) || "general";
-const region = parts.find((x) => REGIONS.includes(x) || x === "island") || "central";
-let loc = null;
-if (!parts.some((x) => REGIONS.includes(x) || x === "island")) {
+// Parameter: comma-separated parts, each a profile, a region, or an area name ("Tampines", "Ang Mo Kio").
+// A part with spaces that isn't an area is read word by word, so "west kids" still works.
+let profile = "general", region = null, area = null;
+for (const part of String(args.widgetParameter || args.shortcutParameter || "").toLowerCase().split(",").map((x) => x.trim()).filter(Boolean)) {
+  const one = (w) => (PROFILES.includes(w) ? ((profile = w), true) : REGIONS.includes(w) || w === "island" ? ((region = w), true) : false);
+  if (one(part)) continue;
+  const a = findArea(part);
+  if (a) { area = a; continue; }
+  for (const w of part.split(/\s+/)) if (!one(w)) { const b = findArea(w); if (b) area = b; }
+}
+let loc = area ? area.loc : null;
+if (!area && !region) {
   try {
     Location.setAccuracyToThreeKilometers();
     const l = await Location.current();
     loc = [l.latitude, l.longitude];
-  } catch (e) { loc = null; } // not allowed → the chosen area (Central)
+  } catch (e) { loc = null; } // not allowed → Singapore island
 }
+region = region || "island";
 
 let raw, offline = false;
 try { raw = await loadRaw(); } catch (e) { raw = readCache("last"); offline = true; }
@@ -442,6 +463,7 @@ if (!raw) {
   widget.refreshAfterDate = new Date(Date.now() + 10 * 60e3);
 } else {
   s = snapshot(raw, region, loc);
+  if (area) s.place = area.name;
   widget = build(s, config.widgetFamily || "medium", profile, offline);
   if (!config.runsInWidget) Script.setShortcutOutput(`${V[s.band][profile][0]} ${shareText(s)}`);
 }

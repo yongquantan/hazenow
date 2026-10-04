@@ -3,7 +3,7 @@
  * against the real migration. Only the D1 surface the Worker uses: prepare/bind/first/all/run and batch.
  */
 import { Database } from "bun:sqlite";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 
 class Stmt {
   constructor(private db: Database, readonly sql: string, readonly params: unknown[] = []) {}
@@ -31,8 +31,8 @@ class Stmt {
 export class FakeD1 {
   readonly db = new Database(":memory:");
   constructor() {
-    const sql = readFileSync(new URL("../migrations/0001_init.sql", import.meta.url), "utf8");
-    this.db.exec(sql);
+    const dir = new URL("../migrations/", import.meta.url);
+    for (const f of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) this.db.exec(readFileSync(new URL(f, dir), "utf8"));
   }
   prepare(sql: string) {
     return new Stmt(this.db, sql);

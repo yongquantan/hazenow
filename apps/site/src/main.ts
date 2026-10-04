@@ -23,6 +23,7 @@ import {
   type Snapshot,
 } from "hazenow";
 import { initSea } from "./sea";
+import { countShareLanding } from "./hit";
 
 const APP_BASE = __APP_BASE__;
 const STORE_KEY = "hazenow-site-place";
@@ -51,6 +52,7 @@ const esc = (s: string) =>
 {
   const q = new URLSearchParams(location.search);
   if (["embed", "lat", "lon", "mock", "theme"].some((k) => q.has(k))) location.replace(APP_BASE + location.search + location.hash);
+  else countShareLanding(import.meta.env.VITE_HIT_URL || import.meta.env.VITE_PROXY_URL); // ?s=<card>: one anonymous +1
 }
 
 /* ------------------------------------------------------------------ place */
