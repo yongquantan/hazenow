@@ -81,6 +81,12 @@ const REGIONS = ["north", "south", "east", "west", "central"];
  * or `?region=<name>` (share.ts / COPY §15). findArea normalises case and punctuation, so both forms resolve.
  */
 function sharedPlace(q: URLSearchParams): Place | null {
+  // SPEC v2.1: a card from outside Singapore links to `?country=th&area=bangkok`. The name fills in once the catalogue loads.
+  const cc = q.get("country")?.trim().toUpperCase();
+  if (cc && cc !== "SG" && /^[A-Z]{2}$/.test(cc)) {
+    const id = (q.get("area") ?? "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    return { kind: "city", cc, id, name: "" };
+  }
   const region = q.get("region")?.trim().toLowerCase();
   if (region === "island" || region === "singapore") return { kind: "island" };
   if (region && REGIONS.includes(region)) return { kind: "region", region };
@@ -360,6 +366,7 @@ async function loadCity(ctrl: AbortController, forPlace: Place & { kind: "city" 
   forPlace.name = c.name;
   forPlace.id = c.id;
   forPlace.cc = c.country;
+  if (forPlace === shared) showSharedLine();
   document.querySelectorAll<HTMLAnchorElement>("[data-app-link]").forEach((a) => (a.href = appLink(forPlace)));
   const sel = $<HTMLSelectElement>("#place");
   if (sel && ![...sel.options].some((o) => o.value === placeValue(forPlace))) await buildSelect(sel, forPlace);
@@ -425,11 +432,13 @@ function setPlace(p: Place) {
   load().finally(() => body?.classList.remove("is-loading"));
 }
 
-const sharedLine = $("#shared-line");
-if (shared && sharedLine) {
-  sharedLine.textContent = `Shared with you: ${airPhrase(shared)}`;
-  sharedLine.hidden = false;
+function showSharedLine() {
+  const line = $("#shared-line");
+  if (!shared || !line || (shared.kind === "city" && !shared.name)) return;
+  line.textContent = `Shared with you: ${airPhrase(shared)}`;
+  line.hidden = false;
 }
+showSharedLine();
 
 const sel = $<HTMLSelectElement>("#place");
 if (sel) {
