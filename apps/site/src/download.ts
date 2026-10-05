@@ -1,6 +1,6 @@
 /**
  * /download/: highlight the option for this device, show the latest release, and the copy buttons.
- * No analytics, no cookies. The only network call is the public GitHub Releases API (and the copy fetch).
+* No cookies; anonymous totals only (docs/PRIVACY.md). The only network call is the public GitHub Releases API (and the copy fetch).
  */
 
 import "./count-site"; // download clicks and the QR code, counted in total only

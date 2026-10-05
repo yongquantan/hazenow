@@ -1,6 +1,6 @@
 /**
  * hazenow.pages.dev landing page: the live reading in the hero (reusing packages/core, so the maths and the words
- * match every HazeNow app), plus the "Copy script" button. No framework, no analytics, no cookies.
+ * match every HazeNow app), plus the "Copy script" button. No framework, no cookies; anonymous totals only (docs/PRIVACY.md).
  */
 import {
   SG_AREAS,
