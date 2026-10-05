@@ -29,6 +29,7 @@
   </head>
   <body class="page-download" data-releases-repo="%RELEASES_REPO%">
     <a class="skip" href="#main">Skip to content</a>
+    <noscript><style>.dl-panel[hidden], .dl-body[hidden] { display: block !important; } .dl-chev { display: none; }</style></noscript>
 
     <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
       <defs>
@@ -37,12 +38,20 @@
         <symbol id="i-mac" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="11.5" rx="1.8"/><path d="M2 19.5h20M10 7h4"/></symbol>
         <symbol id="i-android" viewBox="0 0 24 24"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M6.5 6h11M6.5 18h11"/></symbol>
         <symbol id="i-term" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="2.5"/><path d="m7 10 3 2.5L7 15M12.5 15H17"/></symbol>
-        <symbol id="i-cmd" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 12h8M12 8v8"/></symbol>
         <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8.5a1 1 0 0 1-1 1h-4.5V15h-5v5.5H5a1 1 0 0 1-1-1Z"/></symbol>
-        <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5Z"/></symbol>
+        <symbol id="i-bar" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="4.5" rx="1.2"/><circle cx="15" cy="7.25" r=".9"/><path d="M4.5 14h9M4.5 17.5h6"/></symbol>
+        <symbol id="i-prompt" viewBox="0 0 24 24"><path d="m5 8 4 4-4 4M11 16h8"/></symbol>
         <symbol id="i-dl" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/></symbol>
         <symbol id="i-share" viewBox="0 0 24 24"><path d="M8.5 9H7a1.5 1.5 0 0 0-1.5 1.5v8A1.5 1.5 0 0 0 7 20h10a1.5 1.5 0 0 0 1.5-1.5v-8A1.5 1.5 0 0 0 17 9h-1.5M12 14V3.5M8.8 6.7 12 3.5l3.2 3.2"/></symbol>
         <symbol id="i-addhome" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3.5"/><path d="M12 8.5v7M8.5 12h7"/></symbol>
+        <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6.5 9.5 5.5 5.5 5.5-5.5"/></symbol>
+        <!-- feature chips -->
+        <symbol id="f-read" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2.5"/></symbol>
+        <symbol id="f-widget" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7.5" height="7.5" rx="2"/><rect x="13" y="3.5" width="7.5" height="7.5" rx="2"/><rect x="3.5" y="13" width="17" height="7.5" rx="2"/></symbol>
+        <symbol id="f-alert" viewBox="0 0 24 24"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15ZM10 21h4"/></symbol>
+        <symbol id="f-bar" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="4.5" rx="1.2"/><circle cx="15" cy="7.25" r=".9"/><path d="M4.5 14h9M4.5 17.5h6"/></symbol>
+        <symbol id="f-notch" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M9 5v1.5a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V5"/></symbol>
+        <symbol id="f-tile" viewBox="0 0 24 24"><rect x="3.5" y="7" width="17" height="10" rx="5"/><circle cx="9" cy="12" r="2.2"/></symbol>
       </defs>
     </svg>
 
@@ -70,341 +79,262 @@
     <main id="main">
       <section class="dl-hero" aria-labelledby="dl-title">
         <div class="wrap">
-          <p class="kicker">Download</p>
-          <h1 id="dl-title">Get HazeNow on your device.</h1>
-          <p class="sub">Your area’s air on every screen, and an alert when it changes. Free and open source: no ads, no accounts, and we never track you (we only count totals, never who). No app store yet, so each option takes a few extra taps.</p>
-          <p class="dl-release" id="dl-release" aria-live="polite"><a href="https://github.com/%RELEASES_REPO%/releases" rel="noopener">Latest version on GitHub Releases</a></p>
+          <h1 id="dl-title">Get HazeNow.</h1>
+          <p class="sub">Free and open source. No app store, no ads, no accounts, never tracked.</p>
           <aside class="dl-qr" id="dl-qr" aria-labelledby="dl-qr-title" hidden>
             <div class="dl-qr-code" id="dl-qr-code"></div>
             <div>
-              <h2 id="dl-qr-title">Scan to open HazeNow on your phone</h2>
+              <h2 id="dl-qr-title">Best on your phone. Scan to open.</h2>
               <p>Point your phone's camera at the code. It opens HazeNow<span id="dl-qr-place"></span>, ready to add to your Home Screen.</p>
             </div>
           </aside>
-          <nav class="dl-jump" aria-label="Platforms">
-            <a href="#iphone">iPhone</a>
-            <a href="#android">Android</a>
-            <a href="#mac">Mac</a>
-            <a href="#web">Any browser</a>
-            <a href="#cli">Command line</a>
-            <a href="#home-assistant">Home Assistant</a>
-            <a href="#soon">Coming soon</a>
-          </nav>
         </div>
       </section>
 
-      <section class="section dl-section" aria-label="Downloads">
+      <section class="dl-section" aria-label="Downloads">
         <div class="wrap">
           <ol class="dl-list" id="dl-list">
             <!-- iPhone -->
-            <li class="dl" id="iphone" data-platform="ios">
-              <div class="dl-head">
-                <svg class="ic" aria-hidden="true"><use href="#i-phone"/></svg>
-                <div>
-                  <p class="dl-rec" hidden>Recommended for this device</p>
-                  <h2>iPhone and iPad</h2>
-                </div>
-                <span class="status s-ready"><i aria-hidden="true"></i>Available</span>
-              </div>
-              <p class="dl-intro">Two ways, both free, no App Store needed. Use one or both.</p>
-
-              <div class="dl-way">
-                <h3>1. The app, on your Home Screen</h3>
-                <p class="dl-note">The full HazeNow, installed from Safari. It works offline and opens like any other app.</p>
-                <ol class="steps">
-                  <li>Open <a href="%APP_BASE%">HazeNow</a> in <strong>Safari</strong>.</li>
-                  <li>Tap <strong>Share</strong>, the square with an arrow. On iOS 26, tap <strong>•••</strong> first, then Share.</li>
-                  <li>Scroll down and tap <strong>Add to Home Screen</strong>, then <strong>Add</strong>.</li>
-                </ol>
-                <div class="ios-figs" aria-hidden="true">
-                  <figure class="ios-fig">
-                    <svg viewBox="0 0 200 120" class="fig-svg">
-                      <rect x="8" y="14" width="184" height="92" rx="16" class="f-panel"/>
-                      <rect x="24" y="30" width="152" height="26" rx="13" class="f-field"/>
-                      <text x="100" y="48" text-anchor="middle" class="f-text">hazenow</text>
-                      <g transform="translate(34 70)" class="f-dim"><path d="M10 4 4 12l6 8" /></g>
-                      <g transform="translate(64 70)" class="f-dim"><path d="M4 4l6 8-6 8" /></g>
-                      <circle cx="100" cy="82" r="17" class="f-hit"/>
-                      <g transform="translate(88 70) scale(1)" class="f-strong"><use href="#i-share" width="24" height="24"/></g>
-                      <g transform="translate(142 72)" class="f-dim"><rect x="0" y="0" width="16" height="16" rx="3"/><rect x="4" y="-3" width="16" height="16" rx="3"/></g>
-                    </svg>
-                    <figcaption>Tap Share</figcaption>
-                  </figure>
-                  <figure class="ios-fig">
-                    <svg viewBox="0 0 200 120" class="fig-svg">
-                      <rect x="8" y="14" width="184" height="92" rx="16" class="f-panel"/>
-                      <rect x="20" y="24" width="160" height="22" rx="7" class="f-row"/>
-                      <text x="30" y="40" class="f-text f-muted">Copy</text>
-                      <rect x="18" y="52" width="164" height="28" rx="8" class="f-rowhit"/>
-                      <text x="25" y="71" class="f-text f-bold" textLength="124" lengthAdjust="spacingAndGlyphs">Add to Home Screen</text>
-                      <g transform="translate(158 56)" class="f-strong"><use href="#i-addhome" width="20" height="20"/></g>
-                      <rect x="20" y="86" width="160" height="12" rx="6" class="f-row"/>
-                    </svg>
-                    <figcaption>Add to Home Screen</figcaption>
-                  </figure>
-                  <figure class="ios-fig">
-                    <svg viewBox="0 0 200 120" class="fig-svg">
-                      <rect x="8" y="14" width="184" height="92" rx="16" class="f-panel"/>
-                      <rect x="30" y="30" width="34" height="34" rx="9" class="f-row"/>
-                      <rect x="83" y="30" width="34" height="34" rx="9" class="f-app"/>
-                      <g transform="translate(83 30) scale(0.34)" class="f-mark">
-                        <circle cx="50" cy="38" r="17"/><rect x="17" y="61" width="66" height="7.5" rx="3.75"/><rect x="27" y="73.5" width="46" height="7.5" rx="3.75" fill-opacity="0.7"/><rect x="38" y="86" width="24" height="7.5" rx="3.75" fill-opacity="0.45"/>
-                      </g>
-                      <rect x="136" y="30" width="34" height="34" rx="9" class="f-row"/>
-                      <text x="100" y="84" text-anchor="middle" class="f-text f-small">HazeNow</text>
-                    </svg>
-                    <figcaption>Open it like any app</figcaption>
-                  </figure>
-                </div>
+            <li class="dl" id="iphone" data-platform="ios" data-scope>
+              <h2 class="dl-h">
+                <button class="dl-toggle" type="button" aria-expanded="false" aria-controls="iphone-body" data-auto>
+                  <svg class="ic" aria-hidden="true"><use href="#i-phone"/></svg>
+                  <span class="dl-name"><span class="dl-rec" hidden>For this device</span>iPhone and iPad</span>
+                  <span class="feats"><span class="feat"><svg aria-hidden="true"><use href="#f-read"/></svg>Reading</span><span class="feat"><svg aria-hidden="true"><use href="#f-alert"/></svg>Alerts</span><span class="feat"><svg aria-hidden="true"><use href="#f-widget"/></svg>Widget</span></span>
+                  <svg class="dl-chev" aria-hidden="true"><use href="#i-chev"/></svg>
+                </button>
+              </h2>
+              <div class="dl-body" id="iphone-body" hidden>
+                <p class="dl-promise">The full app on your Home Screen. Three taps from Safari.</p>
                 <p class="dl-actions"><a class="btn btn-primary" href="%APP_BASE%">Open HazeNow in Safari</a></p>
-                <p class="dl-note" id="iphone-alerts"><strong>Alerts:</strong> add HazeNow to your Home Screen, then tap “Get alerts”. You'll hear from it only when the air changes in your area, and when it's clear again. Free, iOS 16.4 or newer, Singapore only for now.</p>
-              </div>
-
-              <div class="dl-way" id="iphone-widget">
-                <h3>2. A widget, with Scriptable</h3>
-                <p class="dl-note">A Home Screen and Lock Screen widget. It runs inside <strong>Scriptable</strong>, a free app by another developer, not by us. Our script is open source, so you can <a href="%REPO_URL%/blob/main/integrations/scriptable/HazeNow.js" rel="noopener">read every line</a> first.</p>
-                <ol class="steps">
-                  <li><strong>Install Scriptable.</strong> It's free on the App Store.</li>
-                  <li><strong>Add the HazeNow widget.</strong> On your iPhone, tap the button below and then <strong>Download</strong>. Open it from Safari's downloads (the arrow in the address bar) and choose <strong>Open in Scriptable</strong>, or tap Share and pick <strong>Scriptable</strong>. HazeNow is now in your Scriptable scripts.</li>
-                  <li><strong>Put it on your Home Screen.</strong> Long-press an empty spot, tap <strong>+</strong> (on newer iPhones, <strong>Edit</strong> then <strong>Add Widget</strong>), pick <strong>Scriptable</strong>, choose a size and tap <strong>Add Widget</strong>. Long-press the new widget, tap <strong>Edit Widget</strong> and set <strong>Script</strong> to <strong>HazeNow</strong>.</li>
-                </ol>
-                <p class="dl-actions">
-                  <a class="btn btn-ghost" href="https://apps.apple.com/app/scriptable/id1405459188" rel="noopener">Install Scriptable (free)</a>
-                  <a class="btn btn-primary" href="/widget/HazeNow.scriptable" download="HazeNow.scriptable">Add the HazeNow widget</a>
-                </p>
-                <div class="ios-figs" aria-hidden="true">
-                  <figure class="ios-fig">
-                    <svg viewBox="0 0 200 120" class="fig-svg">
-                      <rect x="8" y="14" width="184" height="92" rx="16" class="f-panel"/>
-                      <circle cx="30" cy="34" r="11" class="f-hit"/>
-                      <g class="f-strong"><path d="M30 28v12M24 34h12"/></g>
-                      <rect x="52" y="48" width="26" height="26" rx="7" class="f-row"/>
-                      <rect x="87" y="48" width="26" height="26" rx="7" class="f-row"/>
-                      <rect x="122" y="48" width="26" height="26" rx="7" class="f-row"/>
-                      <rect x="157" y="48" width="26" height="26" rx="7" class="f-row" opacity="0.6"/>
-                      <rect x="52" y="80" width="26" height="18" rx="6" class="f-row" opacity="0.6"/>
-                      <rect x="87" y="80" width="26" height="18" rx="6" class="f-row" opacity="0.6"/>
-                      <g class="f-dim"><path d="M60 40l-4-4M65 38v-6M70 40l4-4"/></g>
-                    </svg>
-                    <figcaption>Long-press, then +</figcaption>
-                  </figure>
-                  <figure class="ios-fig">
-                    <svg viewBox="0 0 200 120" class="fig-svg">
-                      <rect x="8" y="14" width="184" height="92" rx="16" class="f-panel"/>
-                      <rect x="20" y="22" width="160" height="22" rx="11" class="f-field"/>
-                      <text x="34" y="38" class="f-text f-small">Scriptable</text>
-                      <rect x="24" y="52" width="36" height="36" rx="9" class="f-rowhit"/>
-                      <rect x="68" y="52" width="76" height="36" rx="9" class="f-row"/>
-                      <rect x="152" y="52" width="26" height="36" rx="7" class="f-row" opacity="0.6"/>
-                      <rect x="62" y="93" width="76" height="9" rx="4.5" class="f-app"/>
-                    </svg>
-                    <figcaption>Scriptable, pick a size</figcaption>
-                  </figure>
-                  <figure class="ios-fig">
-                    <svg viewBox="0 0 200 120" class="fig-svg">
-                      <rect x="8" y="14" width="184" height="92" rx="16" class="f-panel"/>
-                      <rect x="18" y="26" width="164" height="28" rx="8" class="f-rowhit"/>
-                      <text x="26" y="45" class="f-text f-small f-muted">Script</text>
-                      <text x="174" y="45" text-anchor="end" class="f-text f-bold">HazeNow</text>
-                      <rect x="20" y="62" width="160" height="28" rx="8" class="f-row"/>
-                      <text x="26" y="81" class="f-text f-small f-muted">Parameter</text>
-                      <text x="172" y="81" text-anchor="end" class="f-text f-small">Tampines</text>
-                    </svg>
-                    <figcaption>Edit Widget: HazeNow</figcaption>
-                  </figure>
-                </div>
-                <p class="dl-note"><strong>Lock Screen:</strong> long-press the Lock Screen, tap <strong>Customize</strong>, then <strong>Lock Screen</strong>. Tap the widget area, pick <strong>Scriptable</strong> and a shape, then tap it and set <strong>Script</strong> to <strong>HazeNow</strong>.</p>
-                <p class="dl-note"><strong>One area:</strong> it shows Singapore island (or your spot, if you let Scriptable use your location). Type an area such as <code>Tampines</code> in the widget's <strong>Parameter</strong> field to show that area.</p>
-                <details class="dl-more">
-                  <summary>Didn't open in Scriptable? Paste it instead</summary>
+                <button class="dl-more-btn" type="button" aria-expanded="false" aria-controls="iphone-steps" data-auto>How to add it<svg class="dl-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
+                <div class="dl-panel" id="iphone-steps" hidden>
                   <ol class="steps">
-                    <li>Tap <strong>Copy script</strong> below, or open <a href="%DL%/HazeNow-scriptable.js" rel="noopener">our script</a>, select all and copy.</li>
-                    <li>In Scriptable, tap <strong>+</strong>, paste, name it <strong>HazeNow</strong> and tap Done.</li>
+                    <li>Open HazeNow in <strong>Safari</strong>.</li>
+                    <li>Tap <strong>Share</strong>. On iOS 26, tap <strong>•••</strong> first.</li>
+                    <li>Tap <strong>Add to Home Screen</strong>, then <strong>Add</strong>.</li>
+                    <li id="iphone-alerts">For alerts, open it from your Home Screen and tap <strong>Get alerts</strong>. iOS 16.4 or newer, Singapore only for now.</li>
                   </ol>
-                  <p class="dl-actions">
-                    <button class="btn btn-ghost btn-sm" type="button" data-copy="/get/HazeNow.js">Copy script</button>
-                    <a href="%DL%/HazeNow-scriptable.js" rel="noopener">Open the script</a>
-                  </p>
-                  <p class="copy-status" role="status" aria-live="polite"></p>
-                </details>
+                  <div class="ios-figs" aria-hidden="true">
+                    <figure class="ios-fig">
+                      <svg viewBox="0 0 200 120" class="fig-svg">
+                        <rect x="8" y="14" width="184" height="92" rx="16" class="f-panel"/>
+                        <rect x="24" y="30" width="152" height="26" rx="13" class="f-field"/>
+                        <text x="100" y="48" text-anchor="middle" class="f-text">hazenow</text>
+                        <g transform="translate(34 70)" class="f-dim"><path d="M10 4 4 12l6 8" /></g>
+                        <g transform="translate(64 70)" class="f-dim"><path d="M4 4l6 8-6 8" /></g>
+                        <circle cx="100" cy="82" r="17" class="f-hit"/>
+                        <g transform="translate(88 70) scale(1)" class="f-strong"><use href="#i-share" width="24" height="24"/></g>
+                        <g transform="translate(142 72)" class="f-dim"><rect x="0" y="0" width="16" height="16" rx="3"/><rect x="4" y="-3" width="16" height="16" rx="3"/></g>
+                      </svg>
+                      <figcaption>Tap Share</figcaption>
+                    </figure>
+                    <figure class="ios-fig">
+                      <svg viewBox="0 0 200 120" class="fig-svg">
+                        <rect x="8" y="14" width="184" height="92" rx="16" class="f-panel"/>
+                        <rect x="20" y="24" width="160" height="22" rx="7" class="f-row"/>
+                        <text x="30" y="40" class="f-text f-muted">Copy</text>
+                        <rect x="18" y="52" width="164" height="28" rx="8" class="f-rowhit"/>
+                        <text x="25" y="71" class="f-text f-bold" textLength="124" lengthAdjust="spacingAndGlyphs">Add to Home Screen</text>
+                        <g transform="translate(158 56)" class="f-strong"><use href="#i-addhome" width="20" height="20"/></g>
+                        <rect x="20" y="86" width="160" height="12" rx="6" class="f-row"/>
+                      </svg>
+                      <figcaption>Add to Home Screen</figcaption>
+                    </figure>
+                    <figure class="ios-fig">
+                      <svg viewBox="0 0 200 120" class="fig-svg">
+                        <rect x="8" y="14" width="184" height="92" rx="16" class="f-panel"/>
+                        <rect x="30" y="30" width="34" height="34" rx="9" class="f-row"/>
+                        <rect x="83" y="30" width="34" height="34" rx="9" class="f-app"/>
+                        <g transform="translate(83 30) scale(0.34)" class="f-mark">
+                          <circle cx="50" cy="38" r="17"/><rect x="17" y="61" width="66" height="7.5" rx="3.75"/><rect x="27" y="73.5" width="46" height="7.5" rx="3.75" fill-opacity="0.7"/><rect x="38" y="86" width="24" height="7.5" rx="3.75" fill-opacity="0.45"/>
+                        </g>
+                        <rect x="136" y="30" width="34" height="34" rx="9" class="f-row"/>
+                        <text x="100" y="84" text-anchor="middle" class="f-text f-small">HazeNow</text>
+                      </svg>
+                      <figcaption>Open it like any app</figcaption>
+                    </figure>
+                  </div>
+                </div>
+
+                <div class="dl-alt dl-way" id="iphone-widget" data-scope>
+                  <button class="dl-alt-btn" type="button" aria-expanded="false" aria-controls="iphone-widget-body" data-auto>
+                    <span>Also want a widget? Add it with Scriptable</span><svg class="dl-chev" aria-hidden="true"><use href="#i-chev"/></svg>
+                  </button>
+                  <div class="dl-panel" id="iphone-widget-body" hidden>
+                    <p class="dl-note">Scriptable is a free app by another developer. <a href="%REPO_URL%/blob/main/integrations/scriptable/HazeNow.js" rel="noopener">Our script</a> is open source.</p>
+                    <ol class="steps">
+                      <li>Install <strong>Scriptable</strong> from the App Store.</li>
+                      <li>Tap <strong>Add the HazeNow widget</strong>, then <strong>Download</strong>, and open the file in <strong>Scriptable</strong>.</li>
+                      <li>Long-press your Home Screen, tap <strong>+</strong> (or <strong>Edit</strong>, <strong>Add Widget</strong>) and add a <strong>Scriptable</strong> widget.</li>
+                      <li>Long-press it, tap <strong>Edit Widget</strong> and set <strong>Script</strong> to <strong>HazeNow</strong>. Type an area like <code>Tampines</code> in <strong>Parameter</strong> to show it.</li>
+                    </ol>
+                    <p class="dl-actions">
+                      <a class="btn btn-primary" href="/widget/HazeNow.scriptable" download="HazeNow.scriptable">Add the HazeNow widget</a>
+                      <a class="btn btn-ghost" href="https://apps.apple.com/app/scriptable/id1405459188" rel="noopener">Get Scriptable</a>
+                    </p>
+                    <p class="dl-note">Lock Screen: tap <strong>Customize</strong>, add a <strong>Scriptable</strong> widget and set it the same way.</p>
+                    <button class="dl-more-btn dl-more-sm" type="button" aria-expanded="false" aria-controls="iphone-paste">Didn't open in Scriptable? Paste it instead<svg class="dl-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
+                    <div class="dl-panel" id="iphone-paste" hidden>
+                      <ol class="steps">
+                        <li>Tap <strong>Copy script</strong>, or <a href="%DL%/HazeNow-scriptable.js" rel="noopener">open the script</a> and copy it.</li>
+                        <li>In Scriptable, tap <strong>+</strong>, paste, name it <strong>HazeNow</strong> and tap Done.</li>
+                      </ol>
+                      <p class="dl-actions"><button class="btn btn-ghost btn-sm" type="button" data-copy="/get/HazeNow.js">Copy script</button></p>
+                      <p class="copy-status" role="status" aria-live="polite"></p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </li>
 
             <!-- Android -->
-            <li class="dl" id="android" data-platform="android">
-              <div class="dl-head">
-                <svg class="ic" aria-hidden="true"><use href="#i-android"/></svg>
-                <div>
-                  <p class="dl-rec" hidden>Recommended for this device</p>
-                  <h2>Android</h2>
-                </div>
-                <span class="status s-beta"><i aria-hidden="true"></i>Beta</span>
-              </div>
-              <p class="dl-intro">Two ways, both free, no Play Store needed. Start with the first. Add the second if you want a widget.</p>
-
-              <div class="dl-way">
-                <h3>1. Install from Chrome</h3>
-                <p class="dl-note"><strong>3 taps, no warnings.</strong> The full HazeNow in its own window, on your Home Screen. It works offline.</p>
-                <ol class="steps">
-                  <li>Open <a href="%APP_BASE%">HazeNow</a> in <strong>Chrome</strong>.</li>
-                  <li>Tap <strong>⋮</strong> at the top right, then <strong>Add to Home screen</strong> (or <strong>Install app</strong>).</li>
-                  <li>Tap <strong>Install</strong>.</li>
-                </ol>
+            <li class="dl" id="android" data-platform="android" data-scope>
+              <h2 class="dl-h">
+                <button class="dl-toggle" type="button" aria-expanded="false" aria-controls="android-body" data-auto>
+                  <svg class="ic" aria-hidden="true"><use href="#i-android"/></svg>
+                  <span class="dl-name"><span class="dl-rec" hidden>For this device</span>Android</span>
+                  <span class="feats"><span class="feat"><svg aria-hidden="true"><use href="#f-read"/></svg>Reading</span><span class="feat"><svg aria-hidden="true"><use href="#f-alert"/></svg>Alerts</span><span class="feat"><svg aria-hidden="true"><use href="#f-widget"/></svg>Widget</span><span class="feat"><svg aria-hidden="true"><use href="#f-tile"/></svg>Tile</span></span>
+                  <svg class="dl-chev" aria-hidden="true"><use href="#i-chev"/></svg>
+                </button>
+              </h2>
+              <div class="dl-body" id="android-body" hidden>
+                <p class="dl-promise">Install from Chrome. Three taps, no warnings.</p>
                 <p class="dl-actions"><a class="btn btn-primary" href="%APP_BASE%">Open HazeNow in Chrome</a></p>
-                <p class="dl-note" id="android-alerts"><strong>Alerts:</strong> open HazeNow and tap “Get alerts”. You'll hear from it only when the air changes in your area, and when it's clear again. Free, Singapore only for now.</p>
-              </div>
-
-              <div class="dl-way" id="android-app">
-                <h3>2. Full app with widget and Quick Settings tile</h3>
-                <p class="dl-note">Adds Home Screen widgets, a Quick Settings tile and calm band alerts. Android 8 or newer. It doesn't come from the Play Store, so Android checks with you before installing it. That's expected, and it only happens once.</p>
-                <ol class="steps">
-                  <li>Tap <strong>Download for Android</strong> below and open the file when it's done.</li>
-                  <li>Android asks whether your browser may install apps. Tap <strong>Settings</strong>, turn on <strong>Allow from this source</strong>, then go back.</li>
-                  <li>Tap <strong>Install</strong>. Google Play Protect may offer to scan the app, which is fine. If it says it doesn't recognise the app, that's because it's new and not in the Play Store: tap <strong>More details</strong>, then <strong>Install anyway</strong>. Samsung and Xiaomi phones may run their own check too; choose <strong>Install anyway</strong> or <strong>Continue</strong>.</li>
-                </ol>
-                <p class="dl-actions">
-                  <a class="btn btn-ghost" href="%DL%/HazeNow-android.apk"><svg class="ic ic-btn" aria-hidden="true"><use href="#i-dl"/></svg>Download for Android</a>
-                  <span class="dl-file">HazeNow-android.apk</span>
-                </p>
-                <p class="dl-why">Why the checks? HazeNow is free, and we don't list it on the Play Store yet. The code is open, and every download is built from it.</p>
-                <details class="dl-more">
-                  <summary>Get updates automatically with Obtainium (optional)</summary>
-                  <p><a href="https://github.com/ImranR98/Obtainium" rel="noopener">Obtainium</a> is a free, open-source app that installs updates straight from our GitHub releases.</p>
+                <button class="dl-more-btn" type="button" aria-expanded="false" aria-controls="android-steps" data-auto>How to install<svg class="dl-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
+                <div class="dl-panel" id="android-steps" hidden>
                   <ol class="steps">
-                    <li>Install Obtainium from <a href="https://github.com/ImranR98/Obtainium/releases" rel="noopener">its GitHub releases</a> or <a href="https://f-droid.org/packages/dev.imranr.obtainium.fdroid/" rel="noopener">F-Droid</a>.</li>
-                    <li>On your phone, tap <strong>Add to Obtainium</strong> below. Or in Obtainium, tap <strong>Add app</strong> and paste <code class="wrap-code">https://github.com/%RELEASES_REPO%</code>.</li>
-                    <li>Obtainium checks for new versions and tells you when one is ready.</li>
+                    <li>Open HazeNow in <strong>Chrome</strong>.</li>
+                    <li>Tap <strong>⋮</strong>, then <strong>Add to Home screen</strong> or <strong>Install app</strong>.</li>
+                    <li>Tap <strong>Install</strong>.</li>
+                    <li id="android-alerts">For alerts, open it and tap <strong>Get alerts</strong>. Singapore only for now.</li>
                   </ol>
-                  <p class="dl-actions"><a class="btn btn-ghost btn-sm" href="obtainium://add/https://github.com/%RELEASES_REPO%">Add to Obtainium</a></p>
-                </details>
+                </div>
+
+                <div class="dl-alt dl-way" id="android-app" data-scope>
+                  <button class="dl-alt-btn" type="button" aria-expanded="false" aria-controls="android-app-body" data-auto>
+                    <span>Also want widgets and a tile? Get the Android app <span class="status s-beta"><i aria-hidden="true"></i>Beta</span></span><svg class="dl-chev" aria-hidden="true"><use href="#i-chev"/></svg>
+                  </button>
+                  <div class="dl-panel" id="android-app-body" hidden>
+                    <p class="dl-note">Widgets, a Quick Settings tile and calm band alerts. Android 8 or newer.</p>
+                    <p class="dl-actions">
+                      <a class="btn btn-primary" href="%DL%/HazeNow-android.apk"><svg class="ic ic-btn" aria-hidden="true"><use href="#i-dl"/></svg>Download for Android</a>
+                      <span class="dl-file">HazeNow-android.apk</span>
+                    </p>
+                    <p class="dl-why">It's not on the Play Store yet, so Android checks with you once. That's expected.</p>
+                    <ol class="steps">
+                      <li>Open the downloaded file.</li>
+                      <li>If asked, tap <strong>Settings</strong> and turn on <strong>Allow from this source</strong>.</li>
+                      <li>Tap <strong>Install</strong>. If Play Protect doesn't recognise it, tap <strong>More details</strong>, then <strong>Install anyway</strong>. Samsung or Xiaomi: <strong>Install anyway</strong> or <strong>Continue</strong>.</li>
+                    </ol>
+                    <button class="dl-more-btn dl-more-sm" type="button" aria-expanded="false" aria-controls="android-obtainium">Automatic updates with Obtainium<svg class="dl-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
+                    <div class="dl-panel" id="android-obtainium" hidden>
+                      <p class="dl-note"><a href="https://github.com/ImranR98/Obtainium" rel="noopener">Obtainium</a> (free, open source) installs updates straight from our GitHub releases. Get it from <a href="https://github.com/ImranR98/Obtainium/releases" rel="noopener">GitHub</a> or <a href="https://f-droid.org/packages/dev.imranr.obtainium.fdroid/" rel="noopener">F-Droid</a>, then add <code class="wrap-code">https://github.com/%RELEASES_REPO%</code>.</p>
+                      <p class="dl-actions"><a class="btn btn-ghost btn-sm" href="obtainium://add/https://github.com/%RELEASES_REPO%">Add to Obtainium</a></p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </li>
 
             <!-- Mac -->
-            <li class="dl" id="mac" data-platform="mac">
-              <div class="dl-head">
-                <svg class="ic" aria-hidden="true"><use href="#i-mac"/></svg>
-                <div>
-                  <p class="dl-rec" hidden>Recommended for this device</p>
-                  <h2>Mac</h2>
-                </div>
-                <span class="status s-beta"><i aria-hidden="true"></i>Beta</span>
-              </div>
-              <p class="dl-intro"><span class="mono">● 105 ▲</span> in your menu bar. Two ways, both free. Pick either one.</p>
-              <div class="dl-ways">
-                <div class="dl-way">
-                  <h3>The app</h3>
-                  <p class="dl-note">The reading in your menu bar, with an optional pill beside the notch, and a quiet notification when the air changes (Singapore). macOS 14 or newer. macOS warns you once, because we don't pay Apple to verify it.</p>
+            <li class="dl" id="mac" data-platform="mac" data-scope>
+              <h2 class="dl-h">
+                <button class="dl-toggle" type="button" aria-expanded="false" aria-controls="mac-body" data-auto>
+                  <svg class="ic" aria-hidden="true"><use href="#i-mac"/></svg>
+                  <span class="dl-name"><span class="dl-rec" hidden>For this device</span>Mac</span>
+                  <span class="feats"><span class="feat"><svg aria-hidden="true"><use href="#f-bar"/></svg>Menu bar</span><span class="feat"><svg aria-hidden="true"><use href="#f-notch"/></svg>Notch</span><span class="feat"><svg aria-hidden="true"><use href="#f-alert"/></svg>Alerts</span></span>
+                  <svg class="dl-chev" aria-hidden="true"><use href="#i-chev"/></svg>
+                </button>
+              </h2>
+              <div class="dl-body" id="mac-body" hidden>
+                <p class="dl-promise"><span class="mono">● 105 ▲</span> in your menu bar, and a pill by the notch. macOS 14 or newer. <span class="status s-beta"><i aria-hidden="true"></i>Beta</span></p>
+                <p class="dl-actions">
+                  <a class="btn btn-primary" href="%DL%/HazeNow-mac.zip"><svg class="ic ic-btn" aria-hidden="true"><use href="#i-dl"/></svg>Download for Mac</a>
+                  <span class="dl-file">HazeNow-mac.zip</span>
+                </p>
+                <button class="dl-more-btn" type="button" aria-expanded="false" aria-controls="mac-steps" data-auto>Opening it the first time<svg class="dl-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
+                <div class="dl-panel" id="mac-steps" hidden>
+                  <p class="dl-why">macOS asks once, because we don't pay Apple US$99 a year to verify it. The code is open.</p>
                   <ol class="steps">
-                    <li>Click <strong>Download for Mac</strong> below. Double-click the zip to unzip it.</li>
-                    <li>Drag <strong>HazeNow</strong> into your <strong>Applications</strong> folder, then open it.</li>
-                    <li>macOS says <q>“HazeNow” Not Opened</q> because <q>Apple could not verify “HazeNow” is free of malware</q>. Click <strong>Done</strong>.</li>
-                    <li>Open <strong>System Settings</strong> → <strong>Privacy &amp; Security</strong>. Scroll down to <strong>Security</strong>. Next to the line <q>“HazeNow” was blocked to protect your Mac</q>, click <strong>Open Anyway</strong>. The button stays there for about an hour after you tried.</li>
-                    <li>Click <strong>Open Anyway</strong> again and enter your password. From now on, HazeNow opens normally, up in your menu bar.</li>
+                    <li>Unzip, drag <strong>HazeNow</strong> into <strong>Applications</strong> and open it.</li>
+                    <li>macOS says it <q>could not verify</q> HazeNow. Click <strong>Done</strong>.</li>
+                    <li>Open <strong>System Settings</strong> → <strong>Privacy &amp; Security</strong>, and click <strong>Open Anyway</strong> next to <q>“HazeNow” was blocked</q>.</li>
+                    <li>Click <strong>Open Anyway</strong> again and enter your password. HazeNow is now in your menu bar.</li>
                   </ol>
-                  <p class="dl-why">Why the warning? HazeNow is free, and we don't pay Apple's US$99 a year to have it verified. The code is open, so anyone can check it.</p>
-                  <p class="dl-actions">
-                    <a class="btn btn-primary" href="%DL%/HazeNow-mac.zip"><svg class="ic ic-btn" aria-hidden="true"><use href="#i-dl"/></svg>Download for Mac</a>
-                    <span class="dl-file">HazeNow-mac.zip</span>
-                  </p>
                 </div>
-                <div class="dl-way">
-                  <h3>SwiftBar plugin, no warning</h3>
-                  <p class="dl-note">One small file with the same reading. It runs inside <a href="https://swiftbar.app" rel="noopener">SwiftBar</a>, a free, open-source menu bar app, so macOS doesn't ask.</p>
-                  <ol class="steps">
-                    <li>Install SwiftBar from <a href="https://swiftbar.app" rel="noopener">swiftbar.app</a>, or run <code>brew install --cask swiftbar</code>. Open it and pick a plugin folder.</li>
-                    <li>Download <strong>hazenow.2m.py</strong> below into that folder.</li>
-                    <li>In Terminal, run <code>chmod +x hazenow.2m.py</code> in that folder. The reading appears in your menu bar.</li>
-                  </ol>
-                  <p class="dl-actions">
-                    <a class="btn btn-primary" href="%DL%/hazenow.2m.py" rel="noopener"><svg class="ic ic-btn" aria-hidden="true"><use href="#i-dl"/></svg>Download the plugin</a>
-                    <span class="dl-file">hazenow.2m.py</span>
-                  </p>
-                </div>
+                <p class="dl-alt-line"><a href="#swiftbar">No warning at all: the SwiftBar plugin</a></p>
               </div>
             </li>
 
             <!-- Web -->
-            <li class="dl" id="web" data-platform="web">
-              <div class="dl-head">
-                <svg class="ic" aria-hidden="true"><use href="#i-web"/></svg>
-                <div>
-                  <p class="dl-rec" hidden>Recommended for this device</p>
-                  <h2>Any browser</h2>
-                </div>
-                <span class="status s-live"><i aria-hidden="true"></i>Live</span>
+            <li class="dl" id="web" data-platform="web" data-scope>
+              <h2 class="dl-h">
+                <button class="dl-toggle" type="button" aria-expanded="false" aria-controls="web-body" data-auto>
+                  <svg class="ic" aria-hidden="true"><use href="#i-web"/></svg>
+                  <span class="dl-name"><span class="dl-rec" hidden>For this device</span>Any browser</span>
+                  <span class="feats"><span class="feat"><svg aria-hidden="true"><use href="#f-read"/></svg>Reading</span><span class="feat"><svg aria-hidden="true"><use href="#f-alert"/></svg>Alerts</span></span>
+                  <svg class="dl-chev" aria-hidden="true"><use href="#i-chev"/></svg>
+                </button>
+              </h2>
+              <div class="dl-body" id="web-body" hidden>
+                <p class="dl-promise">Windows, Linux, Chromebook: nothing to install.</p>
+                <p class="dl-actions"><a class="btn btn-primary" href="%APP_BASE%">Open HazeNow</a></p>
+                <p class="dl-note" id="web-alerts">Tap <strong>Get alerts</strong> to hear when the air changes (Singapore only for now). In Chrome or Edge, <strong>Install app</strong> keeps it in your taskbar.</p>
               </div>
-              <p class="dl-intro">The full HazeNow on Windows, Linux, Chromebooks and anything else with a browser. In Chrome or Edge, use <strong>Install app</strong> in the address bar to keep it in your dock or taskbar.</p>
-              <p class="dl-note" id="web-alerts"><strong>Alerts:</strong> tap “Get alerts” and your computer tells you when the air changes in your area. Works in Chrome, Edge, Firefox and Safari. Free, Singapore only for now.</p>
-              <p class="dl-actions"><a class="btn btn-primary" href="%APP_BASE%">Open HazeNow</a></p>
-            </li>
-
-            <!-- CLI -->
-            <li class="dl" id="cli" data-platform="cli">
-              <div class="dl-head">
-                <svg class="ic" aria-hidden="true"><use href="#i-term"/></svg>
-                <div><h2>Command line</h2></div>
-                <span class="status s-ready"><i aria-hidden="true"></i>Available</span>
-              </div>
-              <p class="dl-intro">The reading in your terminal, tmux or starship. Needs Node 18 or newer.</p>
-              <div class="cmd">
-                <pre><code id="cli-cmd">npm i -g %DL%/hazenow-cli.tgz</code></pre>
-                <button class="btn btn-ghost btn-sm" type="button" data-copy-text="#cli-cmd">Copy</button>
-              </div>
-              <p class="copy-status" role="status" aria-live="polite"></p>
-              <p class="dl-note">Then run <code>hazenow</code>, or <code>hazenow --oneline</code> for <span class="mono">● 105 ▲</span>. <code>hazenow --help</code> lists the rest.</p>
-            </li>
-
-            <!-- Home Assistant -->
-            <li class="dl" id="home-assistant" data-platform="ha">
-              <div class="dl-head">
-                <svg class="ic" aria-hidden="true"><use href="#i-home"/></svg>
-                <div><h2>Home Assistant</h2></div>
-                <span class="status s-ready"><i aria-hidden="true"></i>Available</span>
-              </div>
-              <p class="dl-intro">Sensors for PM2.5, band, verdict and NEA's 24-hr PSI, for home and each region.</p>
-              <div class="dl-way">
-                <h3>With HACS</h3>
-                <ol class="steps">
-                  <li>In HACS, open <strong>⋮</strong> → <strong>Custom repositories</strong>.</li>
-                  <li>Add the HazeNow integration repository with type <strong>Integration</strong>, then install <strong>HazeNow</strong>. (HACS needs the integration's own repository; <a href="%REPO_URL%/tree/main/integrations/home-assistant" rel="noopener">see the install guide</a>.)</li>
-                  <li>Restart Home Assistant. Go to <strong>Settings</strong> → <strong>Devices &amp; services</strong> → <strong>Add integration</strong> → <strong>HazeNow</strong>.</li>
-                </ol>
-              </div>
-              <div class="dl-way">
-                <h3>Or by hand</h3>
-                <ol class="steps">
-                  <li>Download the zip below and unzip it into your Home Assistant <code>config</code> folder, so you get <code>config/custom_components/hazenow</code>.</li>
-                  <li>Restart, then add <strong>HazeNow</strong> under Devices &amp; services.</li>
-                </ol>
-              </div>
-              <p class="dl-actions">
-                <a class="btn btn-ghost" href="%DL%/hazenow-home-assistant.zip"><svg class="ic ic-btn" aria-hidden="true"><use href="#i-dl"/></svg>Download the integration</a>
-              </p>
-            </li>
-
-            <!-- Coming soon -->
-            <li class="dl dl-soon" id="soon" data-platform="soon">
-              <div class="dl-head">
-                <div><h2>Coming soon</h2></div>
-              </div>
-              <ul class="soon-list">
-                <li>
-                  <svg class="ic" aria-hidden="true"><use href="#i-cmd"/></svg>
-                  <div><h3>Raycast</h3><p>The reading in your menu bar, plus every area in one list.</p></div>
-                  <span class="status s-soon"><i aria-hidden="true"></i>Coming soon</span>
-                </li>
-                <li>
-                  <svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg>
-                  <div><h3>Telegram bot</h3><p><code>/now</code> for your area, and band-change alerts that always send the all-clear.</p></div>
-                  <span class="status s-soon"><i aria-hidden="true"></i>Coming soon</span>
-                </li>
-              </ul>
             </li>
           </ol>
 
+          <section class="ways-wrap" aria-labelledby="ways-title">
+            <h2 id="ways-title" class="ways-title">More ways</h2>
+            <ul class="ways">
+              <li class="way" id="cli" data-scope>
+                <h3><button class="way-btn" type="button" aria-expanded="false" aria-controls="cli-body" data-auto><svg class="ic" aria-hidden="true"><use href="#i-term"/></svg><span>Command line</span><span class="way-sub">Node 18+</span><svg class="dl-chev" aria-hidden="true"><use href="#i-chev"/></svg></button></h3>
+                <div class="dl-panel" id="cli-body" hidden>
+                  <div class="cmd">
+                    <pre><code id="cli-cmd">npm i -g %DL%/hazenow-cli.tgz</code></pre>
+                    <button class="btn btn-ghost btn-sm" type="button" data-copy-text="#cli-cmd">Copy</button>
+                  </div>
+                  <p class="copy-status" role="status" aria-live="polite"></p>
+                  <p class="dl-note">Then <code>hazenow</code>, or <code>hazenow --oneline</code> for <span class="mono">● 105 ▲</span>.</p>
+                </div>
+              </li>
+              <li class="way" id="home-assistant" data-scope>
+                <h3><button class="way-btn" type="button" aria-expanded="false" aria-controls="ha-body" data-auto><svg class="ic" aria-hidden="true"><use href="#i-home"/></svg><span>Home Assistant</span><span class="way-sub">PM2.5, band, verdict, PSI</span><svg class="dl-chev" aria-hidden="true"><use href="#i-chev"/></svg></button></h3>
+                <div class="dl-panel" id="ha-body" hidden>
+                  <ol class="steps">
+                    <li>In HACS, add a <strong>Custom repository</strong> of type <strong>Integration</strong> (<a href="%REPO_URL%/tree/main/integrations/home-assistant" rel="noopener">install guide</a>), and install <strong>HazeNow</strong>. Or unzip the download into <code>config/custom_components/hazenow</code>.</li>
+                    <li>Restart, then <strong>Settings</strong> → <strong>Devices &amp; services</strong> → <strong>Add integration</strong> → <strong>HazeNow</strong>.</li>
+                  </ol>
+                  <p class="dl-actions"><a class="btn btn-ghost btn-sm" href="%DL%/hazenow-home-assistant.zip"><svg class="ic ic-btn" aria-hidden="true"><use href="#i-dl"/></svg>Download the integration</a></p>
+                </div>
+              </li>
+              <li class="way" id="swiftbar" data-scope>
+                <h3><button class="way-btn" type="button" aria-expanded="false" aria-controls="swiftbar-body" data-auto><svg class="ic" aria-hidden="true"><use href="#i-bar"/></svg><span>SwiftBar or xbar</span><span class="way-sub">Mac menu bar, no warning</span><svg class="dl-chev" aria-hidden="true"><use href="#i-chev"/></svg></button></h3>
+                <div class="dl-panel" id="swiftbar-body" hidden>
+                  <ol class="steps">
+                    <li>Install <a href="https://swiftbar.app" rel="noopener">SwiftBar</a> (free, open source) or <code>brew install --cask swiftbar</code>, and pick a plugin folder.</li>
+                    <li>Save <strong>hazenow.2m.py</strong> there, then run <code>chmod +x hazenow.2m.py</code>.</li>
+                  </ol>
+                  <p class="dl-actions"><a class="btn btn-ghost btn-sm" href="%DL%/hazenow.2m.py" rel="noopener"><svg class="ic ic-btn" aria-hidden="true"><use href="#i-dl"/></svg>Download the plugin</a></p>
+                </div>
+              </li>
+              <li class="way" id="tmux" data-scope>
+                <h3><button class="way-btn" type="button" aria-expanded="false" aria-controls="tmux-body" data-auto><svg class="ic" aria-hidden="true"><use href="#i-prompt"/></svg><span>tmux and starship</span><span class="way-sub">Needs curl and jq</span><svg class="dl-chev" aria-hidden="true"><use href="#i-chev"/></svg></button></h3>
+                <div class="dl-panel" id="tmux-body" hidden>
+                  <p class="dl-note">A one-line reading for your status bar or prompt. Usage is at the top of the script.</p>
+                  <p class="dl-actions"><a class="btn btn-ghost btn-sm" href="/get/hazenow-status.sh" download><svg class="ic ic-btn" aria-hidden="true"><use href="#i-dl"/></svg>Download the script</a></p>
+                </div>
+              </li>
+              <li class="way way-soon" id="soon">
+                <p><span class="status s-soon"><i aria-hidden="true"></i>Coming soon</span> <a href="%REPO_URL%/tree/main/integrations/raycast" rel="noopener">Raycast</a> · <a href="%REPO_URL%/tree/main/integrations/telegram-bot" rel="noopener">Telegram bot</a></p>
+              </li>
+            </ul>
+          </section>
+
           <div class="dl-foot">
-            <p>Free and open source, <a href="%REPO_URL%/blob/main/LICENSE" rel="noopener">MIT</a>. Every download is built from the source code on GitHub.</p>
+            <p class="dl-release" id="dl-release" aria-live="polite"><a href="https://github.com/%RELEASES_REPO%/releases" rel="noopener">Latest version on GitHub Releases</a></p>
+            <p>Every download is built from the open source code (<a href="%REPO_URL%/blob/main/LICENSE" rel="noopener">MIT</a>). We only count totals, never who.</p>
             <p>
               <a href="https://github.com/%RELEASES_REPO%/releases" rel="noopener">All releases</a>
               <a href="%DL%/SHA256SUMS.txt" rel="noopener">SHA256SUMS.txt</a>

@@ -568,6 +568,20 @@ Calm and specific, like the rest of this file. Never block the reading to ask fo
 
 **Mac app.** First launch only, a small popover from the menu-bar item: "HazeNow lives up here." + on a notched Mac with the pill on, "On a MacBook with a notch, the pill beside it shows the same reading. Hover it to see more."; otherwise "Click the reading any time for the full picture." Button "Got it". It closes by itself after about 12 seconds.
 
+**Download page, compact (branch `ux-compact`, pending founder approval, 6 Oct 2026).** Supersedes the download-page
+strings above once merged. One row per platform (name + feature chips: Reading, Alerts, Widget, Tile, Menu bar, Notch);
+the device's row starts open. Hero: "Get HazeNow." / "Free and open source. No app store, no ads, no accounts, never
+tracked." QR title: "Best on your phone. Scan to open." Promises: iPhone "The full app on your Home Screen. Three taps
+from Safari." · Android "Install from Chrome. Three taps, no warnings." · Mac "{● 105 ▲} in your menu bar, and a pill by
+the notch. macOS 14 or newer." · Browser "Windows, Linux, Chromebook: nothing to install." Steps sit behind "How to add
+it" / "How to install" / "Opening it the first time"; alerts are the last step ("For alerts, … Singapore only for now.").
+Alternatives: "Also want a widget? Add it with Scriptable" · "Also want widgets and a tile? Get the Android app" · "No
+warning at all: the SwiftBar plugin". Calm checks, shown only inside the chosen option: "It's not on the Play Store yet,
+so Android checks with you once. That's expected." · "macOS asks once, because we don't pay Apple US$99 a year to verify
+it. The code is open." Minor surfaces: one "More ways" list (Command line, Home Assistant, SwiftBar or xbar, tmux and
+starship, "Coming soon: Raycast · Telegram bot"). Foot: "Every download is built from the open source code (MIT). We only
+count totals, never who."
+
 ## 22. Haze alerts by Web Push (web app, 5 Oct 2026)
 
 Free, opt-in alerts for the web app (iPhone and iPad once it's on the Home Screen, iOS 16.4+; Chrome, Edge, Firefox,
