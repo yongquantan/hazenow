@@ -24,6 +24,46 @@ const forced = new URLSearchParams(location.search).get("platform") as Platform 
 const platform: Platform =
   forced && ["ios", "android", "mac", "web"].includes(forced) ? forced : detectPlatform(navigator.userAgent, navigator.maxTouchPoints ?? 0);
 
+/* ------------------------------------------------------------------ disclosure */
+
+/**
+ * Every card, way and step list is a real <button aria-expanded aria-controls> over a [hidden] panel. Without
+ * JavaScript a <noscript> style shows every panel. Links to an id (/download/#mac, #iphone-alerts, #android-app …)
+ * open every panel around that id, and the id's own first-level toggles, then scroll to it.
+ */
+function setOpen(btn: HTMLElement, open: boolean) {
+  btn.setAttribute("aria-expanded", String(open));
+  const panel = document.getElementById(btn.getAttribute("aria-controls") ?? "");
+  if (panel) panel.hidden = !open;
+}
+const toggleFor = (panel: Element) => document.querySelector<HTMLElement>(`main button[aria-controls="${panel.id}"]`);
+
+document.addEventListener("click", (e) => {
+  const btn = (e.target as Element | null)?.closest?.<HTMLElement>("main button[aria-controls][aria-expanded]");
+  if (btn) setOpen(btn, btn.getAttribute("aria-expanded") !== "true");
+});
+
+/** Open what's around an id (and, for a card or a way, its own toggles), so a deep link lands on something open. */
+export function reveal(id: string, scroll = true): boolean {
+  let target: HTMLElement | null = null;
+  try {
+    target = document.getElementById(decodeURIComponent(id));
+  } catch {
+    return false;
+  }
+  if (!target || !target.closest("main")) return false;
+  for (let el: HTMLElement | null = target; el; el = el.parentElement) {
+    if (el.id && el.hidden) {
+      const t = toggleFor(el);
+      if (t) setOpen(t, true);
+    }
+  }
+  if (target.hasAttribute("data-scope"))
+    target.querySelectorAll<HTMLElement>("[data-auto]").forEach((b) => b.closest("[data-scope]") === target && setOpen(b, true));
+  if (scroll) requestAnimationFrame(() => target?.scrollIntoView({ block: "start" }));
+  return true;
+}
+
 const list = document.getElementById("dl-list");
 const card = list?.querySelector<HTMLElement>(`[data-platform="${platform}"]`);
 if (list && card) {
@@ -31,14 +71,18 @@ if (list && card) {
   const rec = card.querySelector<HTMLElement>(".dl-rec");
   if (rec) rec.hidden = false;
   list.prepend(card);
-  // Put the matching platform first in the jump links too.
-  const jump = document.querySelector(".dl-jump");
-  const link = jump?.querySelector<HTMLAnchorElement>(`a[href="#${card.id}"]`);
-  if (jump && link) {
-    link.classList.add("is-rec");
-    jump.prepend(link);
-  }
+  // The device's card starts open: its promise and one button. The steps stay one tap away.
+  const head = card.querySelector<HTMLElement>(".dl-toggle");
+  if (head) setOpen(head, true);
 }
+
+if (location.hash.length > 1) reveal(location.hash.slice(1));
+addEventListener("hashchange", () => location.hash.length > 1 && reveal(location.hash.slice(1)));
+// A link to the hash we're already on fires no hashchange: open it anyway.
+document.addEventListener("click", (e) => {
+  const a = (e.target as Element | null)?.closest?.<HTMLAnchorElement>('main a[href^="#"]');
+  if (a && a.hash === location.hash && a.hash.length > 1) reveal(a.hash.slice(1));
+});
 
 /* ------------------------------------------------------------------ QR: desktop → phone */
 
@@ -155,7 +199,7 @@ latestRelease().then((rel) => {
 /* ------------------------------------------------------------------ copy */
 
 function statusFor(el: Element): HTMLElement | null {
-  const scope = el.closest(".dl-way, .dl");
+  const scope = el.closest(".dl-way, .way, .dl");
   return scope?.querySelector<HTMLElement>(".copy-status") ?? null;
 }
 
